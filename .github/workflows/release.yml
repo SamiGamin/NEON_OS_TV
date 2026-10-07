@@ -54,11 +54,17 @@ jobs:
         id: keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "Keystore secret encontrado. Decodificando..."
-            echo "$KEYSTORE_BASE64" | base64 -d > ${{ runner.temp }}/release.keystore
+            echo "$KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > ${{ runner.temp }}/release.keystore
             echo "KEYSTORE_FILE=${{ runner.temp }}/release.keystore" >> $GITHUB_ENV
+
+            echo "Verificando clave en keystore..."
+            keytool -list -keystore ${{ runner.temp }}/release.keystore -storepass "$KEYSTORE_PASSWORD" > /dev/null 2>&1 || {
+              echo "::error::La contraseña KEYSTORE_PASSWORD no pudo abrir el keystore. Revisa la contraseña o el Base64."
+            }
           else
             echo "Aviso: KEYSTORE_BASE64 no configurado en Secrets. Se usará firma de fallback."
           fi
