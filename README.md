@@ -26,12 +26,12 @@ Para mantener la estética futurista y Cyberpunk neón de la interfaz, hemos inc
 ### 📱 Icono de la Aplicación (App Icon)
 *   **Prompt:** `Sleek modern cyberpunk TV launcher logo icon, glowing holographic neon cyan and magenta lines, sharp minimalist abstract geometric 'S' symbol inside a dark cockpit interface, high-tech HUD elements, premium app icon, high contrast, clean vector style, game asset style, flat design, photorealistic lighting, 8k resolution`
 
-![Icono Cyberpunk Oficial](file:///C:/Users/Pc%20casa/.gemini/antigravity-cli/brain/43642cc2-6e0a-4b1b-a70d-04e2f92e6572/app_icon_cyberpunk_1779918877847.png)
+![Icono Cyberpunk Oficial](https://github.com/SamiGamin/SamiBoxTV/blob/master/app/src/main/res/drawable/logo.png)
 
 ### 🖥 Banner Promocional de la Tienda (Store Banner)
 *   **Prompt:** `Futuristic cyberpunk Android TV launcher showcase banner, neon cyan and hot pink glowing grid lines on a deep black space background, high-tech HUD metrics, virtual terminal screen, glowing digital clock displaying '12:00' in electric orange, sleek minimalist smart TV app cards floating, premium cinematic lighting, volumetric atmosphere, octane render, 8k resolution, wide aspect ratio 16:9, cyberpunk tech theme`
 
-![Banner Cyberpunk Oficial](file:///C:/Users/Pc%20casa/.gemini/antigravity-cli/brain/43642cc2-6e0a-4b1b-a70d-04e2f92e6572/store_banner_cyberpunk_1779918894242.png)
+![Banner Cyberpunk Oficial](https://github.com/SamiGamin/SamiBoxTV/blob/master/app/src/main/res/drawable/banner.png)
 
 ## 🛠 Instalación y Configuración
 
