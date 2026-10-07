@@ -4,10 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.launcher.samiboxtv.core.dispatcher.DispatcherProvider
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.domain.usecase.CheckUpdateUseCase
 import com.launcher.samiboxtv.domain.usecase.GetInstalledAppsUseCase
 import com.launcher.samiboxtv.domain.usecase.HideAppUseCase
 import com.launcher.samiboxtv.domain.usecase.LaunchAppUseCase
 import com.launcher.samiboxtv.domain.usecase.MoveAppUseCase
+import com.launcher.samiboxtv.domain.usecase.ObserveNetworkStatusUseCase
+import com.launcher.samiboxtv.domain.usecase.ObserveSystemTelemetryUseCase
 import com.launcher.samiboxtv.domain.usecase.SetHiddenPackagesUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleAppVisibilityUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleFavoriteAppUseCase
@@ -15,6 +18,7 @@ import com.launcher.samiboxtv.domain.usecase.UnhideAppUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -32,6 +36,9 @@ class HomeViewModel(
     private val toggleAppVisibilityUseCase: ToggleAppVisibilityUseCase,
     private val toggleFavoriteAppUseCase: ToggleFavoriteAppUseCase,
     private val setHiddenPackagesUseCase: SetHiddenPackagesUseCase,
+    private val observeNetworkStatusUseCase: ObserveNetworkStatusUseCase,
+    private val observeSystemTelemetryUseCase: ObserveSystemTelemetryUseCase,
+    private val checkUpdateUseCase: CheckUpdateUseCase,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
 
@@ -40,6 +47,29 @@ class HomeViewModel(
 
     init {
         loadApps()
+        observeNetwork()
+        observeTelemetry()
+        checkForUpdates()
+    }
+
+    private fun observeNetwork() {
+        viewModelScope.launch(dispatcherProvider.main) {
+            observeNetworkStatusUseCase()
+                .flowOn(dispatcherProvider.io)
+                .collect { networkStatus ->
+                    _uiState.update { it.copy(networkStatus = networkStatus) }
+                }
+        }
+    }
+
+    private fun observeTelemetry() {
+        viewModelScope.launch(dispatcherProvider.main) {
+            observeSystemTelemetryUseCase(intervalMillis = 3000)
+                .flowOn(dispatcherProvider.io)
+                .collect { telemetry ->
+                    _uiState.update { it.copy(systemTelemetry = telemetry) }
+                }
+        }
     }
 
     fun onEvent(event: HomeUiEvent) {
@@ -61,6 +91,31 @@ class HomeViewModel(
             HomeUiEvent.OpenSystemLog -> _uiState.update { it.copy(isSystemLogOpen = true) }
             HomeUiEvent.CloseSystemLog -> _uiState.update { it.copy(isSystemLogOpen = false) }
             HomeUiEvent.RefreshApps -> loadApps()
+            HomeUiEvent.CheckUpdates -> checkForUpdates()
+            HomeUiEvent.DismissUpdateDialog -> _uiState.update { it.copy(updateInfo = null) }
+        }
+    }
+
+    private fun checkForUpdates() {
+        viewModelScope.launch(dispatcherProvider.main) {
+            _uiState.update { it.copy(isCheckingUpdates = true, updateCheckMessage = "> VERIFICANDO GITHUB RELEASES...") }
+            val result = checkUpdateUseCase()
+            result.onSuccess { info ->
+                _uiState.update {
+                    it.copy(
+                        isCheckingUpdates = false,
+                        updateInfo = if (info.hasUpdate) info else null,
+                        updateCheckMessage = if (!info.hasUpdate) "Launcher actualizado (v${info.currentVersion})" else "¡Nueva versión disponible v${info.latestVersion}!"
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isCheckingUpdates = false,
+                        updateCheckMessage = "Error al verificar: ${error.localizedMessage ?: "Fallo de conexión"}"
+                    )
+                }
+            }
         }
     }
 

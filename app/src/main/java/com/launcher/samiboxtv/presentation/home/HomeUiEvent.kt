@@ -24,4 +24,6 @@ sealed interface HomeUiEvent : UiEvent {
     object OpenSystemLog : HomeUiEvent
     object CloseSystemLog : HomeUiEvent
     object RefreshApps : HomeUiEvent
+    object CheckUpdates : HomeUiEvent
+    object DismissUpdateDialog : HomeUiEvent
 }

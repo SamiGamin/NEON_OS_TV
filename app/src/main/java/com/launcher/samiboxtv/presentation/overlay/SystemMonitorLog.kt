@@ -32,13 +32,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Border
+import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
+import com.launcher.samiboxtv.domain.model.NetworkStatus
+import com.launcher.samiboxtv.domain.model.SystemTelemetry
+import com.launcher.samiboxtv.presentation.theme.CyberAmber
 import com.launcher.samiboxtv.presentation.theme.CyberBg
 import com.launcher.samiboxtv.presentation.theme.CyberCard
 import com.launcher.samiboxtv.presentation.theme.CyberCyan
@@ -103,47 +112,203 @@ fun scanAllApps(context: Context): List<ScannedApp> {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun SystemMonitorLog(
+    telemetry: SystemTelemetry,
+    networkStatus: NetworkStatus,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val scannedApps: List<ScannedApp> by remember { mutableStateOf(scanAllApps(context)) }
     val techFont = ShareTechMonoFontFamily
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(CyberBg)
-            .padding(32.dp)
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+                .fillMaxSize(0.92f)
+                .background(Color(0xFF070B16), RoundedCornerShape(16.dp))
+                .border(1.5.dp, CyberCyan, RoundedCornerShape(16.dp))
+                .padding(24.dp)
         ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header del Dialog
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "CENTRO DE TELEMETRÍA // DIAGNÓSTICO DEL SISTEMA",
+                            color = CyberCyan,
+                            fontSize = 18.sp,
+                            fontFamily = techFont,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "${telemetry.deviceModel} | ${telemetry.androidVersion} | Uptime: ${telemetry.uptime}",
+                            color = CyberAmber,
+                            fontSize = 12.sp,
+                            fontFamily = techFont
+                        )
+                    }
+
+                    Button(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.colors(
+                            containerColor = Color(0xFF141926),
+                            focusedContainerColor = CyberCyan
+                        ),
+                        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp))
+                    ) {
+                        Text(
+                            text = "✕ CERRAR",
+                            fontFamily = techFont,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // Panel Superior de Telemetría (3 Tarjetas HUD)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Tarjeta 1: RAM
+                    val ramColor = when {
+                        telemetry.isLowMemory || telemetry.ramUsagePercentage > 85 -> CyberMagenta
+                        telemetry.ramUsagePercentage > 70 -> CyberAmber
+                        else -> CyberCyan
+                    }
+                    TelemetryHudBox(
+                        title = "MEMORIA RAM",
+                        value = "${telemetry.ramUsedMb} / ${telemetry.ramTotalMb} MB",
+                        subValue = "Libre: ${telemetry.ramAvailableMb} MB (${100 - telemetry.ramUsagePercentage}%)",
+                        status = "${telemetry.ramUsagePercentage}% EN USO",
+                        statusColor = ramColor,
+                        font = techFont,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Tarjeta 2: Almacenamiento
+                    TelemetryHudBox(
+                        title = "ALMACENAMIENTO INTERNO",
+                        value = "${telemetry.storageUsedGb} / ${telemetry.storageTotalGb} GB",
+                        subValue = "Espacio libre: ${telemetry.storageFreeGb} GB",
+                        status = "FLASH STORAGE OK",
+                        statusColor = CyberCyan,
+                        font = techFont,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Tarjeta 3: Procesador & Red
+                    TelemetryHudBox(
+                        title = "HARDWARE & CONECTIVIDAD",
+                        value = "CPU: ${telemetry.cpuUsagePercentage} | ${telemetry.cpuTemperature ?: "TEMP OK"}",
+                        subValue = "Red: ${networkStatus.type} (${networkStatus.ipAddress ?: "Sin IP"})",
+                        status = if (networkStatus.isConnected) "ONLINE" else "OFFLINE",
+                        statusColor = if (networkStatus.isConnected) CyberCyan else CyberMagenta,
+                        font = techFont,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Título de la lista de Apps
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "APLICACIONES INSTALADAS Y PAQUETES (${scannedApps.size})",
+                        color = CyberCyan,
+                        fontFamily = techFont,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Haz clic en una app para gestionar o desinstalar",
+                        color = CyberGrey,
+                        fontFamily = techFont,
+                        fontSize = 11.sp
+                    )
+                }
+
+                // Lista de aplicaciones escaneadas
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(items = scannedApps, key = { it.packageName }) { app ->
+                        AppLogItem(app = app, techFont = techFont, context = context)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TelemetryHudBox(
+    title: String,
+    value: String,
+    subValue: String,
+    status: String,
+    statusColor: Color,
+    font: FontFamily,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFF0C1322))
+            .border(1.dp, CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+            .padding(12.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = title,
+                    color = CyberGrey,
+                    fontSize = 10.sp,
+                    fontFamily = font,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = status,
+                    color = statusColor,
+                    fontSize = 10.sp,
+                    fontFamily = font,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "> SYSTEM INFO LOG (PRESS BACK TO EXIT)",
-                color = CyberCyan,
-                fontFamily = techFont,
-                fontSize = 15.sp,
+                text = value,
+                color = Color.White,
+                fontSize = 14.sp,
+                fontFamily = font,
                 fontWeight = FontWeight.Bold
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "${scannedApps.size} APPS INSTALLED",
-                color = CyberGrey,
-                fontFamily = techFont,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium
+                text = subValue,
+                color = Color(0xFF7E9BB8),
+                fontSize = 11.sp,
+                fontFamily = font
             )
-        }
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(items = scannedApps, key = { it.packageName }) { app ->
-                AppLogItem(app = app, techFont = techFont, context = context)
-            }
         }
     }
 }

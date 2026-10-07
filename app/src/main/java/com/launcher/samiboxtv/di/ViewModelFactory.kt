@@ -23,6 +23,9 @@ class ViewModelFactory(
                 toggleAppVisibilityUseCase = appContainer.toggleAppVisibilityUseCase,
                 toggleFavoriteAppUseCase = appContainer.toggleFavoriteAppUseCase,
                 setHiddenPackagesUseCase = appContainer.setHiddenPackagesUseCase,
+                observeNetworkStatusUseCase = appContainer.observeNetworkStatusUseCase,
+                observeSystemTelemetryUseCase = appContainer.observeSystemTelemetryUseCase,
+                checkUpdateUseCase = appContainer.checkUpdateUseCase,
                 dispatcherProvider = appContainer.dispatcherProvider
             ) as T
         }

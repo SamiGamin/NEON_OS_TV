@@ -17,6 +17,19 @@ import com.launcher.samiboxtv.domain.usecase.LaunchAppUseCase
 import com.launcher.samiboxtv.domain.usecase.MoveAppUseCase
 import com.launcher.samiboxtv.domain.usecase.SetHiddenPackagesUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleAppVisibilityUseCase
+import com.launcher.samiboxtv.data.datasource.NetworkDataSource
+import com.launcher.samiboxtv.data.datasource.NetworkDataSourceImpl
+import com.launcher.samiboxtv.data.datasource.SystemTelemetryDataSource
+import com.launcher.samiboxtv.data.datasource.SystemTelemetryDataSourceImpl
+import com.launcher.samiboxtv.data.repository.NetworkRepositoryImpl
+import com.launcher.samiboxtv.data.repository.SystemTelemetryRepositoryImpl
+import com.launcher.samiboxtv.data.repository.UpdateRepositoryImpl
+import com.launcher.samiboxtv.domain.repository.NetworkRepository
+import com.launcher.samiboxtv.domain.repository.SystemTelemetryRepository
+import com.launcher.samiboxtv.domain.repository.UpdateRepository
+import com.launcher.samiboxtv.domain.usecase.CheckUpdateUseCase
+import com.launcher.samiboxtv.domain.usecase.ObserveNetworkStatusUseCase
+import com.launcher.samiboxtv.domain.usecase.ObserveSystemTelemetryUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleFavoriteAppUseCase
 import com.launcher.samiboxtv.domain.usecase.UnhideAppUseCase
 
@@ -28,6 +41,9 @@ interface AppContainer {
     val dispatcherProvider: DispatcherProvider
     val appRepository: AppRepository
     val preferencesRepository: PreferencesRepository
+    val networkRepository: NetworkRepository
+    val systemTelemetryRepository: SystemTelemetryRepository
+    val updateRepository: UpdateRepository
     val getInstalledAppsUseCase: GetInstalledAppsUseCase
     val hideAppUseCase: HideAppUseCase
     val unhideAppUseCase: UnhideAppUseCase
@@ -36,12 +52,56 @@ interface AppContainer {
     val toggleAppVisibilityUseCase: ToggleAppVisibilityUseCase
     val toggleFavoriteAppUseCase: ToggleFavoriteAppUseCase
     val setHiddenPackagesUseCase: SetHiddenPackagesUseCase
+    val observeNetworkStatusUseCase: ObserveNetworkStatusUseCase
+    val observeSystemTelemetryUseCase: ObserveSystemTelemetryUseCase
+    val checkUpdateUseCase: CheckUpdateUseCase
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val dispatcherProvider: DispatcherProvider by lazy {
         DefaultDispatcherProvider()
+    }
+
+    private val networkDataSource: NetworkDataSource by lazy {
+        NetworkDataSourceImpl(context)
+    }
+
+    override val networkRepository: NetworkRepository by lazy {
+        NetworkRepositoryImpl(
+            networkDataSource = networkDataSource,
+            dispatcherProvider = dispatcherProvider
+        )
+    }
+
+    override val observeNetworkStatusUseCase: ObserveNetworkStatusUseCase by lazy {
+        ObserveNetworkStatusUseCase(networkRepository = networkRepository)
+    }
+
+    private val systemTelemetryDataSource: SystemTelemetryDataSource by lazy {
+        SystemTelemetryDataSourceImpl(context)
+    }
+
+    override val systemTelemetryRepository: SystemTelemetryRepository by lazy {
+        SystemTelemetryRepositoryImpl(
+            systemTelemetryDataSource = systemTelemetryDataSource,
+            dispatcherProvider = dispatcherProvider
+        )
+    }
+
+    override val observeSystemTelemetryUseCase: ObserveSystemTelemetryUseCase by lazy {
+        ObserveSystemTelemetryUseCase(systemTelemetryRepository = systemTelemetryRepository)
+    }
+
+    override val updateRepository: UpdateRepository by lazy {
+        UpdateRepositoryImpl(
+            context = context,
+            dispatcherProvider = dispatcherProvider
+        )
+    }
+
+    override val checkUpdateUseCase: CheckUpdateUseCase by lazy {
+        CheckUpdateUseCase(repository = updateRepository)
     }
 
     private val appLocalDataSource: AppLocalDataSource by lazy {
