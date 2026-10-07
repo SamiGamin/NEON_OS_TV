@@ -14,17 +14,45 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
+    }
+
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("KEYSTORE_FILE")
+                ?: (project.findProperty("KEYSTORE_FILE") as? String)
+                ?: "release.keystore"
+            val storePass = System.getenv("KEYSTORE_PASSWORD")
+                ?: (project.findProperty("KEYSTORE_PASSWORD") as? String)
+            val kAlias = System.getenv("KEY_ALIAS")
+                ?: (project.findProperty("KEY_ALIAS") as? String)
+            val kPass = System.getenv("KEY_PASSWORD")
+                ?: (project.findProperty("KEY_PASSWORD") as? String)
+
+            if (file(keystorePath).exists() && storePass != null && kAlias != null && kPass != null) {
+                storeFile = file(keystorePath)
+                storePassword = storePass
+                keyAlias = kAlias
+                keyPassword = kPass
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            isCrunchPngs = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null) {
+                signingConfig = releaseSigning
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
     compileOptions {
@@ -34,9 +62,50 @@ android {
     buildFeatures {
         compose = true
     }
+
 }
+
+tasks.register("renameReleaseApk") {
+    doLast {
+        val releaseDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
+        val vName = android.defaultConfig.versionName ?: "1.0"
+        val apkFile = File(releaseDir, "app-release.apk")
+        val unsignedFile = File(releaseDir, "app-release-unsigned.apk")
+        val source = if (apkFile.exists()) apkFile else unsignedFile
+        if (source.exists()) {
+            val target = File(releaseDir, "SamiBoxTV-v$vName-release.apk")
+            source.copyTo(target, overwrite = true)
+            println("==> APK Release generado: ${target.name}")
+        }
+    }
+}
+
+tasks.register("renameDebugApk") {
+    doLast {
+        val debugDir = layout.buildDirectory.dir("outputs/apk/debug").get().asFile
+        val vName = android.defaultConfig.versionName ?: "1.0"
+        val apkFile = File(debugDir, "app-debug.apk")
+        if (apkFile.exists()) {
+            val target = File(debugDir, "SamiBoxTV-v$vName-debug.apk")
+            apkFile.copyTo(target, overwrite = true)
+            println("==> APK Debug generado: ${target.name}")
+        }
+    }
+}
+
+tasks.register("printVersionName") {
+    doLast {
+        println(android.defaultConfig.versionName ?: "1.0")
+    }
+}
+
+afterEvaluate {
+    tasks.findByName("assembleRelease")?.finalizedBy("renameReleaseApk")
+    tasks.findByName("assembleDebug")?.finalizedBy("renameDebugApk")
+}
+
 base {
-    archivesName.set("Tv launcher-v${android.defaultConfig.versionName}")
+    archivesName.set("SamiBoxTV-v${android.defaultConfig.versionName}")
 }
 
 dependencies {
