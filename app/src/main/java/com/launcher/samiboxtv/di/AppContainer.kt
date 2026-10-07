@@ -28,6 +28,9 @@ import com.launcher.samiboxtv.domain.repository.NetworkRepository
 import com.launcher.samiboxtv.domain.repository.SystemTelemetryRepository
 import com.launcher.samiboxtv.domain.repository.UpdateRepository
 import com.launcher.samiboxtv.domain.usecase.CheckUpdateUseCase
+import com.launcher.samiboxtv.domain.usecase.CleanMemoryUseCase
+import com.launcher.samiboxtv.domain.usecase.GetRunningProcessesUseCase
+import com.launcher.samiboxtv.domain.usecase.KillProcessUseCase
 import com.launcher.samiboxtv.domain.usecase.ObserveNetworkStatusUseCase
 import com.launcher.samiboxtv.domain.usecase.ObserveSystemTelemetryUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleFavoriteAppUseCase
@@ -55,6 +58,9 @@ interface AppContainer {
     val observeNetworkStatusUseCase: ObserveNetworkStatusUseCase
     val observeSystemTelemetryUseCase: ObserveSystemTelemetryUseCase
     val checkUpdateUseCase: CheckUpdateUseCase
+    val getRunningProcessesUseCase: GetRunningProcessesUseCase
+    val cleanMemoryUseCase: CleanMemoryUseCase
+    val killProcessUseCase: KillProcessUseCase
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -91,6 +97,18 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val observeSystemTelemetryUseCase: ObserveSystemTelemetryUseCase by lazy {
         ObserveSystemTelemetryUseCase(systemTelemetryRepository = systemTelemetryRepository)
+    }
+
+    override val getRunningProcessesUseCase: GetRunningProcessesUseCase by lazy {
+        GetRunningProcessesUseCase(systemTelemetryRepository = systemTelemetryRepository)
+    }
+
+    override val cleanMemoryUseCase: CleanMemoryUseCase by lazy {
+        CleanMemoryUseCase(systemTelemetryRepository = systemTelemetryRepository)
+    }
+
+    override val killProcessUseCase: KillProcessUseCase by lazy {
+        KillProcessUseCase(systemTelemetryRepository = systemTelemetryRepository)
     }
 
     override val updateRepository: UpdateRepository by lazy {

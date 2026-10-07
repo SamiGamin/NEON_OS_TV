@@ -26,6 +26,9 @@ class ViewModelFactory(
                 observeNetworkStatusUseCase = appContainer.observeNetworkStatusUseCase,
                 observeSystemTelemetryUseCase = appContainer.observeSystemTelemetryUseCase,
                 checkUpdateUseCase = appContainer.checkUpdateUseCase,
+                getRunningProcessesUseCase = appContainer.getRunningProcessesUseCase,
+                cleanMemoryUseCase = appContainer.cleanMemoryUseCase,
+                killProcessUseCase = appContainer.killProcessUseCase,
                 dispatcherProvider = appContainer.dispatcherProvider
             ) as T
         }

@@ -2,10 +2,14 @@ package com.launcher.samiboxtv.data.datasource
 
 import android.app.ActivityManager
 import android.content.Context
+import android.content.pm.ApplicationInfo
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
 import android.os.SystemClock
+import com.launcher.samiboxtv.domain.model.CleanRamResult
+import com.launcher.samiboxtv.domain.model.ProcessInfo
 import com.launcher.samiboxtv.domain.model.SystemTelemetry
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -21,6 +25,9 @@ import java.io.File
 interface SystemTelemetryDataSource {
     fun observeTelemetry(intervalMillis: Long = 3000): Flow<SystemTelemetry>
     fun getCurrentTelemetry(): SystemTelemetry
+    fun getRunningProcesses(): List<ProcessInfo>
+    fun cleanBackgroundProcesses(): CleanRamResult
+    fun killProcess(packageName: String): Boolean
 }
 
 class SystemTelemetryDataSourceImpl(
@@ -148,6 +155,154 @@ class SystemTelemetryDataSourceImpl(
             CpuTicks(idle, total)
         } catch (_: Exception) {
             null
+        }
+    }
+
+    override fun getRunningProcesses(): List<ProcessInfo> {
+        val am = activityManager ?: return emptyList()
+        val pm = context.packageManager
+        val running = am.runningAppProcesses ?: emptyList()
+        val result = mutableListOf<ProcessInfo>()
+
+        val pids = running.map { it.pid }.toIntArray()
+        val memInfos = try {
+            if (pids.isNotEmpty()) am.getProcessMemoryInfo(pids) else emptyArray()
+        } catch (_: Exception) {
+            emptyArray()
+        }
+
+        running.forEachIndexed { index, proc ->
+            val pid = proc.pid
+            val pName = proc.processName
+            val primaryPkg = proc.pkgList?.firstOrNull() ?: pName
+
+            var appName = pName
+            var isSystem = false
+            var icon: Drawable? = null
+
+            try {
+                val appInfo = pm.getApplicationInfo(primaryPkg, 0)
+                appName = pm.getApplicationLabel(appInfo).toString()
+                isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                icon = pm.getApplicationIcon(appInfo)
+            } catch (_: Exception) {}
+
+            val memMb = if (index < memInfos.size) {
+                (memInfos[index].totalPss / 1024L).coerceAtLeast(1L)
+            } else {
+                1L
+            }
+
+            result.add(
+                ProcessInfo(
+                    pid = pid,
+                    processName = pName,
+                    appName = appName,
+                    packageName = primaryPkg,
+                    memoryUsageMb = memMb,
+                    isSystemApp = isSystem,
+                    icon = icon
+                )
+            )
+        }
+
+        // Si la lista de procesos activos no detecta apps debido a restricciones de nivel de API,
+        // complementamos con apps de terceros instaladas
+        if (result.isEmpty()) {
+            try {
+                val installed = pm.getInstalledApplications(0)
+                for (app in installed) {
+                    if ((app.flags and ApplicationInfo.FLAG_SYSTEM) == 0 && app.packageName != context.packageName) {
+                        val appName = pm.getApplicationLabel(app).toString()
+                        val icon = pm.getApplicationIcon(app)
+                        result.add(
+                            ProcessInfo(
+                                pid = 0,
+                                processName = app.processName ?: app.packageName,
+                                appName = appName,
+                                packageName = app.packageName,
+                                memoryUsageMb = 24L,
+                                isSystemApp = false,
+                                icon = icon
+                            )
+                        )
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
+        return result.sortedWith(compareBy({ it.isSystemApp }, { -it.memoryUsageMb }))
+    }
+
+    override fun cleanBackgroundProcesses(): CleanRamResult {
+        val am = activityManager ?: return CleanRamResult(0, 0, 0, 0)
+        val pm = context.packageManager
+
+        val memBefore = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(memBefore)
+        val initialAvailMb = memBefore.availMem / (1024L * 1024L)
+
+        val myPkg = context.packageName
+        val packagesToKill = mutableSetOf<String>()
+
+        val running = am.runningAppProcesses ?: emptyList()
+        running.forEach { proc ->
+            proc.pkgList?.forEach { pkg ->
+                if (pkg != myPkg) {
+                    try {
+                        val appInfo = pm.getApplicationInfo(pkg, 0)
+                        val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                        if (!isSystem) {
+                            packagesToKill.add(pkg)
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+
+        // Adicionalmente agregamos aplicaciones de usuario que puedan tener procesos en segundo plano
+        try {
+            val installed = pm.getInstalledApplications(0)
+            for (app in installed) {
+                if ((app.flags and ApplicationInfo.FLAG_SYSTEM) == 0 && app.packageName != myPkg) {
+                    packagesToKill.add(app.packageName)
+                }
+            }
+        } catch (_: Exception) {}
+
+        var killedCount = 0
+        packagesToKill.forEach { pkg ->
+            try {
+                am.killBackgroundProcesses(pkg)
+                killedCount++
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        // Forzar recolección de basura
+        System.gc()
+        Runtime.getRuntime().gc()
+
+        val memAfter = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(memAfter)
+        val finalAvailMb = memAfter.availMem / (1024L * 1024L)
+        val freedMb = (finalAvailMb - initialAvailMb).coerceAtLeast(0L)
+
+        return CleanRamResult(
+            killedProcessesCount = killedCount,
+            freedMemoryMb = freedMb,
+            initialAvailableMb = initialAvailMb,
+            finalAvailableMb = finalAvailMb
+        )
+    }
+
+    override fun killProcess(packageName: String): Boolean {
+        return try {
+            activityManager?.killBackgroundProcesses(packageName)
+            true
+        } catch (_: Exception) {
+            false
         }
     }
 }

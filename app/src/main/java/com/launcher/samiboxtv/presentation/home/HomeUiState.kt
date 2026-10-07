@@ -3,6 +3,8 @@ package com.launcher.samiboxtv.presentation.home
 import com.launcher.samiboxtv.core.base.UiState
 import com.launcher.samiboxtv.domain.model.AppItem
 import com.launcher.samiboxtv.domain.model.NetworkStatus
+import com.launcher.samiboxtv.domain.model.ProcessInfo
+import com.launcher.samiboxtv.domain.model.SystemMonitorTab
 import com.launcher.samiboxtv.domain.model.SystemTelemetry
 import com.launcher.samiboxtv.domain.model.UpdateInfo
 
@@ -20,6 +22,10 @@ data class HomeUiState(
     val editingApp: AppItem? = null,
     val isAddDialogOpen: Boolean = false,
     val isSystemLogOpen: Boolean = false,
+    val activeMonitorTab: SystemMonitorTab = SystemMonitorTab.RAM_PROCESSES,
+    val runningProcesses: List<ProcessInfo> = emptyList(),
+    val isCleaningRam: Boolean = false,
+    val ramCleanMessage: String? = null,
     val isCheckingUpdates: Boolean = false,
     val updateInfo: UpdateInfo? = null,
     val updateCheckMessage: String? = null,

@@ -4,9 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.launcher.samiboxtv.core.dispatcher.DispatcherProvider
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.domain.model.SystemMonitorTab
 import com.launcher.samiboxtv.domain.usecase.CheckUpdateUseCase
+import com.launcher.samiboxtv.domain.usecase.CleanMemoryUseCase
 import com.launcher.samiboxtv.domain.usecase.GetInstalledAppsUseCase
+import com.launcher.samiboxtv.domain.usecase.GetRunningProcessesUseCase
 import com.launcher.samiboxtv.domain.usecase.HideAppUseCase
+import com.launcher.samiboxtv.domain.usecase.KillProcessUseCase
 import com.launcher.samiboxtv.domain.usecase.LaunchAppUseCase
 import com.launcher.samiboxtv.domain.usecase.MoveAppUseCase
 import com.launcher.samiboxtv.domain.usecase.ObserveNetworkStatusUseCase
@@ -39,6 +43,9 @@ class HomeViewModel(
     private val observeNetworkStatusUseCase: ObserveNetworkStatusUseCase,
     private val observeSystemTelemetryUseCase: ObserveSystemTelemetryUseCase,
     private val checkUpdateUseCase: CheckUpdateUseCase,
+    private val getRunningProcessesUseCase: GetRunningProcessesUseCase,
+    private val cleanMemoryUseCase: CleanMemoryUseCase,
+    private val killProcessUseCase: KillProcessUseCase,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
 
@@ -88,11 +95,79 @@ class HomeViewModel(
             HomeUiEvent.HideAllApps -> hideAllApps()
             HomeUiEvent.OpenAddDialog -> _uiState.update { it.copy(isAddDialogOpen = true) }
             HomeUiEvent.CloseAddDialog -> _uiState.update { it.copy(isAddDialogOpen = false) }
-            HomeUiEvent.OpenSystemLog -> _uiState.update { it.copy(isSystemLogOpen = true) }
-            HomeUiEvent.CloseSystemLog -> _uiState.update { it.copy(isSystemLogOpen = false) }
+            HomeUiEvent.OpenSystemLog -> {
+                _uiState.update { it.copy(isSystemLogOpen = true, activeMonitorTab = SystemMonitorTab.RAM_PROCESSES) }
+                loadRunningProcesses()
+            }
+            is HomeUiEvent.OpenSystemLogWithTab -> {
+                _uiState.update { it.copy(isSystemLogOpen = true, activeMonitorTab = event.tab) }
+                if (event.tab == SystemMonitorTab.RAM_PROCESSES) {
+                    loadRunningProcesses()
+                }
+            }
+            is HomeUiEvent.ChangeMonitorTab -> {
+                _uiState.update { it.copy(activeMonitorTab = event.tab) }
+                if (event.tab == SystemMonitorTab.RAM_PROCESSES) {
+                    loadRunningProcesses()
+                }
+            }
+            HomeUiEvent.CloseSystemLog -> _uiState.update { it.copy(isSystemLogOpen = false, ramCleanMessage = null) }
+            HomeUiEvent.LoadRunningProcesses -> loadRunningProcesses()
+            HomeUiEvent.CleanRam -> cleanRam()
+            is HomeUiEvent.KillProcess -> killProcess(event.packageName)
             HomeUiEvent.RefreshApps -> loadApps()
             HomeUiEvent.CheckUpdates -> checkForUpdates()
             HomeUiEvent.DismissUpdateDialog -> _uiState.update { it.copy(updateInfo = null) }
+        }
+    }
+
+    fun loadRunningProcesses() {
+        viewModelScope.launch(dispatcherProvider.main) {
+            val processes = withContext(dispatcherProvider.io) {
+                getRunningProcessesUseCase()
+            }
+            _uiState.update { it.copy(runningProcesses = processes) }
+        }
+    }
+
+    fun cleanRam() {
+        viewModelScope.launch(dispatcherProvider.main) {
+            _uiState.update { it.copy(isCleaningRam = true, ramCleanMessage = "LIBERANDO MEMORIA RAM...") }
+            val result = withContext(dispatcherProvider.io) {
+                cleanMemoryUseCase()
+            }
+            val msg = if (result.freedMemoryMb > 0) {
+                "¡RAM OPTIMIZADA! +${result.freedMemoryMb} MB LIBERADOS (${result.killedProcessesCount} PROCESOS FINALIZADOS)"
+            } else {
+                "¡RAM OPTIMIZADA! ${result.finalAvailableMb} MB LIBRES (${result.killedProcessesCount} PROCESOS DETENIDOS)"
+            }
+            val updatedProcesses = withContext(dispatcherProvider.io) {
+                getRunningProcessesUseCase()
+            }
+            _uiState.update {
+                it.copy(
+                    isCleaningRam = false,
+                    ramCleanMessage = msg,
+                    runningProcesses = updatedProcesses
+                )
+            }
+        }
+    }
+
+    fun killProcess(packageName: String) {
+        viewModelScope.launch(dispatcherProvider.main) {
+            withContext(dispatcherProvider.io) {
+                killProcessUseCase(packageName)
+            }
+            val updatedProcesses = withContext(dispatcherProvider.io) {
+                getRunningProcessesUseCase()
+            }
+            _uiState.update {
+                it.copy(
+                    ramCleanMessage = "PROCESO $packageName FINALIZADO",
+                    runningProcesses = updatedProcesses
+                )
+            }
         }
     }
 

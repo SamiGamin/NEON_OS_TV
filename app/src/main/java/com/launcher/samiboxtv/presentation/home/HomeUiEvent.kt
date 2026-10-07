@@ -2,6 +2,7 @@ package com.launcher.samiboxtv.presentation.home
 
 import com.launcher.samiboxtv.core.base.UiEvent
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.domain.model.SystemMonitorTab
 
 /**
  * Eventos e interacciones de usuario para la pantalla principal.
@@ -22,7 +23,12 @@ sealed interface HomeUiEvent : UiEvent {
     object OpenAddDialog : HomeUiEvent
     object CloseAddDialog : HomeUiEvent
     object OpenSystemLog : HomeUiEvent
+    data class OpenSystemLogWithTab(val tab: SystemMonitorTab) : HomeUiEvent
+    data class ChangeMonitorTab(val tab: SystemMonitorTab) : HomeUiEvent
     object CloseSystemLog : HomeUiEvent
+    object LoadRunningProcesses : HomeUiEvent
+    object CleanRam : HomeUiEvent
+    data class KillProcess(val packageName: String) : HomeUiEvent
     object RefreshApps : HomeUiEvent
     object CheckUpdates : HomeUiEvent
     object DismissUpdateDialog : HomeUiEvent

@@ -47,10 +47,12 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -114,6 +116,14 @@ fun HomeScreen(
         SystemMonitorLog(
             telemetry = uiState.systemTelemetry,
             networkStatus = uiState.networkStatus,
+            activeTab = uiState.activeMonitorTab,
+            runningProcesses = uiState.runningProcesses,
+            isCleaningRam = uiState.isCleaningRam,
+            ramCleanMessage = uiState.ramCleanMessage,
+            onSelectTab = { viewModel.onEvent(HomeUiEvent.ChangeMonitorTab(it)) },
+            onCleanRam = { viewModel.onEvent(HomeUiEvent.CleanRam) },
+            onRefreshProcesses = { viewModel.onEvent(HomeUiEvent.LoadRunningProcesses) },
+            onKillProcess = { viewModel.onEvent(HomeUiEvent.KillProcess(it)) },
             onDismiss = { viewModel.onEvent(HomeUiEvent.CloseSystemLog) }
         )
     }
@@ -336,7 +346,7 @@ fun TelemetryHudCard(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = if (isFocused) "PRESS [OK]: DIAGNÓSTICO" else "[${getRamAsciiBar(systemTelemetry.ramUsagePercentage)}]",
+                    text = if (isFocused) "PRESS [OK]: GESTOR RAM & PROCESOS" else "[${getRamAsciiBar(systemTelemetry.ramUsagePercentage)}]",
                     color = if (isFocused) CyberAmber else CyberCyan.copy(alpha = 0.8f),
                     fontSize = 10.sp,
                     fontFamily = ShareTechMonoFontFamily,
@@ -462,9 +472,6 @@ fun TvCyberBannerCard(
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(targetValue = if (isFocused) 1.06f else 1.0f, label = "card_scale")
-    val borderColor = if (isFocused) CyberCyan else CyberCyan.copy(alpha = 0.2f)
-    val glowWidth = if (isFocused) 2.dp else 1.dp
 
     Card(
         onClick = onClick,
@@ -474,13 +481,43 @@ fun TvCyberBannerCard(
             containerColor = Color(0xFF0C1322),
             focusedContainerColor = Color(0xFF142038)
         ),
+        scale = CardDefaults.scale(
+            scale = 1.0f,
+            focusedScale = 1.06f
+        ),
+        border = CardDefaults.border(
+            border = Border(
+                border = BorderStroke(1.dp, CyberCyan.copy(alpha = 0.2f)),
+                shape = RoundedCornerShape(8.dp)
+            ),
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, CyberCyan),
+                shape = RoundedCornerShape(8.dp)
+            ),
+            pressedBorder = Border(
+                border = BorderStroke(2.dp, CyberMagenta),
+                shape = RoundedCornerShape(8.dp)
+            )
+        ),
         modifier = modifier
-            .scale(scale)
             .aspectRatio(16f / 9f)
             .onFocusChanged { isFocused = it.isFocused }
-            .border(glowWidth, borderColor, RoundedCornerShape(8.dp))
+            .onKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyUp &&
+                    (keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                     keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_ENTER ||
+                     keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)
+                ) {
+                    onClick()
+                    true
+                } else false
+            }
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(8.dp))
+        ) {
             if (appItem.bannerDrawable != null) {
                 // Banner nativo 16:9 de Android TV
                 Image(
@@ -546,9 +583,6 @@ fun AddAppCyberCard(
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(targetValue = if (isFocused) 1.06f else 1.0f, label = "add_scale")
-    val borderColor = if (isFocused) CyberAmber else CyberCyan.copy(alpha = 0.2f)
-    val glowWidth = if (isFocused) 2.dp else 1.dp
 
     Card(
         onClick = onClick,
@@ -557,14 +591,42 @@ fun AddAppCyberCard(
             containerColor = Color(0xFF090F1B),
             focusedContainerColor = Color(0xFF161F2E)
         ),
+        scale = CardDefaults.scale(
+            scale = 1.0f,
+            focusedScale = 1.06f
+        ),
+        border = CardDefaults.border(
+            border = Border(
+                border = BorderStroke(1.dp, CyberCyan.copy(alpha = 0.2f)),
+                shape = RoundedCornerShape(8.dp)
+            ),
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, CyberAmber),
+                shape = RoundedCornerShape(8.dp)
+            ),
+            pressedBorder = Border(
+                border = BorderStroke(2.dp, CyberAmber),
+                shape = RoundedCornerShape(8.dp)
+            )
+        ),
         modifier = modifier
-            .scale(scale)
             .aspectRatio(16f / 9f)
             .onFocusChanged { isFocused = it.isFocused }
-            .border(glowWidth, borderColor, RoundedCornerShape(8.dp))
+            .onKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyUp &&
+                    (keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                     keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_ENTER ||
+                     keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)
+                ) {
+                    onClick()
+                    true
+                } else false
+            }
     ) {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {

@@ -16,7 +16,7 @@ val OutfitFontFamily = FontFamily(
 )
 
 val ShareTechMonoFontFamily = FontFamily(
-    Font(R.font.share_tech_mono, FontWeight.Normal)
+    Font(R.font.plusjakartasans_variablefont_wght, FontWeight.Normal)
 )
 
 @OptIn(ExperimentalTvMaterial3Api::class)
