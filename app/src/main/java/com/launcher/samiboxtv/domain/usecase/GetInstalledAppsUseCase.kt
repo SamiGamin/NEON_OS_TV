@@ -6,11 +6,13 @@ import com.launcher.samiboxtv.domain.repository.PreferencesRepository
 
 data class AppsGroup(
     val visibleApps: List<AppItem>,
-    val hiddenApps: List<AppItem>
+    val hiddenApps: List<AppItem>,
+    val allInstalledApps: List<AppItem>
 )
 
 /**
- * Caso de uso para obtener las aplicaciones instaladas organizadas por visibilidad y orden personalizado.
+ * Caso de uso para obtener las aplicaciones instaladas organizadas por visibilidad,
+ * favoritos y orden personalizado.
  */
 class GetInstalledAppsUseCase(
     private val appRepository: AppRepository,
@@ -19,9 +21,17 @@ class GetInstalledAppsUseCase(
     suspend operator fun invoke(): AppsGroup {
         val installedApps = appRepository.getInstalledApps()
         val hiddenSet = preferencesRepository.getHiddenPackages()
+        val favoriteSet = preferencesRepository.getFavoritePackages()
         val customOrder = preferencesRepository.getCustomOrder()
 
-        val (hiddenRaw, visibleRaw) = installedApps.partition { it.packageName in hiddenSet }
+        val allMapped = installedApps.map { app ->
+            app.copy(
+                isHidden = app.packageName in hiddenSet,
+                isFavorite = app.packageName in favoriteSet
+            )
+        }
+
+        val (hiddenRaw, visibleRaw) = allMapped.partition { it.isHidden }
 
         val orderedVisible = visibleRaw.sortedWith { a, b ->
             val indexA = customOrder.indexOf(a.packageName)
@@ -34,16 +44,15 @@ class GetInstalledAppsUseCase(
                 else -> a.name.lowercase().compareTo(b.name.lowercase())
             }
         }.mapIndexed { index, app ->
-            app.copy(isHidden = false, orderIndex = index)
+            app.copy(orderIndex = index)
         }
 
-        val hiddenSorted = hiddenRaw
-            .sortedBy { it.name.lowercase() }
-            .map { it.copy(isHidden = true) }
+        val hiddenSorted = hiddenRaw.sortedBy { it.name.lowercase() }
 
         return AppsGroup(
             visibleApps = orderedVisible,
-            hiddenApps = hiddenSorted
+            hiddenApps = hiddenSorted,
+            allInstalledApps = allMapped.sortedBy { it.name.lowercase() }
         )
     }
 }

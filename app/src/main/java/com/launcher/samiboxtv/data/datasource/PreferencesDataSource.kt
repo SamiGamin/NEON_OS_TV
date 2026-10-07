@@ -10,6 +10,10 @@ interface PreferencesDataSource {
     fun getHiddenApps(): Set<String>
     fun addHiddenApp(packageName: String)
     fun removeHiddenApp(packageName: String)
+    fun setHiddenApps(packageNames: Set<String>)
+    fun toggleHiddenApp(packageName: String): Boolean
+    fun getFavoriteApps(): Set<String>
+    fun toggleFavoriteApp(packageName: String): Boolean
     fun getCustomOrder(): List<String>
     fun saveCustomOrder(order: List<String>)
 }
@@ -37,6 +41,40 @@ class PreferencesDataSourceImpl(
         prefs.edit().putStringSet(KEY_HIDDEN_APPS, hidden).apply()
     }
 
+    override fun setHiddenApps(packageNames: Set<String>) {
+        prefs.edit().putStringSet(KEY_HIDDEN_APPS, packageNames).apply()
+    }
+
+    override fun toggleHiddenApp(packageName: String): Boolean {
+        val hidden = getHiddenApps().toMutableSet()
+        val willBeHidden = if (hidden.contains(packageName)) {
+            hidden.remove(packageName)
+            false
+        } else {
+            hidden.add(packageName)
+            true
+        }
+        prefs.edit().putStringSet(KEY_HIDDEN_APPS, hidden).apply()
+        return willBeHidden
+    }
+
+    override fun getFavoriteApps(): Set<String> {
+        return prefs.getStringSet(KEY_FAVORITE_APPS, emptySet()) ?: emptySet()
+    }
+
+    override fun toggleFavoriteApp(packageName: String): Boolean {
+        val favs = getFavoriteApps().toMutableSet()
+        val isNowFav = if (favs.contains(packageName)) {
+            favs.remove(packageName)
+            false
+        } else {
+            favs.add(packageName)
+            true
+        }
+        prefs.edit().putStringSet(KEY_FAVORITE_APPS, favs).apply()
+        return isNowFav
+    }
+
     override fun getCustomOrder(): List<String> {
         val orderStr = prefs.getString(KEY_CUSTOM_ORDER, "") ?: ""
         return if (orderStr.isEmpty()) emptyList() else orderStr.split(",")
@@ -49,6 +87,7 @@ class PreferencesDataSourceImpl(
     companion object {
         private const val PREFS_NAME = "samibox_prefs"
         private const val KEY_HIDDEN_APPS = "hidden_apps"
+        private const val KEY_FAVORITE_APPS = "favorite_apps"
         private const val KEY_CUSTOM_ORDER = "custom_order"
     }
 }

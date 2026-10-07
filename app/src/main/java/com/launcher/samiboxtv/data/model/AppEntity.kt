@@ -8,5 +8,7 @@ import android.graphics.drawable.Drawable
 data class AppEntity(
     val name: String,
     val packageName: String,
-    val icon: Drawable? = null
+    val activityName: String = "",
+    val icon: Drawable? = null,
+    val banner: Drawable? = null
 )

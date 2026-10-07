@@ -11,7 +11,9 @@ object AppMapper {
         return AppItem(
             name = entity.name,
             packageName = entity.packageName,
-            icon = entity.icon,
+            activityName = entity.activityName,
+            iconDrawable = entity.icon,
+            bannerDrawable = entity.banner,
             isHidden = isHidden,
             orderIndex = orderIndex
         )
@@ -21,7 +23,9 @@ object AppMapper {
         return AppEntity(
             name = domain.name,
             packageName = domain.packageName,
-            icon = domain.icon
+            activityName = domain.activityName,
+            icon = domain.iconDrawable,
+            banner = domain.bannerDrawable
         )
     }
 }

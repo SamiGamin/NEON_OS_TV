@@ -8,6 +8,9 @@ import com.launcher.samiboxtv.domain.usecase.GetInstalledAppsUseCase
 import com.launcher.samiboxtv.domain.usecase.HideAppUseCase
 import com.launcher.samiboxtv.domain.usecase.LaunchAppUseCase
 import com.launcher.samiboxtv.domain.usecase.MoveAppUseCase
+import com.launcher.samiboxtv.domain.usecase.SetHiddenPackagesUseCase
+import com.launcher.samiboxtv.domain.usecase.ToggleAppVisibilityUseCase
+import com.launcher.samiboxtv.domain.usecase.ToggleFavoriteAppUseCase
 import com.launcher.samiboxtv.domain.usecase.UnhideAppUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +29,9 @@ class HomeViewModel(
     private val unhideAppUseCase: UnhideAppUseCase,
     private val moveAppUseCase: MoveAppUseCase,
     private val launchAppUseCase: LaunchAppUseCase,
+    private val toggleAppVisibilityUseCase: ToggleAppVisibilityUseCase,
+    private val toggleFavoriteAppUseCase: ToggleFavoriteAppUseCase,
+    private val setHiddenPackagesUseCase: SetHiddenPackagesUseCase,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
 
@@ -46,6 +52,10 @@ class HomeViewModel(
             HomeUiEvent.FinishMovingApp -> finishMovingApp()
             is HomeUiEvent.HideApp -> hideApp(event.app)
             is HomeUiEvent.UnhideApp -> unhideApp(event.app)
+            is HomeUiEvent.ToggleAppVisibility -> toggleVisibility(event.app)
+            is HomeUiEvent.ToggleAppFavorite -> toggleFavorite(event.app)
+            HomeUiEvent.ShowAllApps -> showAllApps()
+            HomeUiEvent.HideAllApps -> hideAllApps()
             HomeUiEvent.OpenAddDialog -> _uiState.update { it.copy(isAddDialogOpen = true) }
             HomeUiEvent.CloseAddDialog -> _uiState.update { it.copy(isAddDialogOpen = false) }
             HomeUiEvent.OpenSystemLog -> _uiState.update { it.copy(isSystemLogOpen = true) }
@@ -61,11 +71,17 @@ class HomeViewModel(
                 val group = withContext(dispatcherProvider.io) {
                     getInstalledAppsUseCase()
                 }
+                val featured = group.visibleApps
+                    .filter { it.isFavorite || it.bannerDrawable != null }
+                    .ifEmpty { group.visibleApps.take(6) }
+
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        visibleApps = group.visibleApps,
+                        allApps = group.visibleApps,
+                        featuredApps = featured,
                         hiddenApps = group.hiddenApps,
+                        allInstalledApps = group.allInstalledApps,
                         errorMessage = null
                     )
                 }
@@ -114,11 +130,20 @@ class HomeViewModel(
 
     private fun moveApp(app: AppItem, direction: Int) {
         viewModelScope.launch(dispatcherProvider.main) {
-            val currentList = _uiState.value.visibleApps
+            val currentList = _uiState.value.allApps
             val updatedList = withContext(dispatcherProvider.io) {
                 moveAppUseCase(currentList, app, direction)
             }
-            _uiState.update { it.copy(visibleApps = updatedList) }
+            val featured = updatedList
+                .filter { it.isFavorite || it.bannerDrawable != null }
+                .ifEmpty { updatedList.take(6) }
+
+            _uiState.update {
+                it.copy(
+                    allApps = updatedList,
+                    featuredApps = featured
+                )
+            }
         }
     }
 
@@ -136,6 +161,44 @@ class HomeViewModel(
         viewModelScope.launch(dispatcherProvider.main) {
             withContext(dispatcherProvider.io) {
                 unhideAppUseCase(app.packageName)
+            }
+            loadApps()
+        }
+    }
+
+    private fun toggleVisibility(app: AppItem) {
+        viewModelScope.launch(dispatcherProvider.main) {
+            withContext(dispatcherProvider.io) {
+                toggleAppVisibilityUseCase(app.packageName)
+            }
+            loadApps()
+        }
+    }
+
+    private fun toggleFavorite(app: AppItem) {
+        viewModelScope.launch(dispatcherProvider.main) {
+            withContext(dispatcherProvider.io) {
+                toggleFavoriteAppUseCase(app.packageName)
+            }
+            closeContextMenu()
+            loadApps()
+        }
+    }
+
+    private fun showAllApps() {
+        viewModelScope.launch(dispatcherProvider.main) {
+            withContext(dispatcherProvider.io) {
+                setHiddenPackagesUseCase(emptySet())
+            }
+            loadApps()
+        }
+    }
+
+    private fun hideAllApps() {
+        viewModelScope.launch(dispatcherProvider.main) {
+            val allPackages = _uiState.value.allInstalledApps.map { it.packageName }.toSet()
+            withContext(dispatcherProvider.io) {
+                setHiddenPackagesUseCase(allPackages)
             }
             loadApps()
         }

@@ -25,6 +25,22 @@ class PreferencesRepositoryImpl(
         preferencesDataSource.removeHiddenApp(packageName)
     }
 
+    override suspend fun setHiddenPackages(packageNames: Set<String>) = withContext(dispatcherProvider.io) {
+        preferencesDataSource.setHiddenApps(packageNames)
+    }
+
+    override suspend fun toggleHidePackage(packageName: String): Boolean = withContext(dispatcherProvider.io) {
+        preferencesDataSource.toggleHiddenApp(packageName)
+    }
+
+    override suspend fun getFavoritePackages(): Set<String> = withContext(dispatcherProvider.io) {
+        preferencesDataSource.getFavoriteApps()
+    }
+
+    override suspend fun toggleFavoritePackage(packageName: String): Boolean = withContext(dispatcherProvider.io) {
+        preferencesDataSource.toggleFavoriteApp(packageName)
+    }
+
     override suspend fun getCustomOrder(): List<String> = withContext(dispatcherProvider.io) {
         preferencesDataSource.getCustomOrder()
     }

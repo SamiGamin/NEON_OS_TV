@@ -20,6 +20,9 @@ class ViewModelFactory(
                 unhideAppUseCase = appContainer.unhideAppUseCase,
                 moveAppUseCase = appContainer.moveAppUseCase,
                 launchAppUseCase = appContainer.launchAppUseCase,
+                toggleAppVisibilityUseCase = appContainer.toggleAppVisibilityUseCase,
+                toggleFavoriteAppUseCase = appContainer.toggleFavoriteAppUseCase,
+                setHiddenPackagesUseCase = appContainer.setHiddenPackagesUseCase,
                 dispatcherProvider = appContainer.dispatcherProvider
             ) as T
         }

@@ -7,6 +7,10 @@ interface PreferencesRepository {
     suspend fun getHiddenPackages(): Set<String>
     suspend fun hidePackage(packageName: String)
     suspend fun unhidePackage(packageName: String)
+    suspend fun setHiddenPackages(packageNames: Set<String>)
+    suspend fun toggleHidePackage(packageName: String): Boolean
+    suspend fun getFavoritePackages(): Set<String>
+    suspend fun toggleFavoritePackage(packageName: String): Boolean
     suspend fun getCustomOrder(): List<String>
     suspend fun saveCustomOrder(order: List<String>)
 }

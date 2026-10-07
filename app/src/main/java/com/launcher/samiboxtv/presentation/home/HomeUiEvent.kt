@@ -15,6 +15,10 @@ sealed interface HomeUiEvent : UiEvent {
     object FinishMovingApp : HomeUiEvent
     data class HideApp(val app: AppItem) : HomeUiEvent
     data class UnhideApp(val app: AppItem) : HomeUiEvent
+    data class ToggleAppVisibility(val app: AppItem) : HomeUiEvent
+    data class ToggleAppFavorite(val app: AppItem) : HomeUiEvent
+    object ShowAllApps : HomeUiEvent
+    object HideAllApps : HomeUiEvent
     object OpenAddDialog : HomeUiEvent
     object CloseAddDialog : HomeUiEvent
     object OpenSystemLog : HomeUiEvent

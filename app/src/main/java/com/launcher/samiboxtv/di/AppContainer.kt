@@ -15,6 +15,9 @@ import com.launcher.samiboxtv.domain.usecase.GetInstalledAppsUseCase
 import com.launcher.samiboxtv.domain.usecase.HideAppUseCase
 import com.launcher.samiboxtv.domain.usecase.LaunchAppUseCase
 import com.launcher.samiboxtv.domain.usecase.MoveAppUseCase
+import com.launcher.samiboxtv.domain.usecase.SetHiddenPackagesUseCase
+import com.launcher.samiboxtv.domain.usecase.ToggleAppVisibilityUseCase
+import com.launcher.samiboxtv.domain.usecase.ToggleFavoriteAppUseCase
 import com.launcher.samiboxtv.domain.usecase.UnhideAppUseCase
 
 /**
@@ -30,6 +33,9 @@ interface AppContainer {
     val unhideAppUseCase: UnhideAppUseCase
     val moveAppUseCase: MoveAppUseCase
     val launchAppUseCase: LaunchAppUseCase
+    val toggleAppVisibilityUseCase: ToggleAppVisibilityUseCase
+    val toggleFavoriteAppUseCase: ToggleFavoriteAppUseCase
+    val setHiddenPackagesUseCase: SetHiddenPackagesUseCase
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -81,5 +87,17 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val launchAppUseCase: LaunchAppUseCase by lazy {
         LaunchAppUseCase(appRepository = appRepository)
+    }
+
+    override val toggleAppVisibilityUseCase: ToggleAppVisibilityUseCase by lazy {
+        ToggleAppVisibilityUseCase(preferencesRepository = preferencesRepository)
+    }
+
+    override val toggleFavoriteAppUseCase: ToggleFavoriteAppUseCase by lazy {
+        ToggleFavoriteAppUseCase(preferencesRepository = preferencesRepository)
+    }
+
+    override val setHiddenPackagesUseCase: SetHiddenPackagesUseCase by lazy {
+        SetHiddenPackagesUseCase(preferencesRepository = preferencesRepository)
     }
 }

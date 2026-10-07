@@ -35,8 +35,22 @@ class AppLocalDataSourceImpl(
                     val appInfo = packageManager.getApplicationInfo(packageName, 0)
                     val name = packageManager.getApplicationLabel(appInfo).toString()
                     val icon = packageManager.getApplicationIcon(appInfo)
+                    val banner = try {
+                        packageManager.getApplicationBanner(appInfo)
+                    } catch (_: Exception) {
+                        null
+                    }
+                    val activityName = launchIntent.component?.className ?: ""
 
-                    apps.add(AppEntity(name = name, packageName = packageName, icon = icon))
+                    apps.add(
+                        AppEntity(
+                            name = name,
+                            packageName = packageName,
+                            activityName = activityName,
+                            icon = icon,
+                            banner = banner
+                        )
+                    )
                 } catch (_: PackageManager.NameNotFoundException) {
                     // Ignorar paquete si dejó de existir durante la iteración
                 }
