@@ -1,4 +1,4 @@
-package com.launcher.samiboxtv.ui.theme
+package com.launcher.samiboxtv.presentation.theme
 
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -19,7 +19,6 @@ val ShareTechMonoFontFamily = FontFamily(
     Font(R.font.share_tech_mono, FontWeight.Normal)
 )
 
-// Set of Material typography styles to start with
 @OptIn(ExperimentalTvMaterial3Api::class)
 val Typography = Typography(
     bodyLarge = TextStyle(

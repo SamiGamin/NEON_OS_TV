@@ -1,22 +1,34 @@
-package com.launcher.samiboxtv.ui
+package com.launcher.samiboxtv.presentation.overlay
 
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,9 +39,12 @@ import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
-import com.launcher.samiboxtv.ui.theme.*
-
-// ─── Model ───────────────────────────────────────────────────────────────────
+import com.launcher.samiboxtv.presentation.theme.CyberBg
+import com.launcher.samiboxtv.presentation.theme.CyberCard
+import com.launcher.samiboxtv.presentation.theme.CyberCyan
+import com.launcher.samiboxtv.presentation.theme.CyberGrey
+import com.launcher.samiboxtv.presentation.theme.CyberMagenta
+import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
 
 data class ScannedApp(
     val name: String,
@@ -38,43 +53,26 @@ data class ScannedApp(
     val isBloatware: Boolean
 )
 
-// ─── Scanner ─────────────────────────────────────────────────────────────────
-
 fun scanAllApps(context: Context): List<ScannedApp> {
     val pm = context.packageManager
     val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
 
     val knownBloatware = listOf(
-        // ── Launchers y gestores chinos ──
-        "com.hkw.simplelauncher",       // AllApp - launcher chino de fábrica
-        "com.wolf.google.lm",           // Launcher Manager chino
-        "com.luancher.apps",            // More Apps - tienda china falsa
- 
-        // ── PELIGROSOS: Acceso remoto disfrazado ──
-        "com.hcy.remoteAceess",         // "GoogleMail" falso - acceso remoto chino
-        "com.hcy.remoteAceessdesk",     // Mouse assisted - mismo autor sospechoso
-
-        // ── Instaladores y actualizadores chinos ──
-        "com.www.intallapp",            // intallApp - instalador no oficial
-        "com.abupdate.fota_demo_iot",   // OTA update chino (ABUpdate)
-
-        // ── Limpiadores/Boosters falsos ──
-        "com.charon.rocketfly",         // CleanUp - cleaner chino
-
-        // ── Apps de fábrica Rockchip ──
-        "com.rockchip.devicetest",      // DeviceTest - pruebas de fábrica
-        "com.rockchip.mediacenter",     // DLNA chino
-        "com.rockchips.mediacenter",    // Media Center (typo de rockchip)
-        "com.hcy.firstbt",              // firstbt - app china desconocida
-
-        // ── Apps de streaming chinas dudosas ──
-        "com.android.mgstv",            // Xuper
-
-        // ── Inútiles en TV ──
-        "com.android.smart.terminal",   // 工厂测试 - test de fábrica chino
-        "com.android.inputmethod.pinyin", // Teclado chino Pinyin
-
-        // ── Legacy ──
+        "com.hkw.simplelauncher",
+        "com.wolf.google.lm",
+        "com.luancher.apps",
+        "com.hcy.remoteAceess",
+        "com.hcy.remoteAceessdesk",
+        "com.www.intallapp",
+        "com.abupdate.fota_demo_iot",
+        "com.charon.rocketfly",
+        "com.rockchip.devicetest",
+        "com.rockchip.mediacenter",
+        "com.rockchips.mediacenter",
+        "com.hcy.firstbt",
+        "com.android.mgstv",
+        "com.android.smart.terminal",
+        "com.android.inputmethod.pinyin",
         "com.android.browser",
         "com.quick.appstore",
         "com.rockchip.weather",
@@ -98,27 +96,9 @@ fun scanAllApps(context: Context): List<ScannedApp> {
         compareBy({ !it.isBloatware }, { it.isSystemApp }, { it.name.lowercase() })
     )
 
-    // ─── LOGCAT ──────────
-    android.util.Log.d("SAMIBOX_SCANNER", "════════════════════════════════════════")
-    android.util.Log.d("SAMIBOX_SCANNER", "  TOTAL APPS INSTALADAS: ${sorted.size}")
-    android.util.Log.d("SAMIBOX_SCANNER", "════════════════════════════════════════")
-    sorted.forEach { app ->
-        val tipo = when {
-            app.isBloatware  -> "⚠ BLOATWARE"
-            !app.isSystemApp -> "✔ USER APP "
-            else             -> "  SYS APP  "
-        }
-        android.util.Log.d(
-            "SAMIBOX_SCANNER",
-            "$tipo | ${app.name.padEnd(30)} | ${app.packageName}"
-        )
-    }
-    android.util.Log.d("SAMIBOX_SCANNER", "════════════════════════════════════════ FIN")
-
+    Log.d("SAMIBOX_SCANNER", "TOTAL APPS: ${sorted.size}")
     return sorted
 }
-
-// ─── UI: pantalla principal del log ──────────────────────────────────────────
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -135,7 +115,6 @@ fun SystemMonitorLog(
             .background(CyberBg)
             .padding(32.dp)
     ) {
-        // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -158,7 +137,6 @@ fun SystemMonitorLog(
             )
         }
 
-        // Lista
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -170,8 +148,6 @@ fun SystemMonitorLog(
     }
 }
 
-// ─── UI: ítem individual con foco bien visible ───────────────────────────────
-
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun AppLogItem(
@@ -180,21 +156,21 @@ fun AppLogItem(
     context: Context
 ) {
     val textColor = when {
-        app.isBloatware  -> CyberMagenta
+        app.isBloatware -> CyberMagenta
         !app.isSystemApp -> CyberCyan
-        else             -> Color(0xFF00FF88) // cyan/green neón futurista
+        else -> Color(0xFF00FF88)
     }
 
     val focusBorderColor = when {
-        app.isBloatware  -> CyberMagenta
+        app.isBloatware -> CyberMagenta
         !app.isSystemApp -> CyberCyan
-        else             -> Color(0xFF00FF88)
+        else -> Color(0xFF00FF88)
     }
 
     val prefix = when {
-        app.isBloatware  -> "[BLOATWARE]"
+        app.isBloatware -> "[BLOATWARE]"
         !app.isSystemApp -> "[USER APP] "
-        else             -> "[SYS APP]  "
+        else -> "[SYS APP]  "
     }
 
     Card(
@@ -226,7 +202,6 @@ fun AppLogItem(
                 .padding(vertical = 10.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Barra lateral de color indicador
             Box(
                 modifier = Modifier
                     .width(4.dp)

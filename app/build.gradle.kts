@@ -35,6 +35,9 @@ android {
         compose = true
     }
 }
+base {
+    archivesName.set("Tv launcher-v${android.defaultConfig.versionName}")
+}
 
 dependencies {
     implementation(libs.androidx.core.ktx)
@@ -47,7 +50,7 @@ dependencies {
     implementation(libs.androidx.tv.material)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
+
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

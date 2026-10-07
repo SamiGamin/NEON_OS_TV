@@ -1,6 +1,7 @@
-package com.launcher.samiboxtv.ui
+package com.launcher.samiboxtv.presentation.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,20 +16,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
-import com.launcher.samiboxtv.data.AppInfo
+import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.presentation.theme.CyberCard
+import com.launcher.samiboxtv.presentation.theme.CyberCyan
 import kotlinx.coroutines.delay
-import com.launcher.samiboxtv.ui.theme.*
-import androidx.compose.foundation.border
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun AppContextMenu(
-    appInfo: AppInfo,
+    appItem: AppItem,
     onDismiss: () -> Unit,
     onMove: () -> Unit,
     onHide: () -> Unit
@@ -53,43 +56,41 @@ fun AppContextMenu(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Opciones para: ${appInfo.name}", 
+                    text = "Opciones para: ${appItem.name}",
                     color = CyberCyan,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    fontWeight = FontWeight.Bold
                 )
-                
+
                 Button(
-                    onClick = { 
+                    onClick = {
                         onMove()
                         onDismiss()
                     },
                     enabled = buttonsEnabled,
-                    colors = androidx.tv.material3.ButtonDefaults.colors(
+                    colors = ButtonDefaults.colors(
                         containerColor = Color(0xFF1B2238),
                         focusedContainerColor = CyberCyan,
                         focusedContentColor = Color.Black
                     )
                 ) {
-                    Text("Mover de Posición", fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+                    Text("Mover de Posición", fontWeight = FontWeight.Medium)
                 }
-                
+
                 Button(
-                    onClick = { 
+                    onClick = {
                         onHide()
                         onDismiss()
                     },
                     enabled = buttonsEnabled,
-                    colors = androidx.tv.material3.ButtonDefaults.colors(
+                    colors = ButtonDefaults.colors(
                         containerColor = Color(0xFF1B2238),
                         focusedContainerColor = CyberCyan,
                         focusedContentColor = Color.Black
                     )
                 ) {
-                    Text("Ocultar Aplicación", fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+                    Text("Ocultar Aplicación", fontWeight = FontWeight.Medium)
                 }
             }
         }
     }
 }
-
-

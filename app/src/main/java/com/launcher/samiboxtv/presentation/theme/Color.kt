@@ -1,4 +1,4 @@
-package com.launcher.samiboxtv.ui.theme
+package com.launcher.samiboxtv.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 

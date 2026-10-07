@@ -1,4 +1,4 @@
-package com.launcher.samiboxtv
+package com.launcher.samiboxtv.services.overlay
 
 import android.content.Context
 import android.graphics.PixelFormat
@@ -18,10 +18,14 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import com.launcher.samiboxtv.ui.SystemInfoOverlay
+import com.launcher.samiboxtv.presentation.overlay.SystemInfoOverlay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+/**
+ * Gestor del WindowManager del sistema para proyectar el HUD de diagnóstico
+ * de rendimiento por encima de cualquier aplicación.
+ */
 class OverlayWindowManager(private val context: Context) {
 
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -32,7 +36,7 @@ class OverlayWindowManager(private val context: Context) {
         Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)
 
     fun show() {
-        if (overlayView != null) return  // ya está mostrando
+        if (overlayView != null) return
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -89,26 +93,22 @@ class OverlayWindowManager(private val context: Context) {
     fun isVisible() = overlayView != null
 }
 
-// ─── LifecycleOwner mínimo para ComposeView fuera de Activity ────────────────
-
 private class OverlayLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
-
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateController = SavedStateRegistryController.create(this)
 
     override val lifecycle: Lifecycle get() = lifecycleRegistry
     override val savedStateRegistry: SavedStateRegistry get() = savedStateController.savedStateRegistry
 
-    fun start() {
+    init {
         savedStateController.performRestore(null)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    }
+
+    fun start() {
+        lifecycleRegistry.currentState = Lifecycle.State.RESUMED
     }
 
     fun stop() {
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
     }
 }
