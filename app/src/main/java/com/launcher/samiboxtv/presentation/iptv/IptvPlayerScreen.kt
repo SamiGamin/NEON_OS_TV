@@ -591,6 +591,12 @@ private fun ChannelGuideDrawer(
             .fillMaxHeight()
             .background(Color(0xF5060A14))
             .border(width = 1.5.dp, color = CyberCyan.copy(alpha = 0.5f))
+            .onKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    onClose()
+                    true
+                } else false
+            }
             .padding(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -628,13 +634,17 @@ private fun ChannelGuideDrawer(
                             RoundedCornerShape(6.dp)
                         )
                         .onKeyEvent { keyEvent ->
-                            if (keyEvent.type == KeyEventType.KeyDown &&
-                                (keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
-                                 keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_ENTER ||
-                                 keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)
-                            ) {
-                                onClose()
-                                true
+                            if (keyEvent.type == KeyEventType.KeyDown) {
+                                when (keyEvent.key.nativeKeyCode) {
+                                    KeyEvent.KEYCODE_DPAD_RIGHT,
+                                    KeyEvent.KEYCODE_DPAD_CENTER,
+                                    KeyEvent.KEYCODE_ENTER,
+                                    KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                                        onClose()
+                                        true
+                                    }
+                                    else -> false
+                                }
                             } else false
                         }
                         .focusable()
@@ -674,7 +684,8 @@ private fun ChannelGuideDrawer(
                             isSpecial = isSpecial,
                             onToggleExpand = {
                                 expandedCategory = if (isExpanded) null else categoryName
-                            }
+                            },
+                            onCloseDrawer = onClose
                         )
                     }
 
@@ -706,7 +717,8 @@ private fun ChannelGuideDrawer(
                                     },
                                     onToggleFavorite = {
                                         onEvent(HomeUiEvent.ToggleIptvFavorite(channel))
-                                    }
+                                    },
+                                    onCloseDrawer = onClose
                                 )
                             }
                         }
@@ -726,7 +738,8 @@ private fun CategoryHeaderItem(
     channelCount: Int,
     isExpanded: Boolean,
     isSpecial: Boolean = false,
-    onToggleExpand: () -> Unit
+    onToggleExpand: () -> Unit,
+    onCloseDrawer: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -755,13 +768,20 @@ private fun CategoryHeaderItem(
             )
             .onFocusChanged { isFocused = it.isFocused }
             .onKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyDown &&
-                    (keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
-                     keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_ENTER ||
-                     keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)
-                ) {
-                    onToggleExpand()
-                    true
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    when (keyEvent.key.nativeKeyCode) {
+                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            onCloseDrawer()
+                            true
+                        }
+                        KeyEvent.KEYCODE_DPAD_CENTER,
+                        KeyEvent.KEYCODE_ENTER,
+                        KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                            onToggleExpand()
+                            true
+                        }
+                        else -> false
+                    }
                 } else false
             }
             .focusable()
@@ -854,7 +874,8 @@ private fun ChannelDrawerItem(
     isCurrent: Boolean,
     isFavorite: Boolean,
     onClick: () -> Unit,
-    onToggleFavorite: () -> Unit
+    onToggleFavorite: () -> Unit,
+    onCloseDrawer: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -884,6 +905,10 @@ private fun ChannelDrawerItem(
                 if (keyEvent.type == KeyEventType.KeyDown) {
                     val keyCode = keyEvent.key.nativeKeyCode
                     when (keyCode) {
+                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            onCloseDrawer()
+                            true
+                        }
                         KeyEvent.KEYCODE_PROG_YELLOW,
                         KeyEvent.KEYCODE_MENU -> {
                             onToggleFavorite()
