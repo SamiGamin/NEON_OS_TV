@@ -70,7 +70,7 @@ class HomeViewModel(
         loadSettings()
         loadApps()
         observeNetwork()
-        checkForUpdates()
+        checkForUpdates(isManual = false)
     }
 
     private fun observeNetwork() {
@@ -163,7 +163,7 @@ class HomeViewModel(
             HomeUiEvent.CleanRam -> cleanRam()
             is HomeUiEvent.KillProcess -> killProcess(event.packageName)
             HomeUiEvent.RefreshApps -> loadApps()
-            HomeUiEvent.CheckUpdates -> checkForUpdates()
+            HomeUiEvent.CheckUpdates -> checkForUpdates(isManual = true)
             HomeUiEvent.DismissUpdateDialog -> _uiState.update { it.copy(updateInfo = null) }
             HomeUiEvent.OpenSettings -> _uiState.update { it.copy(isSettingsOpen = true) }
             HomeUiEvent.CloseSettings -> _uiState.update { it.copy(isSettingsOpen = false) }
@@ -286,7 +286,7 @@ class HomeViewModel(
         }
     }
 
-    private fun checkForUpdates() {
+    private fun checkForUpdates(isManual: Boolean = false) {
         viewModelScope.launch(dispatcherProvider.main) {
             _uiState.update { it.copy(isCheckingUpdates = true, updateCheckMessage = "> VERIFICANDO GITHUB RELEASES...") }
             val result = checkUpdateUseCase()
@@ -294,8 +294,9 @@ class HomeViewModel(
                 _uiState.update {
                     it.copy(
                         isCheckingUpdates = false,
-                        updateInfo = if (info.hasUpdate) info else null,
-                        updateCheckMessage = if (!info.hasUpdate) "Launcher actualizado (v${info.currentVersion})" else "¡Nueva versión disponible v${info.latestVersion}!"
+                        isSettingsOpen = if (isManual) false else it.isSettingsOpen,
+                        updateInfo = if (info.hasUpdate || isManual) info else null,
+                        updateCheckMessage = if (!info.hasUpdate) "Launcher al día (v${info.currentVersion})" else "¡Nueva versión disponible v${info.latestVersion}!"
                     )
                 }
             }.onFailure { error ->

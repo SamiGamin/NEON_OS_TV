@@ -1,12 +1,8 @@
 package com.launcher.samiboxtv
 
 import android.annotation.SuppressLint
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.view.KeyEvent
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -39,14 +35,6 @@ class MainActivity : ComponentActivity() {
         memoryTester.startMonitoring(intervalMillis = 10000)
 
         overlayManager = OverlayWindowManager(applicationContext)
-
-        if (!overlayManager.canDrawOverlays()) {
-            val intent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName")
-            )
-            startActivity(intent)
-        }
 
         setContent {
             SamiBoxTVTheme {

@@ -226,6 +226,8 @@ fun TvSettingsPanel(
                             SystemSettingsContent(
                                 context = context,
                                 isHudOverlayVisible = uiState.isHudOverlayVisible,
+                                isCheckingUpdates = uiState.isCheckingUpdates,
+                                updateCheckMessage = uiState.updateCheckMessage,
                                 onOpenTelemetry = {
                                     onEvent(HomeUiEvent.CloseSettings)
                                     onEvent(HomeUiEvent.OpenSystemLog)
@@ -659,6 +661,8 @@ private fun AppStyleSettingsContent(
 private fun SystemSettingsContent(
     context: Context,
     isHudOverlayVisible: Boolean,
+    isCheckingUpdates: Boolean,
+    updateCheckMessage: String?,
     onOpenTelemetry: () -> Unit,
     onCheckUpdates: () -> Unit,
     onToggleHudOverlay: () -> Unit
@@ -706,11 +710,17 @@ private fun SystemSettingsContent(
         )
 
         SettingsActionItem(
-            title = "⬆ BUSCAR ACTUALIZACIONES DE SAMIBOX TV",
-            subtitle = "Verificar si hay una nueva versión disponible en GitHub Releases",
-            isHighlighted = false,
+            title = if (isCheckingUpdates) "⬆ BUSCANDO ACTUALIZACIONES..." else "⬆ BUSCAR ACTUALIZACIONES DE SAMIBOX TV",
+            subtitle = when {
+                isCheckingUpdates -> "> Conectando con GitHub Releases y comprobando versión..."
+                !updateCheckMessage.isNullOrBlank() -> updateCheckMessage
+                else -> "Verificar si hay una nueva versión disponible en GitHub Releases"
+            },
+            isHighlighted = isCheckingUpdates,
+            enabled = !isCheckingUpdates,
             onClick = onCheckUpdates
         )
+
         SettingsActionItem(
             title = if (isHudOverlayVisible) "🎮 HUD OVERLAY // FPS EN VIVO [ACTIVADO]" else "🎮 HUD OVERLAY // FPS EN VIVO [DESACTIVADO]",
             subtitle = if (isHudOverlayVisible) "Contador de fotogramas por segundo (FPS) en vivo en pantalla. Clic para ocultar" else "Contador de fotogramas por segundo (FPS) en vivo en pantalla. Clic para mostrar",
@@ -725,12 +735,14 @@ private fun SettingsActionItem(
     title: String,
     subtitle: String,
     isHighlighted: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(8.dp)
 
     val borderColor = when {
+        !enabled -> CyberCyan.copy(alpha = 0.15f)
         isFocused -> CyberAmber
         isHighlighted -> CyberCyan
         else -> CyberCyan.copy(alpha = 0.25f)
@@ -743,21 +755,31 @@ private fun SettingsActionItem(
             .background(if (isFocused) Color(0xFF1B2848) else Color(0xFF0F172B))
             .border(width = if (isFocused) 2.dp else 1.dp, color = borderColor, shape = shape)
             .onFocusChanged { isFocused = it.isFocused }
-            .tvClickable { onClick() }
+            .tvClickable { if (enabled) onClick() }
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Column {
             Text(
                 text = title,
-                color = if (isFocused) CyberAmber else (if (isHighlighted) CyberCyan else Color.White),
+                color = when {
+                    !enabled -> Color.Gray
+                    isFocused -> CyberAmber
+                    isHighlighted -> CyberCyan
+                    else -> Color.White
+                },
                 fontSize = 12.sp,
                 fontFamily = ShareTechMonoFontFamily,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(2.dp))
+            val isErrorSubtitle = subtitle.startsWith("Error", ignoreCase = true)
             Text(
                 text = subtitle,
-                color = Color(0xFF7E9BB8),
+                color = when {
+                    isErrorSubtitle -> Color(0xFFFF5252)
+                    isHighlighted -> CyberCyan.copy(alpha = 0.9f)
+                    else -> Color(0xFF7E9BB8)
+                },
                 fontSize = 9.sp,
                 fontFamily = ShareTechMonoFontFamily
             )

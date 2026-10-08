@@ -70,6 +70,7 @@ fun UpdateDialog(
     val animatedProgress by animateFloatAsState(targetValue = downloadProgress, label = "ProgressAnim")
 
     val apkFile = remember { File(context.cacheDir, "update_launcher.apk") }
+    val themeColor = if (updateInfo.hasUpdate) CyberMagenta else CyberCyan
 
     Dialog(
         onDismissRequest = {
@@ -82,7 +83,7 @@ fun UpdateDialog(
             modifier = Modifier
                 .fillMaxSize(0.85f)
                 .background(Color(0xFF070B16), RoundedCornerShape(16.dp))
-                .border(2.dp, CyberMagenta, RoundedCornerShape(16.dp))
+                .border(2.dp, themeColor, RoundedCornerShape(16.dp))
                 .padding(28.dp)
         ) {
             Column(
@@ -97,8 +98,8 @@ fun UpdateDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "ACTUALIZACIÓN DISPONIBLE // OTA UPDATE",
-                            color = CyberMagenta,
+                            text = if (updateInfo.hasUpdate) "ACTUALIZACIÓN DISPONIBLE // OTA UPDATE" else "SISTEMA AL DÍA // ÚLTIMA VERSIÓN",
+                            color = themeColor,
                             fontSize = 18.sp,
                             fontFamily = techFont,
                             fontWeight = FontWeight.Bold
@@ -106,12 +107,12 @@ fun UpdateDialog(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(CyberMagenta.copy(alpha = 0.2f))
-                                .border(1.dp, CyberMagenta, RoundedCornerShape(4.dp))
+                                .background(themeColor.copy(alpha = 0.2f))
+                                .border(1.dp, themeColor, RoundedCornerShape(4.dp))
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                text = "v${updateInfo.currentVersion} ➔ v${updateInfo.latestVersion}",
+                                text = if (updateInfo.hasUpdate) "v${updateInfo.currentVersion} ➔ v${updateInfo.latestVersion}" else "v${updateInfo.currentVersion} (Al día)",
                                 color = CyberCyan,
                                 fontSize = 12.sp,
                                 fontFamily = techFont,
@@ -123,7 +124,7 @@ fun UpdateDialog(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text = updateInfo.releaseName,
+                        text = if (updateInfo.hasUpdate) updateInfo.releaseName else "SamiBox TV ya cuenta con la versión más reciente en GitHub Releases.",
                         color = Color.White,
                         fontSize = 15.sp,
                         fontFamily = techFont,
@@ -144,7 +145,7 @@ fun UpdateDialog(
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = "NOTAS DE LA VERSIÓN (CHANGELOG):",
+                        text = if (updateInfo.hasUpdate) "NOTAS DE LA VERSIÓN (CHANGELOG):" else "DETALLES DE LA ÚLTIMA RELEASE (CHANGELOG):",
                         color = CyberAmber,
                         fontSize = 11.sp,
                         fontFamily = techFont,
@@ -225,86 +226,147 @@ fun UpdateDialog(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Botón Cancelar / Recordar
-                    Button(
-                        onClick = onDismiss,
-                        enabled = downloadState != UpdateDownloadState.DOWNLOADING,
-                        colors = ButtonDefaults.colors(
-                            containerColor = Color(0xFF141A28),
-                            focusedContainerColor = Color(0xFF26324D)
-                        ),
-                        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp))
-                    ) {
-                        Text(
-                            text = if (downloadState == UpdateDownloadState.DOWNLOADING) "DESCARGANDO..." else "RECORDAR MÁS TARDE",
-                            color = CyberGrey,
-                            fontFamily = techFont,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    // Botón Principal de Acción
-                    Button(
-                        onClick = {
-                            when (downloadState) {
-                                UpdateDownloadState.IDLE, UpdateDownloadState.ERROR -> {
+                    if (!updateInfo.hasUpdate && downloadState == UpdateDownloadState.IDLE) {
+                        // Modo Sistema al Día (IDLE): Opción de Reinstalar + Botón Entendido
+                        if (!updateInfo.apkDownloadUrl.isNullOrBlank()) {
+                            Button(
+                                onClick = {
                                     val url = updateInfo.apkDownloadUrl
-                                    if (!url.isNullOrBlank()) {
-                                        downloadState = UpdateDownloadState.DOWNLOADING
-                                        downloadProgress = 0f
+                                    downloadState = UpdateDownloadState.DOWNLOADING
+                                    downloadProgress = 0f
+                                    coroutineScope.launch {
+                                        val success = ApkInstallerHelper.downloadApk(
+                                            downloadUrl = url,
+                                            outputFile = apkFile,
+                                            onProgress = { progress -> downloadProgress = progress }
+                                        )
+                                        if (success) {
+                                            downloadState = UpdateDownloadState.READY_TO_INSTALL
+                                            ApkInstallerHelper.launchInstallApk(context, apkFile)
+                                        } else {
+                                            downloadState = UpdateDownloadState.ERROR
+                                        }
+                                    }
+                                },
+                                colors = ButtonDefaults.colors(
+                                    containerColor = Color(0xFF141A28),
+                                    focusedContainerColor = Color(0xFF26324D)
+                                ),
+                                shape = ButtonDefaults.shape(RoundedCornerShape(6.dp))
+                            ) {
+                                Text(
+                                    text = "REINSTALAR APK",
+                                    color = CyberCyan,
+                                    fontFamily = techFont,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
 
-                                        coroutineScope.launch {
-                                            val success = ApkInstallerHelper.downloadApk(
-                                                downloadUrl = url,
-                                                outputFile = apkFile,
-                                                onProgress = { progress ->
-                                                    downloadProgress = progress
+                            Spacer(modifier = Modifier.width(16.dp))
+                        }
+
+                        Button(
+                            onClick = onDismiss,
+                            colors = ButtonDefaults.colors(
+                                containerColor = CyberCyan,
+                                focusedContainerColor = CyberAmber
+                            ),
+                            shape = ButtonDefaults.shape(RoundedCornerShape(6.dp))
+                        ) {
+                            Text(
+                                text = "✓ ENTENDIDO",
+                                color = Color.Black,
+                                fontFamily = techFont,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        // Modo Actualización o Proceso de Descarga/Reinstalación activo
+                        Button(
+                            onClick = onDismiss,
+                            enabled = downloadState != UpdateDownloadState.DOWNLOADING,
+                            colors = ButtonDefaults.colors(
+                                containerColor = Color(0xFF141A28),
+                                focusedContainerColor = Color(0xFF26324D)
+                            ),
+                            shape = ButtonDefaults.shape(RoundedCornerShape(6.dp))
+                        ) {
+                            Text(
+                                text = if (downloadState == UpdateDownloadState.DOWNLOADING) {
+                                    "DESCARGANDO..."
+                                } else if (updateInfo.hasUpdate) {
+                                    "RECORDAR MÁS TARDE"
+                                } else {
+                                    "CERRAR"
+                                },
+                                color = CyberGrey,
+                                fontFamily = techFont,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Button(
+                            onClick = {
+                                when (downloadState) {
+                                    UpdateDownloadState.IDLE, UpdateDownloadState.ERROR -> {
+                                        val url = updateInfo.apkDownloadUrl
+                                        if (!url.isNullOrBlank()) {
+                                            downloadState = UpdateDownloadState.DOWNLOADING
+                                            downloadProgress = 0f
+
+                                            coroutineScope.launch {
+                                                val success = ApkInstallerHelper.downloadApk(
+                                                    downloadUrl = url,
+                                                    outputFile = apkFile,
+                                                    onProgress = { progress ->
+                                                        downloadProgress = progress
+                                                    }
+                                                )
+
+                                                if (success) {
+                                                    downloadState = UpdateDownloadState.READY_TO_INSTALL
+                                                    ApkInstallerHelper.launchInstallApk(context, apkFile)
+                                                } else {
+                                                    downloadState = UpdateDownloadState.ERROR
                                                 }
-                                            )
-
-                                            if (success) {
-                                                downloadState = UpdateDownloadState.READY_TO_INSTALL
-                                                // Abre el instalador nativo inmediatamente tras completar
-                                                ApkInstallerHelper.launchInstallApk(context, apkFile)
-                                            } else {
-                                                downloadState = UpdateDownloadState.ERROR
                                             }
                                         }
                                     }
+                                    UpdateDownloadState.READY_TO_INSTALL -> {
+                                        ApkInstallerHelper.launchInstallApk(context, apkFile)
+                                    }
+                                    UpdateDownloadState.DOWNLOADING -> {
+                                        // Ignorar clics mientras descarga
+                                    }
                                 }
-                                UpdateDownloadState.READY_TO_INSTALL -> {
-                                    // Si el usuario vuelve a presionar el botón
-                                    ApkInstallerHelper.launchInstallApk(context, apkFile)
-                                }
-                                UpdateDownloadState.DOWNLOADING -> {
-                                    // Ignorar clics mientras descarga
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.colors(
-                            containerColor = when (downloadState) {
-                                UpdateDownloadState.READY_TO_INSTALL -> CyberCyan
-                                else -> CyberMagenta
                             },
-                            focusedContainerColor = CyberAmber
-                        ),
-                        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp))
-                    ) {
-                        Text(
-                            text = when (downloadState) {
-                                UpdateDownloadState.IDLE -> "DESCARGAR E INSTALAR"
-                                UpdateDownloadState.DOWNLOADING -> "DESCARGANDO..."
-                                UpdateDownloadState.READY_TO_INSTALL -> "INSTALAR AHORA"
-                                UpdateDownloadState.ERROR -> "REINTENTAR DESCARGA"
-                            },
-                            color = Color.Black,
-                            fontFamily = techFont,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                            colors = ButtonDefaults.colors(
+                                containerColor = when (downloadState) {
+                                    UpdateDownloadState.READY_TO_INSTALL -> CyberCyan
+                                    else -> if (updateInfo.hasUpdate) CyberMagenta else CyberCyan
+                                },
+                                focusedContainerColor = CyberAmber
+                            ),
+                            shape = ButtonDefaults.shape(RoundedCornerShape(6.dp))
+                        ) {
+                            Text(
+                                text = when (downloadState) {
+                                    UpdateDownloadState.IDLE -> if (updateInfo.hasUpdate) "DESCARGAR E INSTALAR" else "REINSTALAR APK"
+                                    UpdateDownloadState.DOWNLOADING -> "DESCARGANDO..."
+                                    UpdateDownloadState.READY_TO_INSTALL -> "INSTALAR AHORA"
+                                    UpdateDownloadState.ERROR -> "REINTENTAR DESCARGA"
+                                },
+                                color = Color.Black,
+                                fontFamily = techFont,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
