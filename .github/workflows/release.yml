@@ -43,14 +43,29 @@ jobs:
           echo "Detected App Version: $VERSION"
           echo "Target Release Tag: $TAG"
 
-      - name: Create or Update Git Tag
+      # --- NUEVO PASO DE CONTROL ---
+      - name: Check If Tag Already Exists
+        id: check_tag
+        run: |
+          # Revisa si el tag ya existe en GitHub
+          if git ls-remote --tags origin "refs/tags/${{ env.TAG }}" | grep -q "${{ env.TAG }}"; then
+            echo "::notice::La versión ${{ env.TAG }} ya existe en GitHub. Se omitirá la compilación y publicación."
+            echo "is_new=false" >> $GITHUB_OUTPUT
+          else
+            echo "::notice::¡Nueva versión detectada (${{ env.TAG }})! Se procederá a compilar."
+            echo "is_new=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Git Tag
+        if: steps.check_tag.outputs.is_new == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -f "${{ env.TAG }}"
-          git push -f origin "${{ env.TAG }}"
+          git tag "${{ env.TAG }}"
+          git push origin "${{ env.TAG }}"
 
       - name: Prepare Signing Keystore
+        if: steps.check_tag.outputs.is_new == 'true' || github.event_name == 'workflow_dispatch'
         id: keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -70,6 +85,7 @@ jobs:
           fi
 
       - name: Build Release APK
+        if: steps.check_tag.outputs.is_new == 'true' || github.event_name == 'workflow_dispatch'
         env:
           KEYSTORE_FILE: ${{ env.KEYSTORE_FILE }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -78,6 +94,7 @@ jobs:
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Locate Output APK
+        if: steps.check_tag.outputs.is_new == 'true' || github.event_name == 'workflow_dispatch'
         id: find_apk
         run: |
           APK_PATH=$(find app/build/outputs/apk/release/ -name "SamiBoxTV-*.apk" | head -n 1)
@@ -88,6 +105,7 @@ jobs:
           echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
 
       - name: Publish GitHub Release
+        if: steps.check_tag.outputs.is_new == 'true' || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
