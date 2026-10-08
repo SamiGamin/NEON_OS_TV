@@ -11,8 +11,12 @@ sealed interface HomeUiEvent : UiEvent {
     data class LaunchApp(val app: AppItem) : HomeUiEvent
     data class OpenContextMenu(val app: AppItem) : HomeUiEvent
     object CloseContextMenu : HomeUiEvent
+    data class StartReordering(val app: AppItem) : HomeUiEvent
     data class StartMovingApp(val app: AppItem) : HomeUiEvent
-    data class MoveApp(val app: AppItem, val direction: Int) : HomeUiEvent
+    data class MoveApp(val packageName: String, val direction: Int) : HomeUiEvent {
+        constructor(app: AppItem, direction: Int) : this(app.packageName, direction)
+    }
+    data object ConfirmReorder : HomeUiEvent
     object FinishMovingApp : HomeUiEvent
     data class HideApp(val app: AppItem) : HomeUiEvent
     data class UnhideApp(val app: AppItem) : HomeUiEvent
@@ -39,6 +43,4 @@ sealed interface HomeUiEvent : UiEvent {
     data class CreateCategory(val name: String) : HomeUiEvent
     data class RemoveCategory(val name: String) : HomeUiEvent
     data class AssignCategory(val packageName: String, val categoryName: String) : HomeUiEvent
-
-    data object ToggleHudOverlay : HomeUiEvent
 }

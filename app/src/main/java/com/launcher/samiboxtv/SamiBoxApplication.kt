@@ -1,7 +1,6 @@
 package com.launcher.samiboxtv
 
 import android.app.Application
-import android.graphics.Bitmap
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.memory.MemoryCache
@@ -26,11 +25,10 @@ class SamiBoxApplication : Application(), ImageLoaderFactory {
         return ImageLoader.Builder(this)
             .memoryCache {
                 MemoryCache.Builder(this)
-                    // Reserva máximo 15% de RAM disponible para caché de iconos y banners
-                    .maxSizePercent(0.15)
+                    // Reserva máximo 10% de RAM disponible para caché de iconos y banners
+                    .maxSizePercent(0.10)
                     .build()
             }
-            .bitmapConfig(Bitmap.Config.ARGB_8888)
             .allowHardware(true)
             .crossfade(false)
             .build()

@@ -21,6 +21,7 @@ data class HomeUiState(
     val hiddenApps: List<AppItem> = emptyList(),
     val allInstalledApps: List<AppItem> = emptyList(),
     val selectedAppForMenu: AppItem? = null,
+    val movingAppPackageName: String? = null,
     val editingApp: AppItem? = null,
     val isAddDialogOpen: Boolean = false,
     val isSystemLogOpen: Boolean = false,
@@ -38,8 +39,7 @@ data class HomeUiState(
     val cardStyle: com.launcher.samiboxtv.domain.model.AppCardStyle = com.launcher.samiboxtv.domain.model.AppCardStyle.BANNER_16_9,
     val categories: List<String> = listOf("STREAMING", "GAMING", "APPS"),
     val appCategoryMap: Map<String, String> = emptyMap(),
-    val errorMessage: String? = null,
-    val isHudOverlayVisible: Boolean = false
+    val errorMessage: String? = null
 ) : UiState {
     // Compatibilidad para reordenamiento u otros consumidores
     val visibleApps: List<AppItem> get() = allApps

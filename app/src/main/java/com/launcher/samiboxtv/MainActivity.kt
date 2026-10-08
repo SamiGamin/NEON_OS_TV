@@ -15,8 +15,6 @@ import com.launcher.samiboxtv.di.ViewModelFactory
 import com.launcher.samiboxtv.presentation.home.HomeScreen
 import com.launcher.samiboxtv.presentation.home.HomeViewModel
 import com.launcher.samiboxtv.presentation.theme.SamiBoxTVTheme
-import com.launcher.samiboxtv.services.monitor.MemoryUsageTester
-import com.launcher.samiboxtv.services.overlay.OverlayWindowManager
 
 class MainActivity : ComponentActivity() {
 
@@ -24,17 +22,9 @@ class MainActivity : ComponentActivity() {
         ViewModelFactory((application as SamiBoxApplication).container)
     }
 
-    private lateinit var memoryTester: MemoryUsageTester
-    private lateinit var overlayManager: OverlayWindowManager
-
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        memoryTester = MemoryUsageTester(this)
-        memoryTester.startMonitoring(intervalMillis = 10000)
-
-        overlayManager = OverlayWindowManager(applicationContext)
 
         setContent {
             SamiBoxTVTheme {
@@ -48,29 +38,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        memoryTester.stopMonitoring()
-        overlayManager.hide()
-    }
-
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
-                KeyEvent.KEYCODE_MENU -> {
-                    viewModel.onEvent(com.launcher.samiboxtv.presentation.home.HomeUiEvent.ToggleHudOverlay)
-                    return true
-                }
+                KeyEvent.KEYCODE_MENU,
                 KeyEvent.KEYCODE_SETTINGS -> {
                     viewModel.onEvent(com.launcher.samiboxtv.presentation.home.HomeUiEvent.OpenSettings)
                     return true
                 }
                 KeyEvent.KEYCODE_BACK -> {
-                    if (overlayManager.isVisible()) {
-                        overlayManager.hide()
-                        return true
-                    }
                     val state = viewModel.uiState.value
                     when {
                         state.isSettingsOpen -> {
@@ -87,10 +64,6 @@ class MainActivity : ComponentActivity() {
                         }
                         state.selectedAppForMenu != null -> {
                             viewModel.onEvent(com.launcher.samiboxtv.presentation.home.HomeUiEvent.CloseContextMenu)
-                            return true
-                        }
-                        state.isHudOverlayVisible -> {
-                            viewModel.onEvent(com.launcher.samiboxtv.presentation.home.HomeUiEvent.ToggleHudOverlay)
                             return true
                         }
                         else -> {

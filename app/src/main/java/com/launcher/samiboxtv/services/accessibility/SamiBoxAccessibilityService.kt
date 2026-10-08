@@ -6,22 +6,18 @@ import android.content.pm.PackageManager
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import com.launcher.samiboxtv.MainActivity
-import com.launcher.samiboxtv.services.overlay.OverlayWindowManager
 
 /**
- * Servicio de accesibilidad para Android TV que cumple dos funciones críticas:
- * 1. Interceptar teclas de control remoto (Menú para Overlay HUD de FPS/Hardware).
- * 2. Anclaje agresivo del botón HOME: Intercepta KEYCODE_HOME y vigila cambios de ventana
- *    para redirigir a SamiBox TV si un Launcher de fábrica intenta tomar el control.
+ * Servicio de accesibilidad para Android TV que cumple una función crítica:
+ * Anclaje agresivo del botón HOME: Intercepta KEYCODE_HOME y vigila cambios de ventana
+ * para redirigir a SamiBox TV si un Launcher de fábrica intenta tomar el control.
  */
 class SamiBoxAccessibilityService : AccessibilityService() {
 
-    private lateinit var overlayManager: OverlayWindowManager
     private var stockLaunchers: Set<String> = emptySet()
     private var lastHomeRedirectTime: Long = 0L
 
     override fun onServiceConnected() {
-        overlayManager = OverlayWindowManager(applicationContext)
         instance = this
         refreshStockLaunchers()
     }
@@ -45,12 +41,6 @@ class SamiBoxAccessibilityService : AccessibilityService() {
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
-                KeyEvent.KEYCODE_MENU -> {
-                    if (overlayManager.canDrawOverlays()) {
-                        overlayManager.toggle()
-                    }
-                    return true
-                }
                 KeyEvent.KEYCODE_HOME -> {
                     // Interceptar agresivamente la pulsación del botón HOME
                     launchSamiBoxHome()
@@ -92,12 +82,10 @@ class SamiBoxAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
-        overlayManager.hide()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        overlayManager.hide()
         instance = null
     }
 

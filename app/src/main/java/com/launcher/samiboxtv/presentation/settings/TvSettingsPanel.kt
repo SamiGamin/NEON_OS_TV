@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.launcher.samiboxtv.presentation.components.AssignCategoryDialog
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -63,6 +64,7 @@ import com.launcher.samiboxtv.domain.model.AppItem
 import com.launcher.samiboxtv.domain.model.SettingsSection
 import com.launcher.samiboxtv.presentation.home.HomeUiEvent
 import com.launcher.samiboxtv.presentation.home.HomeUiState
+import com.launcher.samiboxtv.util.CategoryHelper
 import com.launcher.samiboxtv.presentation.theme.CyberAmber
 import com.launcher.samiboxtv.presentation.theme.CyberCyan
 import com.launcher.samiboxtv.presentation.theme.CyberGrey
@@ -227,7 +229,6 @@ fun TvSettingsPanel(
                         SettingsSection.SYSTEM -> {
                             SystemSettingsContent(
                                 context = context,
-                                isHudOverlayVisible = uiState.isHudOverlayVisible,
                                 isCheckingUpdates = uiState.isCheckingUpdates,
                                 updateCheckMessage = uiState.updateCheckMessage,
                                 onOpenTelemetry = {
@@ -235,10 +236,6 @@ fun TvSettingsPanel(
                                     onEvent(HomeUiEvent.OpenSystemLog)
                                 },
                                 onCheckUpdates = { onEvent(HomeUiEvent.CheckUpdates) },
-                                onToggleHudOverlay = {
-                                    onEvent(HomeUiEvent.ToggleHudOverlay)
-                                    onEvent(HomeUiEvent.CloseSettings)
-                                },
                                 onOpenDefaultLauncherDialog = { showDefaultLauncherDialog = true }
                             )
                         }
@@ -264,7 +261,7 @@ fun TvSettingsPanel(
         AssignCategoryDialog(
             app = app,
             categories = uiState.categories,
-            currentCategory = uiState.appCategoryMap[app.packageName] ?: app.category,
+            currentCategory = uiState.appCategoryMap[app.packageName] ?: app.category.ifBlank { "APPS" },
             onDismiss = { selectedAppForCategoryChange = null },
             onSelectCategory = { newCategory ->
                 onEvent(HomeUiEvent.AssignCategory(app.packageName, newCategory))
@@ -467,6 +464,11 @@ private fun CategoriesSettingsContent(
             var isFocused by remember { mutableStateOf(false) }
             val isDefault = categoryName in listOf("STREAMING", "GAMING", "APPS")
             val shape = RoundedCornerShape(8.dp)
+            val icon = CategoryHelper.getCategoryIcon(categoryName)
+            val appCount = allApps.count { app ->
+                val assigned = appCategoryMap[app.packageName] ?: app.category.ifBlank { "APPS" }
+                !app.isFavorite && assigned.equals(categoryName, ignoreCase = true)
+            }
 
             Box(
                 modifier = Modifier
@@ -486,20 +488,37 @@ private fun CategoriesSettingsContent(
                             Modifier.focusable()
                         }
                     )
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(horizontal = 12.dp, vertical = 9.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = "☷ $categoryName",
-                        color = if (isFocused) (if (!isDefault) CyberMagenta else CyberAmber) else Color.White,
-                        fontSize = 12.sp,
-                        fontFamily = ShareTechMonoFontFamily,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = icon,
+                            fontSize = 16.sp
+                        )
+                        Column {
+                            Text(
+                                text = categoryName,
+                                color = if (isFocused) (if (!isDefault) CyberMagenta else CyberAmber) else Color.White,
+                                fontSize = 12.sp,
+                                fontFamily = ShareTechMonoFontFamily,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = if (appCount == 0) "Sin apps asignadas" else "$appCount ${if (appCount == 1) "app activa" else "apps activas"}",
+                                color = if (appCount > 0) CyberCyan.copy(alpha = 0.85f) else CyberGrey,
+                                fontSize = 9.sp,
+                                fontFamily = ShareTechMonoFontFamily
+                            )
+                        }
+                    }
 
                     if (!isDefault) {
                         Text(
@@ -533,10 +552,11 @@ private fun CategoriesSettingsContent(
         }
 
         items(items = allApps, key = { it.packageName }) { app ->
-            val assignedCat = appCategoryMap[app.packageName] ?: app.category
+            val assignedCat = appCategoryMap[app.packageName] ?: app.category.ifBlank { "APPS" }
             val isFav = app.isFavorite
             var isFocused by remember { mutableStateOf(false) }
             val shape = RoundedCornerShape(8.dp)
+            val assignedIcon = CategoryHelper.getCategoryIcon(assignedCat)
 
             Box(
                 modifier = Modifier
@@ -591,7 +611,7 @@ private fun CategoriesSettingsContent(
                     }
 
                     Text(
-                        text = if (isFav) "★ EN FAVORITOS" else "FILA: $assignedCat ▸",
+                        text = if (isFav) "★ EN FAVORITOS" else "$assignedIcon $assignedCat ▸",
                         color = if (isFav) CyberAmber else CyberCyan,
                         fontSize = 10.sp,
                         fontFamily = ShareTechMonoFontFamily,
@@ -671,12 +691,10 @@ private fun AppStyleSettingsContent(
 @Composable
 private fun SystemSettingsContent(
     context: Context,
-    isHudOverlayVisible: Boolean,
     isCheckingUpdates: Boolean,
     updateCheckMessage: String?,
     onOpenTelemetry: () -> Unit,
     onCheckUpdates: () -> Unit,
-    onToggleHudOverlay: () -> Unit,
     onOpenDefaultLauncherDialog: () -> Unit
 ) {
     val isAggressiveActive = remember { DefaultLauncherHelper.isAccessibilityServiceEnabled(context) }
@@ -725,13 +743,6 @@ private fun SystemSettingsContent(
             isHighlighted = isCheckingUpdates,
             enabled = !isCheckingUpdates,
             onClick = onCheckUpdates
-        )
-
-        SettingsActionItem(
-            title = if (isHudOverlayVisible) "🎮 HUD OVERLAY // FPS EN VIVO [ACTIVADO]" else "🎮 HUD OVERLAY // FPS EN VIVO [DESACTIVADO]",
-            subtitle = if (isHudOverlayVisible) "Contador de fotogramas por segundo (FPS) en vivo en pantalla. Clic para ocultar" else "Contador de fotogramas por segundo (FPS) en vivo en pantalla. Clic para mostrar",
-            isHighlighted = isHudOverlayVisible,
-            onClick = onToggleHudOverlay
         )
     }
 }
@@ -1223,125 +1234,7 @@ private fun AddCategoryDialog(
     }
 }
 
-@Composable
-private fun AssignCategoryDialog(
-    app: AppItem,
-    categories: List<String>,
-    currentCategory: String,
-    onDismiss: () -> Unit,
-    onSelectCategory: (String) -> Unit
-) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Box(
-            modifier = Modifier
-                .width(480.dp)
-                .background(Color(0xFF090E1B), RoundedCornerShape(14.dp))
-                .border(1.5.dp, CyberCyan, RoundedCornerShape(14.dp))
-                .padding(24.dp)
-        ) {
-            Column {
-                Text(
-                    text = "MOVER: ${app.name}",
-                    color = CyberCyan,
-                    fontFamily = ShareTechMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Selecciona la fila donde deseas mostrar esta aplicación:",
-                    color = Color(0xFFA6C5E2),
-                    fontSize = 11.sp,
-                    fontFamily = ShareTechMonoFontFamily
-                )
-                Spacer(modifier = Modifier.height(14.dp))
 
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 260.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(categories) { cat ->
-                        val isCurrent = cat.equals(currentCategory, ignoreCase = true)
-                        var isFocused by remember { mutableStateOf(false) }
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(if (isFocused) Color(0xFF1B2B4C) else Color(0xFF121B30))
-                                .border(
-                                    width = if (isFocused) 1.5.dp else 1.dp,
-                                    color = if (isFocused) CyberAmber else (if (isCurrent) CyberCyan else Color.Transparent),
-                                    shape = RoundedCornerShape(6.dp)
-                                )
-                                .onFocusChanged { isFocused = it.isFocused }
-                                .tvClickable { onSelectCategory(cat) }
-                                .padding(horizontal = 12.dp, vertical = 10.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = cat,
-                                    color = if (isCurrent) CyberCyan else Color.White,
-                                    fontSize = 12.sp,
-                                    fontFamily = ShareTechMonoFontFamily,
-                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal
-                                )
-                                if (isCurrent) {
-                                    Text(
-                                        text = "✓ ACTUAL",
-                                        color = CyberAmber,
-                                        fontSize = 10.sp,
-                                        fontFamily = ShareTechMonoFontFamily,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    var closeFocused by remember { mutableStateOf(false) }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (closeFocused) Color(0xFF1F2B48) else Color(0xFF141C30))
-                            .border(
-                                1.dp,
-                                if (closeFocused) CyberAmber else Color.Transparent,
-                                RoundedCornerShape(8.dp)
-                            )
-                            .onFocusChanged { closeFocused = it.isFocused }
-                            .tvClickable { onDismiss() }
-                            .padding(horizontal = 16.dp, vertical = 10.dp)
-                    ) {
-                        Text(
-                            text = "CERRAR",
-                            color = if (closeFocused) CyberAmber else CyberGrey,
-                            fontFamily = ShareTechMonoFontFamily,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 /**
  * Modificador para garantizar soporte completo de D-Pad Center y ENTER en Android TV.

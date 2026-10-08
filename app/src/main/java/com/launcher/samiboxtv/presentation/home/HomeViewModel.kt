@@ -124,9 +124,10 @@ class HomeViewModel(
             is HomeUiEvent.LaunchApp -> launchApp(event.app)
             is HomeUiEvent.OpenContextMenu -> openContextMenu(event.app)
             HomeUiEvent.CloseContextMenu -> closeContextMenu()
-            is HomeUiEvent.StartMovingApp -> startMovingApp(event.app)
-            is HomeUiEvent.MoveApp -> moveApp(event.app, event.direction)
-            HomeUiEvent.FinishMovingApp -> finishMovingApp()
+            is HomeUiEvent.StartReordering -> startReordering(event.app)
+            is HomeUiEvent.StartMovingApp -> startReordering(event.app)
+            is HomeUiEvent.MoveApp -> moveApp(event.packageName, event.direction)
+            HomeUiEvent.ConfirmReorder, HomeUiEvent.FinishMovingApp -> confirmReorder()
             is HomeUiEvent.HideApp -> hideApp(event.app)
             is HomeUiEvent.UnhideApp -> unhideApp(event.app)
             is HomeUiEvent.ToggleAppVisibility -> toggleVisibility(event.app)
@@ -172,7 +173,6 @@ class HomeViewModel(
             is HomeUiEvent.CreateCategory -> createCategory(event.name)
             is HomeUiEvent.RemoveCategory -> removeCategory(event.name)
             is HomeUiEvent.AssignCategory -> assignCategory(event.packageName, event.categoryName)
-            HomeUiEvent.ToggleHudOverlay -> _uiState.update { it.copy(isHudOverlayVisible = !it.isHudOverlayVisible) }
         }
     }
 
@@ -361,39 +361,76 @@ class HomeViewModel(
         _uiState.update { it.copy(selectedAppForMenu = null) }
     }
 
-    private fun startMovingApp(app: AppItem) {
+    private fun startReordering(app: AppItem) {
         _uiState.update {
             it.copy(
                 selectedAppForMenu = null,
+                movingAppPackageName = app.packageName,
                 editingApp = app
             )
         }
     }
 
-    private fun finishMovingApp() {
-        _uiState.update { it.copy(editingApp = null) }
+    private fun confirmReorder() {
+        val reorderedList = _uiState.value.allApps
+        _uiState.update {
+            it.copy(
+                movingAppPackageName = null,
+                editingApp = null
+            )
+        }
+        viewModelScope.launch(dispatcherProvider.io) {
+            moveAppUseCase.saveOrder(reorderedList.map { it.packageName })
+        }
     }
 
-    private fun moveApp(app: AppItem, direction: Int) {
-        viewModelScope.launch(dispatcherProvider.main) {
-            val currentList = _uiState.value.allApps
-            val categoryMap = _uiState.value.appCategoryMap
-            val updatedList = withContext(dispatcherProvider.io) {
-                moveAppUseCase(currentList, app, direction, categoryMap)
-            }
-            val featured = updatedList
-                .filter { it.isFavorite || it.bannerDrawable != null }
-                .ifEmpty { updatedList.take(6) }
+    private fun moveApp(packageName: String, direction: Int) {
+        val state = _uiState.value
+        val currentList = state.allApps
+        val targetApp = currentList.find { it.packageName == packageName } ?: return
+        val catMap = state.appCategoryMap
 
-            val updatedApp = updatedList.find { it.packageName == app.packageName } ?: app
+        val sectionApps = if (targetApp.isFavorite) {
+            currentList.filter { it.isFavorite }
+        } else {
+            val appCat = catMap[targetApp.packageName] ?: targetApp.category.ifBlank { "APPS" }
+            currentList.filter { !it.isFavorite && (catMap[it.packageName] ?: it.category.ifBlank { "APPS" }).equals(appCat, ignoreCase = true) }
+        }
 
-            _uiState.update {
-                it.copy(
-                    allApps = updatedList,
-                    featuredApps = featured,
-                    editingApp = updatedApp
-                )
-            }
+        val localIndex = sectionApps.indexOfFirst { it.packageName == targetApp.packageName }
+        if (localIndex == -1) return
+
+        val targetLocalIndex = localIndex + direction
+        if (targetLocalIndex !in sectionApps.indices) return
+
+        val neighborApp = sectionApps[targetLocalIndex]
+
+        val mutable = currentList.toMutableList()
+        val currentIndex = mutable.indexOfFirst { it.packageName == targetApp.packageName }
+        if (currentIndex == -1) return
+
+        mutable.removeAt(currentIndex)
+        val neighborIndex = mutable.indexOfFirst { it.packageName == neighborApp.packageName }
+        if (neighborIndex == -1) return
+
+        if (direction > 0) {
+            mutable.add(neighborIndex + 1, targetApp)
+        } else {
+            mutable.add(neighborIndex, targetApp)
+        }
+
+        val updatedList = mutable.mapIndexed { idx, item -> item.copy(orderIndex = idx) }
+        val featured = updatedList
+            .filter { it.isFavorite || it.bannerDrawable != null }
+            .ifEmpty { updatedList.take(6) }
+
+        _uiState.update {
+            it.copy(
+                allApps = updatedList,
+                featuredApps = featured,
+                movingAppPackageName = packageName,
+                editingApp = targetApp
+            )
         }
     }
 

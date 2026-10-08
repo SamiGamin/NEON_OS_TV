@@ -10,5 +10,6 @@ data class AppEntity(
     val packageName: String,
     val activityName: String = "",
     val icon: Drawable? = null,
-    val banner: Drawable? = null
+    val banner: Drawable? = null,
+    val category: String = "APPS"
 )

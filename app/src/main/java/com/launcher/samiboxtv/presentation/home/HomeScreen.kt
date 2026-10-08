@@ -14,6 +14,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -23,17 +26,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import com.launcher.samiboxtv.domain.model.AppItem
 import com.launcher.samiboxtv.presentation.components.AddAppDialog
-import com.launcher.samiboxtv.presentation.components.AppContextMenu
-import com.launcher.samiboxtv.presentation.components.MoveAppDialog
+import com.launcher.samiboxtv.presentation.components.AppContextSideDrawer
+import com.launcher.samiboxtv.presentation.components.AssignCategoryDialog
 import com.launcher.samiboxtv.presentation.components.UpdateDialog
 import com.launcher.samiboxtv.presentation.components.cards.AddAppCyberCard
 import com.launcher.samiboxtv.presentation.components.cards.TvCyberBannerCard
 import com.launcher.samiboxtv.presentation.components.hud.CyberHudHeader
-import com.launcher.samiboxtv.presentation.overlay.SystemInfoOverlay
 import com.launcher.samiboxtv.presentation.overlay.SystemMonitorLog
 import com.launcher.samiboxtv.presentation.settings.TvSettingsPanel
 import com.launcher.samiboxtv.presentation.theme.CyberCyan
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
+import com.launcher.samiboxtv.util.CategoryHelper
 
 /**
  * HomeScreen: Director de orquesta principal del Launcher.
@@ -45,6 +48,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var appToMoveCategory by remember { mutableStateOf<AppItem?>(null) }
 
     Box(modifier = modifier.fillMaxSize()) {
         HomeScreenContent(
@@ -52,40 +56,34 @@ fun HomeScreen(
             onEvent = viewModel::onEvent,
             modifier = Modifier.fillMaxSize()
         )
-
-        // HUD flotante con contador de FPS en vivo
-        SystemInfoOverlay(visible = uiState.isHudOverlayVisible)
     }
 
     // Overlays y Diálogos
     uiState.selectedAppForMenu?.let { app ->
-        AppContextMenu(
+        AppContextSideDrawer(
             appItem = app,
             onDismiss = { viewModel.onEvent(HomeUiEvent.CloseContextMenu) },
-            onMove = { viewModel.onEvent(HomeUiEvent.StartMovingApp(app)) },
+            onLaunch = { viewModel.onEvent(HomeUiEvent.LaunchApp(app)) },
+            onToggleFavorite = { viewModel.onEvent(HomeUiEvent.ToggleAppFavorite(app)) },
             onHide = { viewModel.onEvent(HomeUiEvent.HideApp(app)) },
-            onToggleFavorite = { viewModel.onEvent(HomeUiEvent.ToggleAppFavorite(app)) }
+            onStartReorder = { viewModel.onEvent(HomeUiEvent.StartReordering(app)) },
+            onMoveCategory = {
+                viewModel.onEvent(HomeUiEvent.CloseContextMenu)
+                appToMoveCategory = app
+            }
         )
     }
 
-    uiState.editingApp?.let { app ->
-        val catName = if (app.isFavorite) "FAVORITOS" else (uiState.appCategoryMap[app.packageName] ?: app.category.ifBlank { "APPS" })
-        val sectionApps = if (app.isFavorite) {
-            uiState.allApps.filter { it.isFavorite }
-        } else {
-            uiState.allApps.filter { !it.isFavorite && (uiState.appCategoryMap[it.packageName] ?: it.category.ifBlank { "APPS" }).equals(catName, ignoreCase = true) }
-        }
-        val currentIdx = sectionApps.indexOfFirst { it.packageName == app.packageName }.takeIf { it != -1 }?.plus(1) ?: 1
-        val totalCount = sectionApps.size.coerceAtLeast(1)
-
-        MoveAppDialog(
-            appItem = app,
-            categoryName = catName,
-            currentPosition = currentIdx,
-            totalPositions = totalCount,
-            onMoveLeft = { viewModel.onEvent(HomeUiEvent.MoveApp(app, -1)) },
-            onMoveRight = { viewModel.onEvent(HomeUiEvent.MoveApp(app, 1)) },
-            onDismiss = { viewModel.onEvent(HomeUiEvent.FinishMovingApp) }
+    appToMoveCategory?.let { app ->
+        AssignCategoryDialog(
+            app = app,
+            categories = uiState.categories,
+            currentCategory = app.category,
+            onDismiss = { appToMoveCategory = null },
+            onSelectCategory = { newCategory ->
+                viewModel.onEvent(HomeUiEvent.AssignCategory(app.packageName, newCategory))
+                appToMoveCategory = null
+            }
         )
     }
 
@@ -173,7 +171,7 @@ fun HomeScreenContent(
         val nonFavoriteApps = uiState.allApps.filter { !it.isFavorite }
         val activeCategoriesWithApps = uiState.categories.mapNotNull { categoryName ->
             val apps = nonFavoriteApps.filter { app ->
-                val assigned = uiState.appCategoryMap[app.packageName] ?: app.category
+                val assigned = uiState.appCategoryMap[app.packageName] ?: app.category.ifBlank { "APPS" }
                 assigned.equals(categoryName, ignoreCase = true)
             }
             if (apps.isNotEmpty()) categoryName to apps else null
@@ -183,7 +181,7 @@ fun HomeScreenContent(
             val isLast = index == activeCategoriesWithApps.lastIndex
             item(key = "section_cat_$categoryName") {
                 CategoryAppRow(
-                    title = "☷ $categoryName",
+                    title = "${CategoryHelper.getCategoryIcon(categoryName)} $categoryName",
                     apps = categoryApps,
                     uiState = uiState,
                     onEvent = onEvent,
@@ -200,19 +198,38 @@ fun HomeScreenContent(
             }
         }
 
-        // Caso sin categorías activas
+        // Garantía absoluta contra pantalla en blanco al instalar
         if (activeCategoriesWithApps.isEmpty()) {
-            item(key = "section_manage_empty") {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 48.dp)
-                ) {
-                    AddAppCyberCard(
-                        cardStyle = uiState.cardStyle,
-                        onClick = { onEvent(HomeUiEvent.OpenAddDialog) },
-                        modifier = Modifier.width(cardWidth)
+            if (favoriteApps.isEmpty() && nonFavoriteApps.isNotEmpty()) {
+                // Fallback de rescate: muestra todas las apps no favoritas agrupadas en APPS
+                item(key = "section_fallback_all") {
+                    CategoryAppRow(
+                        title = "${CategoryHelper.getCategoryIcon("APPS")} TODAS LAS APLICACIONES",
+                        apps = nonFavoriteApps,
+                        uiState = uiState,
+                        onEvent = onEvent,
+                        trailingContent = {
+                            AddAppCyberCard(
+                                cardStyle = uiState.cardStyle,
+                                onClick = { onEvent(HomeUiEvent.OpenAddDialog) },
+                                modifier = Modifier.width(cardWidth)
+                            )
+                        }
                     )
+                }
+            } else if (favoriteApps.isEmpty()) {
+                item(key = "section_manage_empty") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 48.dp)
+                    ) {
+                        AddAppCyberCard(
+                            cardStyle = uiState.cardStyle,
+                            onClick = { onEvent(HomeUiEvent.OpenAddDialog) },
+                            modifier = Modifier.width(cardWidth)
+                        )
+                    }
                 }
             }
         }
@@ -240,19 +257,29 @@ private fun CategoryAppRow(
             modifier = Modifier.fillMaxWidth()
         ) {
             items(items = apps, key = { it.packageName }) { app ->
+                val isMovingThisApp = uiState.movingAppPackageName == app.packageName
+
                 TvCyberBannerCard(
                     appItem = app,
                     cardStyle = uiState.cardStyle,
-                    isEditing = uiState.editingApp?.packageName == app.packageName,
+                    isGhostMode = isMovingThisApp,
+                    isAnyAppMoving = uiState.movingAppPackageName != null,
+                    isEditing = isMovingThisApp,
                     onClick = {
-                        if (uiState.editingApp != null) {
-                            onEvent(HomeUiEvent.FinishMovingApp)
+                        if (isMovingThisApp) {
+                            onEvent(HomeUiEvent.ConfirmReorder)
                         } else {
                             onEvent(HomeUiEvent.LaunchApp(app))
                         }
                     },
                     onLongClick = { onEvent(HomeUiEvent.OpenContextMenu(app)) },
-                    modifier = Modifier.width(cardWidth)
+                    onMoveDirection = { direction ->
+                        onEvent(HomeUiEvent.MoveApp(app.packageName, direction))
+                    },
+                    onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
+                    modifier = Modifier
+                        .width(cardWidth)
+                        .animateItem()
                 )
             }
 

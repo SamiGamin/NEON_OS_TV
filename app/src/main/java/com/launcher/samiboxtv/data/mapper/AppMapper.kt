@@ -14,6 +14,7 @@ object AppMapper {
             activityName = entity.activityName,
             iconDrawable = entity.icon,
             bannerDrawable = entity.banner,
+            category = entity.category,
             isHidden = isHidden,
             orderIndex = orderIndex
         )
@@ -25,7 +26,8 @@ object AppMapper {
             packageName = domain.packageName,
             activityName = domain.activityName,
             icon = domain.iconDrawable,
-            banner = domain.bannerDrawable
+            banner = domain.bannerDrawable,
+            category = domain.category
         )
     }
 }

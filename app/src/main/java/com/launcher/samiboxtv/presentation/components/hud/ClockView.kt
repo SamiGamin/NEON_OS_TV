@@ -20,12 +20,30 @@ import java.util.TimeZone
 
 @Composable
 fun ClockView(modifier: Modifier = Modifier) {
-    var timeText by remember { mutableStateOf(getFormattedTime()) }
+    val formatter = remember {
+        SimpleDateFormat("hh:mm a", Locale.getDefault()).apply {
+            timeZone = TimeZone.getTimeZone("America/Bogota")
+        }
+    }
+    val dateHolder = remember { Date() }
+
+    var timeText by remember {
+        dateHolder.time = System.currentTimeMillis()
+        mutableStateOf(formatter.format(dateHolder))
+    }
 
     LaunchedEffect(Unit) {
         while (true) {
-            delay(1000)
-            timeText = getFormattedTime()
+            val now = System.currentTimeMillis()
+            // Sincronizar con el cambio de minuto exacto para no despertar la CPU cada segundo
+            val millisToNextMinute = 60_000L - (now % 60_000L) + 50L
+            delay(millisToNextMinute.coerceIn(1000L, 60_000L))
+
+            dateHolder.time = System.currentTimeMillis()
+            val newTime = formatter.format(dateHolder)
+            if (newTime != timeText) {
+                timeText = newTime
+            }
         }
     }
 
@@ -37,10 +55,4 @@ fun ClockView(modifier: Modifier = Modifier) {
         fontFamily = ShareTechMonoFontFamily,
         modifier = modifier
     )
-}
-
-private fun getFormattedTime(): String {
-    val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
-    sdf.timeZone = TimeZone.getTimeZone("America/Bogota")
-    return sdf.format(Date())
 }

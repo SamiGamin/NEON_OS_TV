@@ -41,6 +41,7 @@ class AppLocalDataSourceImpl(
                         null
                     }
                     val activityName = launchIntent.component?.className ?: ""
+                    val category = com.launcher.samiboxtv.util.CategoryHelper.detectCategory(appInfo, name, packageName)
 
                     apps.add(
                         AppEntity(
@@ -48,7 +49,8 @@ class AppLocalDataSourceImpl(
                             packageName = packageName,
                             activityName = activityName,
                             icon = icon,
-                            banner = banner
+                            banner = banner,
+                            category = category
                         )
                     )
                 } catch (_: PackageManager.NameNotFoundException) {

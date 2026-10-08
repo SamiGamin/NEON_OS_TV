@@ -14,7 +14,7 @@ data class AppItem(
     val name: String,
     val iconDrawable: Drawable? = null,
     val bannerDrawable: Drawable? = null,
-    val category: String = "APP", // "STREAMING", "GAMING", "SYSTEM", etc.
+    val category: String = "APPS", // "STREAMING", "GAMING", "APPS", etc.
     val isFavorite: Boolean = false,
     val isHidden: Boolean = false,
     val orderIndex: Int = -1

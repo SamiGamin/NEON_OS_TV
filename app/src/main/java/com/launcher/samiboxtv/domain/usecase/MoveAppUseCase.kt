@@ -57,4 +57,8 @@ class MoveAppUseCase(
         preferencesRepository.saveCustomOrder(updatedOrder)
         return mutable.mapIndexed { idx, item -> item.copy(orderIndex = idx) }
     }
+
+    suspend fun saveOrder(order: List<String>) {
+        preferencesRepository.saveCustomOrder(order)
+    }
 }
