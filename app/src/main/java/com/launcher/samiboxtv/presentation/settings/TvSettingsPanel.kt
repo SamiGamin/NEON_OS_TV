@@ -2,6 +2,7 @@ package com.launcher.samiboxtv.presentation.settings
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -49,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -59,6 +61,7 @@ import com.launcher.samiboxtv.R
 import com.launcher.samiboxtv.domain.model.AppCardStyle
 import com.launcher.samiboxtv.domain.model.AppItem
 import com.launcher.samiboxtv.domain.model.SettingsSection
+import com.launcher.samiboxtv.domain.model.VirtualApps
 import com.launcher.samiboxtv.presentation.components.AssignCategoryDialog
 import com.launcher.samiboxtv.presentation.home.HomeUiEvent
 import com.launcher.samiboxtv.presentation.home.HomeUiState
@@ -69,7 +72,12 @@ import com.launcher.samiboxtv.presentation.theme.CyberMagenta
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
 import com.launcher.samiboxtv.util.CategoryHelper
 import com.launcher.samiboxtv.util.DefaultLauncherHelper
+import com.launcher.samiboxtv.util.DevLogManager
+import com.launcher.samiboxtv.util.M3uFileScanner
+import com.launcher.samiboxtv.util.QrCodeGenerator
 import com.launcher.samiboxtv.util.openTvSystemSettings
+import java.io.File
+import kotlinx.coroutines.delay
 
 /**
  * Panel de Ajustes y Configuración estilo Android TV / Google TV.
@@ -84,14 +92,17 @@ fun TvSettingsPanel(
     var showAddCategoryDialog by remember { mutableStateOf(false) }
     var selectedAppForCategoryChange by remember { mutableStateOf<AppItem?>(null) }
     var showDefaultLauncherDialog by remember { mutableStateOf(false) }
-    val initialFocusRequester = remember { FocusRequester() }
+    val activeSectionFocusRequester = remember { FocusRequester() }
 
     BackHandler(enabled = uiState.isSettingsOpen) {
         onEvent(HomeUiEvent.CloseSettings)
     }
 
     LaunchedEffect(Unit) {
-        initialFocusRequester.requestFocus()
+        delay(50)
+        try {
+            activeSectionFocusRequester.requestFocus()
+        } catch (_: Exception) {}
     }
 
     Dialog(
@@ -161,13 +172,13 @@ fun TvSettingsPanel(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    SettingsSection.entries.forEachIndexed { index, section ->
+                    SettingsSection.entries.forEach { section ->
                         val isSelected = uiState.activeSettingsSection == section
                         SettingsMenuTabItem(
                             section = section,
                             isSelected = isSelected,
                             onSelect = { onEvent(HomeUiEvent.SelectSettingsSection(section)) },
-                            modifier = if (index == 0) Modifier.focusRequester(initialFocusRequester) else Modifier
+                            modifier = if (isSelected) Modifier.focusRequester(activeSectionFocusRequester) else Modifier
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -230,6 +241,13 @@ fun TvSettingsPanel(
                                 onToggleShowAppNames = { onEvent(HomeUiEvent.ToggleShowAppNames) }
                             )
                         }
+                        SettingsSection.IPTV -> {
+                            IptvSettingsContent(
+                                uiState = uiState,
+                                context = context,
+                                onEvent = onEvent
+                            )
+                        }
                         SettingsSection.SYSTEM -> {
                             SystemSettingsContent(
                                 context = context,
@@ -289,6 +307,482 @@ fun TvSettingsPanel(
         )
     }
 }
+
+@Composable
+private fun IptvSettingsContent(
+    uiState: HomeUiState,
+    context: Context,
+    onEvent: (HomeUiEvent) -> Unit
+) {
+    var showUrlDialog by remember { mutableStateOf(false) }
+    var showFileDialog by remember { mutableStateOf(false) }
+    var showQrDialog by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Tarjeta de Estado
+        val isDefaultList = uiState.currentIptvUrl == VirtualApps.DEFAULT_IPTV_URL
+        val sourceLabel = when {
+            uiState.activeIptvSource != null -> uiState.activeIptvSource
+            isDefaultList -> "LISTA DE EJEMPLO"
+            else -> "Sin lista configurada"
+        }
+        val countLabel = "${uiState.iptvChannels.size} canales activos"
+        val subtitle = if (uiState.isIptvLoading) {
+            uiState.iptvStatusMessage ?: "Cargando lista..."
+        } else {
+            "$sourceLabel • $countLabel"
+        }
+
+        SettingsActionItem(
+            title = "ESTADO DE LA LISTA IPTV",
+            subtitle = subtitle,
+            isHighlighted = uiState.iptvChannels.isNotEmpty(),
+            enabled = false,
+            onClick = {}
+        )
+
+        // Botón Cargar por Código QR desde el Celular
+        SettingsActionItem(
+            title = "📲 CARGAR LISTA ESCANEANDO CÓDIGO QR",
+            subtitle = "Abre la cámara de tu celular, escanea la pantalla y pega el link con un toque",
+            isHighlighted = true,
+            onClick = {
+                // Aseguramos que el servidor web esté activo
+                if (!uiState.isLogServerRunning) {
+                    onEvent(HomeUiEvent.ToggleLogServer)
+                }
+                showQrDialog = true
+            }
+        )
+
+        // Botón Cargar Lista de Ejemplo
+        SettingsActionItem(
+            title = "⚡ CARGAR LISTA DE EJEMPLO",
+            subtitle = "${VirtualApps.DEFAULT_IPTV_URL} • Canales predeterminados de demostración",
+            isHighlighted = isDefaultList && uiState.iptvChannels.isNotEmpty(),
+            onClick = {
+                onEvent(HomeUiEvent.LoadIptvFromUrl(VirtualApps.DEFAULT_IPTV_URL))
+            }
+        )
+
+        // Botón Cambiar / Cargar por URL
+        SettingsActionItem(
+            title = "🔗 CAMBIAR ENLACE URL PERSONALIZADO",
+            subtitle = if (uiState.currentIptvUrl.isNotBlank()) "URL actual: ${uiState.currentIptvUrl}" else "Pega o escribe tu enlace M3U personalizado",
+            isHighlighted = false,
+            onClick = { showUrlDialog = true }
+        )
+
+        // Botón Cargar por Archivo / USB
+        SettingsActionItem(
+            title = "📁 BUSCAR EN MEMORIA INTERNA O DISCO USB",
+            subtitle = "Detecta y carga automáticamente archivos .m3u o .m3u8 en la TV",
+            isHighlighted = false,
+            onClick = { showFileDialog = true }
+        )
+
+        // Botón Limpiar Lista
+        if (uiState.iptvChannels.isNotEmpty()) {
+            SettingsActionItem(
+                title = "✕ ELIMINAR LISTA ACTUAL",
+                subtitle = "Borra los canales cargados de la memoria",
+                isHighlighted = false,
+                onClick = { onEvent(HomeUiEvent.ClearIptvList) }
+            )
+        }
+    }
+
+    if (showUrlDialog) {
+        IptvUrlInputDialog(
+            initialUrl = uiState.currentIptvUrl,
+            onDismiss = { showUrlDialog = false },
+            onConfirm = { url ->
+                onEvent(HomeUiEvent.LoadIptvFromUrl(url))
+                showUrlDialog = false
+            }
+        )
+    }
+
+    if (showFileDialog) {
+        IptvFilePickerItemDialog(
+            context = context,
+            onDismiss = { showFileDialog = false },
+            onSelectFile = { file ->
+                onEvent(HomeUiEvent.LoadIptvFromFile(file))
+                showFileDialog = false
+            }
+        )
+    }
+
+    if (showQrDialog) {
+        val serverUrl = if (uiState.logServerUrl.isNotBlank()) {
+            uiState.logServerUrl
+        } else {
+            "http://${DevLogManager.getLocalIpAddress()}:${DevLogManager.SERVER_PORT}"
+        }
+        IptvQrDialog(
+            serverUrl = serverUrl,
+            onDismiss = { showQrDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun IptvFilePickerItemDialog(
+    context: Context,
+    onDismiss: () -> Unit,
+    onSelectFile: (File) -> Unit
+) {
+    val files = remember { M3uFileScanner.findM3uFiles(context) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(520.dp)
+                .background(Color(0xFF090E1B), RoundedCornerShape(14.dp))
+                .border(1.5.dp, CyberCyan, RoundedCornerShape(14.dp))
+                .padding(24.dp)
+        ) {
+            Column {
+                Text(
+                    text = "ARCHIVOS M3U ENCONTRADOS",
+                    color = CyberCyan,
+                    fontFamily = ShareTechMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                if (files.isEmpty()) {
+                    Text(
+                        text = "No se encontraron archivos .m3u o .m3u8 en la memoria o memorias USB.",
+                        color = Color.Gray,
+                        fontSize = 12.sp,
+                        fontFamily = ShareTechMonoFontFamily
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.height(240.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(files) { file ->
+                            SettingsActionItem(
+                                title = file.name,
+                                subtitle = "Ruta: ${file.parent ?: ""}",
+                                isHighlighted = false,
+                                onClick = { onSelectFile(file) }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    SettingsActionItem(
+                        title = "CERRAR",
+                        subtitle = "",
+                        isHighlighted = false,
+                        onClick = onDismiss
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IptvUrlInputDialog(
+    initialUrl: String = VirtualApps.DEFAULT_IPTV_URL,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var urlText by remember { mutableStateOf(initialUrl) }
+    var isInputFocused by remember { mutableStateOf(false) }
+    var restoreFocused by remember { mutableStateOf(false) }
+    var clearFocused by remember { mutableStateOf(false) }
+    var cancelFocused by remember { mutableStateOf(false) }
+    var confirmFocused by remember { mutableStateOf(false) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(540.dp)
+                .background(Color(0xFF090E1B), RoundedCornerShape(14.dp))
+                .border(1.5.dp, CyberCyan, RoundedCornerShape(14.dp))
+                .padding(24.dp)
+        ) {
+            Column {
+                Text(
+                    text = "ENLACE DE LISTA M3U // IPTV",
+                    color = CyberCyan,
+                    fontFamily = ShareTechMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Puedes usar la lista de ejemplo o ingresar tu propio enlace HTTP/HTTPS:",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontFamily = ShareTechMonoFontFamily
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF0F172B))
+                        .border(
+                            width = 1.dp,
+                            color = if (isInputFocused) CyberAmber else CyberCyan.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 12.dp)
+                ) {
+                    if (urlText.isEmpty()) {
+                        Text(
+                            text = "https://servidor.com/lista.m3u",
+                            color = Color(0xFF6B7E96),
+                            fontFamily = ShareTechMonoFontFamily,
+                            fontSize = 11.sp
+                        )
+                    }
+                    BasicTextField(
+                        value = urlText,
+                        onValueChange = { urlText = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { isInputFocused = it.isFocused },
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            color = Color.White,
+                            fontFamily = ShareTechMonoFontFamily,
+                            fontSize = 12.sp
+                        ),
+                        cursorBrush = SolidColor(CyberCyan),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = {
+                            if (urlText.isNotBlank()) onConfirm(urlText.trim())
+                        })
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Accesos directos rápidos para el control remoto
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (restoreFocused) CyberCyan else Color(0xFF131D33))
+                            .border(1.dp, if (restoreFocused) CyberAmber else CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                            .onFocusChanged { restoreFocused = it.isFocused }
+                            .tvClickable { urlText = VirtualApps.DEFAULT_IPTV_URL }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "⚡ USAR EJEMPLO",
+                            color = if (restoreFocused) Color.Black else CyberCyan,
+                            fontSize = 10.sp,
+                            fontFamily = ShareTechMonoFontFamily,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (clearFocused) CyberMagenta else Color(0xFF131D33))
+                            .border(1.dp, if (clearFocused) CyberAmber else CyberMagenta.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                            .onFocusChanged { clearFocused = it.isFocused }
+                            .tvClickable { urlText = "" }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "✕ LIMPIAR CAMPO",
+                            color = if (clearFocused) Color.White else CyberMagenta,
+                            fontSize = 10.sp,
+                            fontFamily = ShareTechMonoFontFamily,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (cancelFocused) Color(0xFF1B2848) else Color(0xFF0F172B))
+                            .border(1.dp, if (cancelFocused) CyberAmber else CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                            .onFocusChanged { cancelFocused = it.isFocused }
+                            .tvClickable { onDismiss() }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "CANCELAR",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontFamily = ShareTechMonoFontFamily
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (confirmFocused) CyberAmber else CyberCyan)
+                            .onFocusChanged { confirmFocused = it.isFocused }
+                            .tvClickable {
+                                if (urlText.isNotBlank()) onConfirm(urlText.trim())
+                            }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "CARGAR LISTA",
+                            color = Color.Black,
+                            fontSize = 11.sp,
+                            fontFamily = ShareTechMonoFontFamily,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IptvQrDialog(
+    serverUrl: String,
+    onDismiss: () -> Unit
+) {
+    val qrBitmap = remember(serverUrl) {
+        QrCodeGenerator.generateQr(serverUrl, sizePx = 400)
+    }
+    var closeFocused by remember { mutableStateOf(false) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(460.dp)
+                .background(Color(0xFF090E1B), RoundedCornerShape(14.dp))
+                .border(1.5.dp, CyberCyan, RoundedCornerShape(14.dp))
+                .padding(24.dp)
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "📲 ESCANEA CON TU CELULAR",
+                    color = CyberCyan,
+                    fontFamily = ShareTechMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Apunta con la cámara de tu teléfono para abrir el asistente web y enviar la lista sin escribir con el control remoto.",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 11.sp,
+                    fontFamily = ShareTechMonoFontFamily,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Código QR enmarcado
+                Box(
+                    modifier = Modifier
+                        .size(190.dp)
+                        .background(Color.White, RoundedCornerShape(10.dp))
+                        .padding(8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (qrBitmap != null) {
+                        Image(
+                            bitmap = qrBitmap,
+                            contentDescription = "Código QR de configuración",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Text(
+                            text = "Error generando QR",
+                            color = Color.Black,
+                            fontSize = 11.sp,
+                            fontFamily = ShareTechMonoFontFamily
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = serverUrl,
+                    color = CyberAmber,
+                    fontSize = 12.sp,
+                    fontFamily = ShareTechMonoFontFamily,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Tu celular y esta TV deben estar en la misma red Wi-Fi",
+                    color = Color.Gray,
+                    fontSize = 10.sp,
+                    fontFamily = ShareTechMonoFontFamily
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (closeFocused) CyberCyan else Color(0xFF131D33))
+                        .border(1.dp, if (closeFocused) CyberAmber else CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                        .onFocusChanged { closeFocused = it.isFocused }
+                        .tvClickable { onDismiss() }
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "LISTO / CERRAR",
+                        color = if (closeFocused) Color.Black else CyberCyan,
+                        fontSize = 11.sp,
+                        fontFamily = ShareTechMonoFontFamily,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun DeveloperSettingsContent(

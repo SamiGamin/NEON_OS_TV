@@ -26,6 +26,7 @@ enum class SettingsSection(
         subtitle = "Banner 16:9, cuadrícula 1:1 o vista compacta",
         symbol = "◫"
     ),
+    IPTV("TELEVISIÓN IPTV", "Gestión de listas M3U por enlace o archivo", "📺"),
     SYSTEM(
         title = "SISTEMA & TV",
         subtitle = "Launcher por defecto, ajustes de TV y telemetría",

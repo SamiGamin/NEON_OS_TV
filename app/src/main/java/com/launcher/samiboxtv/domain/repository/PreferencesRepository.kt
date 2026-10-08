@@ -22,4 +22,6 @@ interface PreferencesRepository {
     suspend fun setAppCategory(packageName: String, categoryName: String)
     suspend fun getShowAppNames(): Boolean
     suspend fun setShowAppNames(show: Boolean)
+    suspend fun getFavoriteIptvChannels(): Set<String>
+    suspend fun saveFavoriteIptvChannels(channels: Set<String>)
 }

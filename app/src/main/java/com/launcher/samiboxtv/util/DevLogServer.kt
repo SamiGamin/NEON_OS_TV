@@ -29,6 +29,8 @@ object DevLogManager {
     private var serverSocket: ServerSocket? = null
     const val SERVER_PORT = 8080
 
+    var onM3uUrlReceived: ((String) -> Unit)? = null
+
     @Synchronized
     fun log(tag: String, message: String) {
         val timestamp = dateFormat.format(Date())
@@ -74,6 +76,41 @@ object DevLogManager {
         """.trimIndent()
     }
 
+    private fun getMobileWebHtml(successMsg: String? = null): String {
+        return """
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                <title>Cargar IPTV // NEONOS TV</title>
+                <style>
+                    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+                    body { background: #070B16; color: #FFF; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; text-align: center; }
+                    .card { background: #0F172B; border: 1.5px solid #00F0FF; border-radius: 16px; padding: 28px 20px; width: 100%; max-width: 420px; box-shadow: 0 8px 30px rgba(0, 240, 255, 0.15); }
+                    h1 { color: #00F0FF; font-size: 20px; margin-bottom: 8px; font-weight: 800; letter-spacing: 1px; }
+                    p { color: #A6C5E2; font-size: 13px; margin-bottom: 24px; line-height: 1.4; }
+                    input[type="url"] { width: 100%; padding: 14px; background: #060913; border: 1px solid #1E2E4E; border-radius: 10px; color: #FFF; font-size: 14px; outline: none; margin-bottom: 16px; }
+                    input[type="url"]:focus { border-color: #00F0FF; }
+                    button { width: 100%; padding: 15px; background: #00F0FF; border: none; border-radius: 10px; color: #000; font-size: 15px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+                    .success { background: #00FF8822; border: 1px solid #00FF88; color: #00FF88; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <h1>📺 NEONOS IPTV</h1>
+                    <p>Pega aquí el enlace de tu lista M3U y se cargará automáticamente en la TV.</p>
+                    ${if (successMsg != null) "<div class='success'>$successMsg</div>" else ""}
+                    <form method="GET">
+                        <input type="url" name="set_m3u" placeholder="https://m3u.cl/lista/..." required autofocus />
+                        <button type="submit">Enviar a la TV</button>
+                    </form>
+                </div>
+            </body>
+            </html>
+        """.trimIndent()
+    }
+
     fun startServer(scope: CoroutineScope) {
         if (serverJob != null) return
         serverJob = scope.launch(Dispatchers.IO) {
@@ -104,13 +141,28 @@ object DevLogManager {
     private fun handleClient(socket: Socket) {
         try {
             val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
-            val writer = PrintWriter(socket.getOutputStream(), true)
+            val line = reader.readLine() ?: return
 
-            // Leer headers HTTP básicos
-            val line = reader.readLine()
-            if (line != null && line.startsWith("GET")) {
-                val html = getLogsHtml()
+            if (line.startsWith("GET")) {
+                val urlPath = line.split(" ")[1]
+                var successMessage: String? = null
+
+                if (urlPath.contains("set_m3u=")) {
+                    val rawUrl = urlPath.substringAfter("set_m3u=").substringBefore("&")
+                    val decodedUrl = java.net.URLDecoder.decode(rawUrl, "UTF-8")
+                    onM3uUrlReceived?.invoke(decodedUrl)
+                    log("IPTV", "Lista M3U recibida desde el celular: $decodedUrl")
+                    successMessage = "¡Lista enviada correctamente a tu TV!"
+                }
+
+                val html = if (urlPath.startsWith("/logs")) {
+                    getLogsHtml() // Si entras a /logs ves la consola técnica
+                } else {
+                    getMobileWebHtml(successMessage) // Por defecto abre la pantalla bonita para el celular
+                }
+
                 val bytes = html.toByteArray(Charsets.UTF_8)
+                val writer = PrintWriter(socket.getOutputStream(), true)
 
                 writer.println("HTTP/1.1 200 OK")
                 writer.println("Content-Type: text/html; charset=utf-8")

@@ -36,7 +36,8 @@ class ViewModelFactory(
                 saveShowAppNamesUseCase = appContainer.saveShowAppNamesUseCase,
                 getStorageDrivesUseCase = appContainer.getStorageDrivesUseCase,
                 getMediaFilesUseCase = appContainer.getMediaFilesUseCase,
-                dispatcherProvider = appContainer.dispatcherProvider
+                dispatcherProvider = appContainer.dispatcherProvider,
+                preferencesRepository = appContainer.preferencesRepository
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

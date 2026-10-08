@@ -15,8 +15,8 @@ android {
         applicationId = "com.launcher.samiboxtv"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.0.10"
+        versionCode = 12
+        versionName = "1.0.11"
 
         val properties = Properties()
         val localPropertiesFile = project.rootProject.file("local.properties")
@@ -153,4 +153,16 @@ dependencies {
     implementation(libs.androidx.media3.ui)
 
     implementation("androidx.activity:activity-compose:1.13.0")
+
+    // Motor base y UI de Media3
+
+
+    // Imprescindible para IPTV en vivo (HLS / m3u8)
+    implementation(libs.androidx.media3.exoplayer.hls)
+
+    // Soporte para conexiones de red HTTP/HTTPS robustas
+    implementation(libs.androidx.media3.datasource.okhttp)
+
+    // Generador de códigos QR
+    implementation("com.google.zxing:core:3.5.3")
 }

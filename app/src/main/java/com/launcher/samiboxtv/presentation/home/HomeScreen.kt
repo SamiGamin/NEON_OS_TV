@@ -27,14 +27,18 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.domain.model.SettingsSection
+import com.launcher.samiboxtv.domain.model.VirtualApps
 import com.launcher.samiboxtv.presentation.components.AddAppDialog
 import com.launcher.samiboxtv.presentation.components.AppContextSideDrawer
 import com.launcher.samiboxtv.presentation.components.AssignCategoryDialog
 import com.launcher.samiboxtv.presentation.components.UpdateDialog
 import com.launcher.samiboxtv.presentation.components.cards.AddAppCyberCard
+import com.launcher.samiboxtv.presentation.components.cards.IptvCard
 import com.launcher.samiboxtv.presentation.components.cards.MediaHubCard
 import com.launcher.samiboxtv.presentation.components.cards.TvCyberBannerCard
 import com.launcher.samiboxtv.presentation.components.hud.CyberHudHeader
+import com.launcher.samiboxtv.presentation.iptv.IptvPlayerScreen
 import com.launcher.samiboxtv.presentation.media.CyberMediaPlayer
 import com.launcher.samiboxtv.presentation.media.MediaExplorerScreen
 import com.launcher.samiboxtv.presentation.overlay.SystemInfoOverlay
@@ -83,7 +87,7 @@ fun HomeScreen(
     // 6. Base del Launcher: Bloquea la salida en la pantalla principal
     // (Al estar siempre activo con enabled = true cuando todo lo demás está cerrado,
     // evita que la Activity del TV se cierre y deje la pantalla en negro).
-    BackHandler(enabled = true) {
+    BackHandler(enabled = !uiState.isIptvPlayerOpen && uiState.currentPlayingMedia == null) {
         // Intencionalmente vacío: un Launcher nunca debe salir al pulsar Atrás
     }
 
@@ -187,6 +191,13 @@ fun HomeScreen(
             onPlayPrevious = { viewModel.onEvent(HomeUiEvent.PlayPreviousMedia) }
         )
     }
+
+    if (uiState.isIptvPlayerOpen) {
+        IptvPlayerScreen(
+            uiState = uiState,
+            onEvent = viewModel::onEvent
+        )
+    }
 }
 
 /**
@@ -272,11 +283,6 @@ fun HomeScreenContent(
                             .padding(horizontal = 48.dp),
                         horizontalArrangement = Arrangement.spacedBy(18.dp)
                     ) {
-                        MediaHubCard(
-                            cardStyle = uiState.cardStyle,
-                            onClick = { onEvent(HomeUiEvent.OpenMediaHub) },
-                            modifier = Modifier.width(cardWidth)
-                        )
                         AddAppCyberCard(
                             cardStyle = uiState.cardStyle,
                             onClick = { onEvent(HomeUiEvent.OpenAddDialog) },
@@ -312,40 +318,82 @@ private fun CategoryAppRow(
             items(items = apps, key = { it.packageName }) { app ->
                 val isMovingThisApp = uiState.movingAppPackageName == app.packageName
 
-                TvCyberBannerCard(
-                    appItem = app,
-                    cardStyle = uiState.cardStyle,
-                    showAppName = uiState.showAppNames,
-                    isGhostMode = isMovingThisApp,
-                    isAnyAppMoving = uiState.movingAppPackageName != null,
-                    isEditing = isMovingThisApp,
-                    onClick = {
-                        if (isMovingThisApp) {
-                            onEvent(HomeUiEvent.ConfirmReorder)
-                        } else {
-                            onEvent(HomeUiEvent.LaunchApp(app))
-                        }
-                    },
-                    onLongClick = { onEvent(HomeUiEvent.OpenContextMenu(app)) },
-                    onMoveDirection = { direction ->
-                        onEvent(HomeUiEvent.MoveApp(app.packageName, direction))
-                    },
-                    onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
-                    modifier = Modifier
-                        .width(cardWidth)
-                        .animateItem()
-                )
+                when (app.packageName) {
+                    VirtualApps.PKG_IPTV -> {
+                        IptvCard(
+                            cardStyle = uiState.cardStyle,
+                            channelCount = uiState.iptvChannels.size,
+                            isLoading = uiState.isIptvLoading,
+                            isGhostMode = isMovingThisApp,
+                            isAnyAppMoving = uiState.movingAppPackageName != null,
+                            onClick = {
+                                if (isMovingThisApp) {
+                                    onEvent(HomeUiEvent.ConfirmReorder)
+                                } else {
+                                    onEvent(HomeUiEvent.LaunchApp(app))
+                                }
+                            },
+                            onLongClick = { onEvent(HomeUiEvent.OpenContextMenu(app)) },
+                            onMoveDirection = { direction ->
+                                onEvent(HomeUiEvent.MoveApp(app.packageName, direction))
+                            },
+                            onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
+                            modifier = Modifier
+                                .width(cardWidth)
+                                .animateItem()
+                        )
+                    }
+                    VirtualApps.PKG_MEDIA_HUB -> {
+                        MediaHubCard(
+                            cardStyle = uiState.cardStyle,
+                            isGhostMode = isMovingThisApp,
+                            isAnyAppMoving = uiState.movingAppPackageName != null,
+                            onClick = {
+                                if (isMovingThisApp) {
+                                    onEvent(HomeUiEvent.ConfirmReorder)
+                                } else {
+                                    onEvent(HomeUiEvent.LaunchApp(app))
+                                }
+                            },
+                            onLongClick = { onEvent(HomeUiEvent.OpenContextMenu(app)) },
+                            onMoveDirection = { direction ->
+                                onEvent(HomeUiEvent.MoveApp(app.packageName, direction))
+                            },
+                            onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
+                            modifier = Modifier
+                                .width(cardWidth)
+                                .animateItem()
+                        )
+                    }
+                    else -> {
+                        TvCyberBannerCard(
+                            appItem = app,
+                            cardStyle = uiState.cardStyle,
+                            showAppName = uiState.showAppNames,
+                            isGhostMode = isMovingThisApp,
+                            isAnyAppMoving = uiState.movingAppPackageName != null,
+                            isEditing = isMovingThisApp,
+                            onClick = {
+                                if (isMovingThisApp) {
+                                    onEvent(HomeUiEvent.ConfirmReorder)
+                                } else {
+                                    onEvent(HomeUiEvent.LaunchApp(app))
+                                }
+                            },
+                            onLongClick = { onEvent(HomeUiEvent.OpenContextMenu(app)) },
+                            onMoveDirection = { direction ->
+                                onEvent(HomeUiEvent.MoveApp(app.packageName, direction))
+                            },
+                            onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
+                            modifier = Modifier
+                                .width(cardWidth)
+                                .animateItem()
+                        )
+                    }
+                }
             }
 
             if (showSystemActions) {
-                item(key = "action_media_hub") {
-                    MediaHubCard(
-                        cardStyle = uiState.cardStyle,
-                        onClick = { onEvent(HomeUiEvent.OpenMediaHub) },
-                        modifier = Modifier.width(cardWidth)
-                    )
-                }
-
                 item(key = "action_add_app") {
                     AddAppCyberCard(
                         cardStyle = uiState.cardStyle,

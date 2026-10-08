@@ -3,6 +3,7 @@ package com.launcher.samiboxtv.presentation.home
 import androidx.compose.runtime.Immutable
 import com.launcher.samiboxtv.core.base.UiState
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.domain.model.IptvChannel
 import com.launcher.samiboxtv.domain.model.MediaFile
 import com.launcher.samiboxtv.domain.model.MediaType
 import com.launcher.samiboxtv.domain.model.NetworkStatus
@@ -11,6 +12,7 @@ import com.launcher.samiboxtv.domain.model.StorageDrive
 import com.launcher.samiboxtv.domain.model.SystemMonitorTab
 import com.launcher.samiboxtv.domain.model.SystemTelemetry
 import com.launcher.samiboxtv.domain.model.UpdateInfo
+import com.launcher.samiboxtv.domain.model.VirtualApps
 
 /**
  * Estado inmutable de la pantalla principal del Launcher con categorías HUD,
@@ -56,7 +58,19 @@ data class HomeUiState(
     val isDevModeActive: Boolean = false,
     val isLogServerRunning: Boolean = false,
     val logServerUrl: String = "",
-    val showKeyDebugToast: Boolean = false
+    val showKeyDebugToast: Boolean = false,
+    // IPTV
+    val iptvChannels: List<IptvChannel> = emptyList(),
+    val isIptvLoading: Boolean = false,
+    val iptvStatusMessage: String? = null,
+    val activeIptvSource: String? = null,
+    val currentIptvUrl: String = VirtualApps.DEFAULT_IPTV_URL,
+    val isIptvPlayerOpen: Boolean = false,
+    val currentIptvIndex: Int = 0,
+    val currentIptvChannel: IptvChannel? = null,
+    val isIptvChannelListOpen: Boolean = false,
+    val selectedIptvCategory: String = "TODOS",
+    val favoriteIptvChannelUrls: Set<String> = emptySet()
 ) : UiState {
     // Compatibilidad para reordenamiento u otros consumidores
     val visibleApps: List<AppItem> get() = allApps

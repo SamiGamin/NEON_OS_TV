@@ -17,7 +17,8 @@ data class AppItem(
     val category: String = "APPS", // "STREAMING", "GAMING", "APPS", etc.
     val isFavorite: Boolean = false,
     val isHidden: Boolean = false,
-    val orderIndex: Int = -1
+    val orderIndex: Int = -1,
+    val isSystemApp: Boolean = false
 ) {
     // Compatibilidad para componentes que consumen .icon
     val icon: Drawable? get() = iconDrawable

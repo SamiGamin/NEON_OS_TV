@@ -1,6 +1,7 @@
 package com.launcher.samiboxtv
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
 import android.view.KeyEvent
 import android.widget.Toast
@@ -41,6 +42,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        // Si el usuario pulsa HOME, cerrar reproductor IPTV y reproductor de medios inmediatamente
+        viewModel.onEvent(HomeUiEvent.CloseLiveTv)
+        viewModel.onEvent(HomeUiEvent.CloseMediaPlayer)
+        viewModel.onEvent(HomeUiEvent.CloseSettings)
+        viewModel.onEvent(HomeUiEvent.CloseContextMenu)
+    }
+
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
@@ -55,10 +66,16 @@ class MainActivity : ComponentActivity() {
 
             // 2. Teclas específicas no estándar (MENU / AJUSTES)
             when (event.keyCode) {
-                KeyEvent.KEYCODE_MENU,
                 KeyEvent.KEYCODE_SETTINGS -> {
                     viewModel.onEvent(HomeUiEvent.OpenSettings)
                     return true
+                }
+                KeyEvent.KEYCODE_MENU -> {
+                    if (!viewModel.uiState.value.isIptvPlayerOpen) {
+                        viewModel.onEvent(HomeUiEvent.OpenSettings)
+                        return true
+                    }
+                    // Si el reproductor IPTV está abierto, dejamos que KEYCODE_MENU pase a Compose
                 }
             }
         }

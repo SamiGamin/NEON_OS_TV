@@ -1,20 +1,25 @@
 package com.launcher.samiboxtv.presentation.home
 
 import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.Dispatchers
 import androidx.lifecycle.viewModelScope
 import com.launcher.samiboxtv.core.dispatcher.DispatcherProvider
+import com.launcher.samiboxtv.data.repository.IptvRepository
 import com.launcher.samiboxtv.domain.model.AppCardStyle
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.domain.model.IptvChannel
+import com.launcher.samiboxtv.domain.model.SettingsSection
 import com.launcher.samiboxtv.domain.model.SystemMonitorTab
+import com.launcher.samiboxtv.domain.repository.PreferencesRepository
 import com.launcher.samiboxtv.domain.usecase.CheckUpdateUseCase
 import com.launcher.samiboxtv.domain.usecase.CleanMemoryUseCase
 import com.launcher.samiboxtv.domain.usecase.ClearProcessCacheUseCase
 import com.launcher.samiboxtv.domain.usecase.GetInstalledAppsUseCase
 import com.launcher.samiboxtv.domain.usecase.GetLauncherSettingsUseCase
 import com.launcher.samiboxtv.domain.usecase.GetRunningProcessesUseCase
-import com.launcher.samiboxtv.domain.model.MediaFile
 import com.launcher.samiboxtv.domain.model.MediaType
 import com.launcher.samiboxtv.domain.model.StorageDrive
+import com.launcher.samiboxtv.domain.model.VirtualApps
 import com.launcher.samiboxtv.domain.usecase.GetMediaFilesUseCase
 import com.launcher.samiboxtv.domain.usecase.GetStorageDrivesUseCase
 import com.launcher.samiboxtv.domain.usecase.HideAppUseCase
@@ -68,7 +73,9 @@ class HomeViewModel(
     private val saveShowAppNamesUseCase: SaveShowAppNamesUseCase,
     private val getStorageDrivesUseCase: GetStorageDrivesUseCase,
     private val getMediaFilesUseCase: GetMediaFilesUseCase,
-    private val dispatcherProvider: DispatcherProvider
+    private val dispatcherProvider: DispatcherProvider,
+    private val iptvRepository: IptvRepository = IptvRepository(),
+    private val preferencesRepository: PreferencesRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -79,8 +86,32 @@ class HomeViewModel(
     init {
         loadSettings()
         loadApps()
+        loadFavoriteIptvChannels()
         observeNetwork()
         checkForUpdates(isManual = false)
+        loadIptvFromUrl(VirtualApps.DEFAULT_IPTV_URL)
+
+        DevLogManager.onM3uUrlReceived = { url ->
+            loadIptvFromUrl(url)
+        }
+    }
+    private fun getVirtualApps(): List<AppItem> {
+        return listOf(
+            AppItem(
+                packageName = VirtualApps.PKG_IPTV,
+                name = "CYBER IPTV",
+                category = "STREAMING", // Categoría por defecto (puedes cambiarla luego)
+                isFavorite = false,
+                isSystemApp = true
+            ),
+            AppItem(
+                packageName = VirtualApps.PKG_MEDIA_HUB,
+                name = "CYBER MEDIA HUB",
+                category = "APPS",      // Categoría por defecto
+                isFavorite = false,
+                isSystemApp = true
+            )
+        )
     }
 
     private fun observeNetwork() {
@@ -220,6 +251,196 @@ class HomeViewModel(
 
             is HomeUiEvent.ClearLogs -> {
                 DevLogManager.log("SYSTEM", "Historial de logs reiniciado manualmente")
+            }
+            // IPTV
+            is HomeUiEvent.LoadIptvFromUrl -> loadIptvFromUrl(event.url)
+
+            is HomeUiEvent.LoadIptvFromFile -> {
+                viewModelScope.launch(Dispatchers.IO) {
+                    _uiState.update {
+                        it.copy(
+                            isIptvLoading = true,
+                            iptvStatusMessage = "Procesando archivo local..."
+                        )
+                    }
+                    try {
+                        val channels = iptvRepository.loadFromFile(event.file)
+                        _uiState.update {
+                            it.copy(
+                                isIptvLoading = false,
+                                iptvChannels = channels,
+                                currentIptvIndex = 0,
+                                currentIptvChannel = channels.firstOrNull(),
+                                activeIptvSource = "Archivo: ${event.file.name}",
+                                iptvStatusMessage = "${channels.size} canales cargados desde archivo"
+                            )
+                        }
+                    } catch (e: Exception) {
+                        _uiState.update {
+                            it.copy(
+                                isIptvLoading = false,
+                                iptvStatusMessage = "Error al leer archivo: ${e.message}"
+                            )
+                        }
+                    }
+                }
+            }
+
+            is HomeUiEvent.ClearIptvList -> {
+                _uiState.update {
+                    it.copy(
+                        iptvChannels = emptyList(),
+                        currentIptvIndex = 0,
+                        currentIptvChannel = null,
+                        activeIptvSource = null,
+                        iptvStatusMessage = "Lista eliminada"
+                    )
+                }
+            }
+
+            HomeUiEvent.OpenLiveTv -> {
+                val channels = _uiState.value.iptvChannels
+                if (channels.isNotEmpty()) {
+                    val safeIndex = _uiState.value.currentIptvIndex.coerceIn(0, channels.size - 1)
+                    val activeChannel = channels[safeIndex]
+                    _uiState.update {
+                        it.copy(
+                            isIptvPlayerOpen = true,
+                            currentIptvIndex = safeIndex,
+                            currentIptvChannel = activeChannel,
+                            isIptvChannelListOpen = false
+                        )
+                    }
+                }
+            }
+
+            HomeUiEvent.CloseLiveTv -> {
+                _uiState.update {
+                    it.copy(
+                        isIptvPlayerOpen = false,
+                        isIptvChannelListOpen = false
+                    )
+                }
+            }
+
+            HomeUiEvent.NextChannel -> {
+                val channels = _uiState.value.iptvChannels
+                if (channels.isNotEmpty()) {
+                    val nextIndex = (_uiState.value.currentIptvIndex + 1) % channels.size
+                    _uiState.update {
+                        it.copy(
+                            currentIptvIndex = nextIndex,
+                            currentIptvChannel = channels[nextIndex]
+                        )
+                    }
+                }
+            }
+
+            HomeUiEvent.PreviousChannel -> {
+                val channels = _uiState.value.iptvChannels
+                if (channels.isNotEmpty()) {
+                    val prevIndex = if (_uiState.value.currentIptvIndex - 1 < 0) channels.size - 1 else _uiState.value.currentIptvIndex - 1
+                    _uiState.update {
+                        it.copy(
+                            currentIptvIndex = prevIndex,
+                            currentIptvChannel = channels[prevIndex]
+                        )
+                    }
+                }
+            }
+
+            is HomeUiEvent.SelectChannel -> {
+                val channels = _uiState.value.iptvChannels
+                if (event.index in channels.indices) {
+                    _uiState.update {
+                        it.copy(
+                            currentIptvIndex = event.index,
+                            currentIptvChannel = channels[event.index],
+                            isIptvChannelListOpen = false
+                        )
+                    }
+                }
+            }
+
+            HomeUiEvent.ToggleChannelList -> {
+                _uiState.update {
+                    it.copy(isIptvChannelListOpen = !it.isIptvChannelListOpen)
+                }
+            }
+
+            is HomeUiEvent.FilterIptvCategory -> {
+                _uiState.update {
+                    it.copy(selectedIptvCategory = event.category)
+                }
+            }
+
+            is HomeUiEvent.ToggleIptvFavorite -> toggleIptvFavorite(event.channel)
+
+            HomeUiEvent.ToggleCurrentIptvFavorite -> {
+                _uiState.value.currentIptvChannel?.let { toggleIptvFavorite(it) }
+            }
+        }
+    }
+
+    private fun loadIptvFromUrl(url: String) {
+        viewModelScope.launch(dispatcherProvider.main) {
+            _uiState.update {
+                it.copy(
+                    isIptvLoading = true,
+                    currentIptvUrl = url,
+                    iptvStatusMessage = "Descargando lista M3U..."
+                )
+            }
+            try {
+                val channels = withContext(dispatcherProvider.io) {
+                    iptvRepository.loadFromUrl(url)
+                }
+                val isDefault = (url == VirtualApps.DEFAULT_IPTV_URL)
+                val label = if (isDefault) "LISTA DE EJEMPLO" else "URL: ${url.take(35)}..."
+                _uiState.update {
+                    it.copy(
+                        isIptvLoading = false,
+                        iptvChannels = channels,
+                        currentIptvIndex = 0,
+                        currentIptvChannel = channels.firstOrNull(),
+                        currentIptvUrl = url,
+                        activeIptvSource = label,
+                        iptvStatusMessage = "${channels.size} canales cargados correctamente"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isIptvLoading = false,
+                        currentIptvUrl = url,
+                        iptvStatusMessage = "Error al descargar: ${e.message ?: "Sin conexión"}"
+                    )
+                }
+            }
+        }
+    }
+
+    private fun loadFavoriteIptvChannels() {
+        viewModelScope.launch(dispatcherProvider.main) {
+            val favs = withContext(dispatcherProvider.io) {
+                preferencesRepository?.getFavoriteIptvChannels() ?: emptySet()
+            }
+            _uiState.update { it.copy(favoriteIptvChannelUrls = favs) }
+        }
+    }
+
+    private fun toggleIptvFavorite(channel: IptvChannel) {
+        viewModelScope.launch(dispatcherProvider.main) {
+            val currentFavs = _uiState.value.favoriteIptvChannelUrls.toMutableSet()
+            if (currentFavs.contains(channel.streamUrl)) {
+                currentFavs.remove(channel.streamUrl)
+            } else {
+                currentFavs.add(channel.streamUrl)
+            }
+            val newSet = currentFavs.toSet()
+            _uiState.update { it.copy(favoriteIptvChannelUrls = newSet) }
+            withContext(dispatcherProvider.io) {
+                preferencesRepository?.saveFavoriteIptvChannels(newSet)
             }
         }
     }
@@ -376,17 +597,25 @@ class HomeViewModel(
                 val group = withContext(dispatcherProvider.io) {
                     getInstalledAppsUseCase()
                 }
-                val featured = group.visibleApps
+
+                // 1. Obtenemos las tarjetas virtuales (IPTV y Media Hub)
+                val virtualApps = getVirtualApps()
+
+                // 2. Las combinamos con las apps del sistema para que aparezcan en las filas
+                val combinedVisible = group.visibleApps + virtualApps
+                val combinedAllInstalled = group.allInstalledApps + virtualApps
+
+                val featured = combinedVisible
                     .filter { it.isFavorite || it.bannerDrawable != null }
-                    .ifEmpty { group.visibleApps.take(6) }
+                    .ifEmpty { combinedVisible.take(6) }
 
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        allApps = group.visibleApps,
+                        allApps = combinedVisible,
                         featuredApps = featured,
                         hiddenApps = group.hiddenApps,
-                        allInstalledApps = group.allInstalledApps,
+                        allInstalledApps = combinedAllInstalled,
                         errorMessage = null
                     )
                 }
@@ -402,10 +631,34 @@ class HomeViewModel(
     }
 
     private fun launchApp(app: AppItem) {
-        val result = launchAppUseCase(app.packageName)
-        if (result.isFailure) {
-            _uiState.update {
-                it.copy(errorMessage = "No se pudo iniciar ${app.name}")
+        when (app.packageName) {
+            // Si pulsan Cyber Media Hub, abre el explorador de USB/medios
+            VirtualApps.PKG_MEDIA_HUB -> {
+                openMediaHub()
+            }
+
+            // Si pulsan Cyber IPTV, abre el reproductor si ya hay canales, o Ajustes si está vacía
+            VirtualApps.PKG_IPTV -> {
+                if (_uiState.value.iptvChannels.isNotEmpty()) {
+                    onEvent(HomeUiEvent.OpenLiveTv)
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isSettingsOpen = true,
+                            activeSettingsSection = SettingsSection.IPTV
+                        )
+                    }
+                }
+            }
+
+            // Si es cualquier app normal instalada de Android
+            else -> {
+                val result = launchAppUseCase(app.packageName)
+                if (result.isFailure) {
+                    _uiState.update {
+                        it.copy(errorMessage = "No se pudo iniciar ${app.name}")
+                    }
+                }
             }
         }
     }

@@ -2,6 +2,7 @@ package com.launcher.samiboxtv.presentation.home
 
 import com.launcher.samiboxtv.core.base.UiEvent
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.domain.model.IptvChannel
 import com.launcher.samiboxtv.domain.model.MediaFile
 import com.launcher.samiboxtv.domain.model.MediaType
 import com.launcher.samiboxtv.domain.model.StorageDrive
@@ -63,4 +64,17 @@ sealed interface HomeUiEvent : UiEvent {
     data object ToggleLogServer : HomeUiEvent
     data object ToggleKeyDebugToast : HomeUiEvent
     data object ClearLogs : HomeUiEvent
+    // IPTV
+    data class LoadIptvFromUrl(val url: String) : HomeUiEvent
+    data class LoadIptvFromFile(val file: java.io.File) : HomeUiEvent
+    data object ClearIptvList : HomeUiEvent
+    data object OpenLiveTv : HomeUiEvent
+    data object CloseLiveTv : HomeUiEvent
+    data object NextChannel : HomeUiEvent
+    data object PreviousChannel : HomeUiEvent
+    data class SelectChannel(val index: Int) : HomeUiEvent
+    data object ToggleChannelList : HomeUiEvent
+    data class FilterIptvCategory(val category: String) : HomeUiEvent
+    data class ToggleIptvFavorite(val channel: IptvChannel) : HomeUiEvent
+    data object ToggleCurrentIptvFavorite : HomeUiEvent
 }

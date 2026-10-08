@@ -84,4 +84,12 @@ class PreferencesRepositoryImpl(
     override suspend fun setShowAppNames(show: Boolean) = withContext(dispatcherProvider.io) {
         preferencesDataSource.setShowAppNames(show)
     }
+
+    override suspend fun getFavoriteIptvChannels(): Set<String> = withContext(dispatcherProvider.io) {
+        preferencesDataSource.getFavoriteIptvChannels()
+    }
+
+    override suspend fun saveFavoriteIptvChannels(channels: Set<String>) = withContext(dispatcherProvider.io) {
+        preferencesDataSource.saveFavoriteIptvChannels(channels)
+    }
 }

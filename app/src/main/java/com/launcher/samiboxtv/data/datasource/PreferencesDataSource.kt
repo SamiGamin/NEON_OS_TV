@@ -25,6 +25,8 @@ interface PreferencesDataSource {
     fun setAppCategory(packageName: String, categoryName: String)
     fun getShowAppNames(): Boolean
     fun setShowAppNames(show: Boolean)
+    fun getFavoriteIptvChannels(): Set<String>
+    fun saveFavoriteIptvChannels(channels: Set<String>)
 }
 
 class PreferencesDataSourceImpl(
@@ -175,6 +177,14 @@ class PreferencesDataSourceImpl(
         prefs.edit().putBoolean(KEY_SHOW_APP_NAMES, show).apply()
     }
 
+    override fun getFavoriteIptvChannels(): Set<String> {
+        return prefs.getStringSet(KEY_IPTV_FAVORITE_CHANNELS, emptySet()) ?: emptySet()
+    }
+
+    override fun saveFavoriteIptvChannels(channels: Set<String>) {
+        prefs.edit().putStringSet(KEY_IPTV_FAVORITE_CHANNELS, channels).apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "samibox_prefs"
         private const val KEY_HIDDEN_APPS = "hidden_apps"
@@ -184,5 +194,6 @@ class PreferencesDataSourceImpl(
         private const val KEY_CUSTOM_CATEGORIES = "custom_categories"
         private const val KEY_APP_CATEGORIES = "app_categories_map"
         private const val KEY_SHOW_APP_NAMES = "show_app_names"
+        private const val KEY_IPTV_FAVORITE_CHANNELS = "iptv_favorite_channels"
     }
 }
