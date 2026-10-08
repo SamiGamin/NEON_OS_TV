@@ -1,5 +1,7 @@
 package com.launcher.samiboxtv.domain.model
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Representa la información de actualización remota de la aplicación obtenida desde GitHub Releases.
  *
@@ -10,6 +12,7 @@ package com.launcher.samiboxtv.domain.model
  * @property releaseNotes Descripción / changelog con los cambios de la versión.
  * @property apkDownloadUrl URL del archivo APK para su descarga.
  */
+@Immutable
 data class UpdateInfo(
     val currentVersion: String,
     val latestVersion: String,

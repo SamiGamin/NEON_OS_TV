@@ -14,8 +14,14 @@
 
 # Uncomment this to preserve the line number information for
 # debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+-keepattributes SourceFile,LineNumberTable
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Jetpack Compose & Compose TV runtime optimizations
+-keepclassmembers class * extends androidx.compose.ui.Modifier { *; }
+
+# Coil image loader rules
+-dontwarn coil.**
+-keep class coil.** { *; }
+
+# Coroutines optimizations
+-dontwarn kotlinx.coroutines.**

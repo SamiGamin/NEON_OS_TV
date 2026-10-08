@@ -57,6 +57,89 @@ Avoiding Hilt simplifies build setup, reduces compilation overhead, avoids addit
 3. Accessing the central application container where constructor injection is impossible.
 
 ### Files
-- [MainActivity.kt](file:///E:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/MainActivity.kt)
-- [MainViewModel.kt](file:///E:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/MainViewModel.kt)
-- [SamiBoxAccessibilityService.kt](file:///E:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/SamiBoxAccessibilityService.kt)
+- [MainActivity.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/MainActivity.kt)
+- [HomeViewModel.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/presentation/home/HomeViewModel.kt)
+- [SamiBoxAccessibilityService.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/services/accessibility/SamiBoxAccessibilityService.kt)
+
+---
+
+## Compose TV State Stability and Immutability Optimization
+
+- id: compose-stability-immutability
+- type: architecture_decision
+- status: active
+- platform: android
+- area: performance-compose
+- date: 2026-10-07
+
+### Decision / Problem / Pattern
+In Compose TV apps running on resource-constrained TV boxes (1GB-2GB RAM, low-power quad-core SoCs), real-time telemetry flows (CPU, RAM, Uptime) emit new state every 1.5-3 seconds. Because data classes contained `Drawable` references (`iconDrawable`, `bannerDrawable`), Compose treated them as `@Unstable`, triggering expensive recomposition of all 20+ app banner cards on every tick.
+
+### Reason / Root Cause / Solution
+1. Explicitly annotated `AppItem`, `HomeUiState`, `SystemTelemetry`, `NetworkStatus`, `ProcessInfo`, and `UpdateInfo` with `@Immutable` (`androidx.compose.runtime.Immutable`).
+2. Adopted `collectAsStateWithLifecycle()` in `HomeScreen.kt` so state observation and recomposition halt automatically when the launcher is in the background (e.g., when the user opens Netflix, YouTube, or Kodi).
+3. Replaced Coil's asynchronous image loader with static vector `painterResource` for local icons like the Add App button.
+
+### Files
+- [AppItem.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/domain/model/AppItem.kt)
+- [HomeUiState.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/presentation/home/HomeUiState.kt)
+- [HomeScreen.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/presentation/home/HomeScreen.kt)
+- [SamiBoxApplication.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/SamiBoxApplication.kt)
+
+---
+
+## Coil Memory Cache Limiting for Android TV Devices
+
+- id: coil-memory-optimization-tv
+- type: architecture_decision
+- status: active
+- platform: android
+- area: memory-optimization
+- date: 2026-10-07
+
+### Decision / Problem / Pattern
+By default, Coil allocates up to 25-50% of the app heap for image memory caching. On Android TV devices with small heaps, loading app icons and 16:9 banners can trigger high Garbage Collector pressure, leading to frame drops during horizontal D-Pad scrolling.
+
+### Reason / Root Cause / Solution
+Implemented `ImageLoaderFactory` directly on `SamiBoxApplication`:
+- Capped `MemoryCache` to a conservative 15% of available heap (`maxSizePercent(0.15)`).
+- Enabled hardware bitmaps (`allowHardware(true)`) for GPU-accelerated drawing.
+- Disabled crossfade animations (`crossfade(false)`) to eliminate frame blending overhead on TV GPUs.
+
+### Files
+- [SamiBoxApplication.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/SamiBoxApplication.kt)
+
+---
+
+## Canonical Android TV Settings Panel & Dynamic App Card Formatting
+
+- id: android-tv-settings-and-categories
+- type: architecture_decision
+- status: active
+- platform: android
+- area: settings-ui-and-preferences
+- date: 2026-10-07
+
+### Decision / Problem / Pattern
+Users need to customize the launcher behavior directly from the TV interface via remote control:
+1. Reordering or toggling quick-access favorites.
+2. Creating and assigning custom thematic app rows/categories (e.g., STREAMING, GAMING, IPTV).
+3. Switching between 16:9 widescreen banners, 1:1 modern square grids (Google TV style), and compact views.
+4. Accessing shortcuts to set SamiBoxTV as default launcher, opening system Android TV settings, and triggering RAM cleanup.
+
+### Reason / Root Cause / Solution
+Built a split-pane lateral drawer styled identically to canonical Android TV / Google TV system settings with:
+- Dark glass cyberpunk aesthetics with D-Pad focus borders.
+- Two-column layout: lateral categories menu on the left, context options on the right.
+- Directional remote input with automatic focus synchronization (`initialFocusRequester`, `tvClickable` extension with `KeyEventType.KeyDown`).
+- Clean Architecture persistence pipeline: `PreferencesDataSource` -> `PreferencesRepository` -> `GetLauncherSettingsUseCase` / `SaveCardStyleUseCase` / `ManageCategoriesUseCase` -> `HomeViewModel` (StateFlow) -> `HomeScreen`.
+
+### Files
+- [TvSettingsPanel.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/presentation/settings/TvSettingsPanel.kt)
+- [AppCardStyle.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/domain/model/AppCardStyle.kt)
+- [SettingsSection.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/domain/model/SettingsSection.kt)
+- [PreferencesDataSource.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/data/datasource/PreferencesDataSource.kt)
+- [PreferencesRepositoryImpl.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/data/repository/PreferencesRepositoryImpl.kt)
+- [HomeScreen.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/presentation/home/HomeScreen.kt)
+- [HomeViewModel.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/presentation/home/HomeViewModel.kt)
+

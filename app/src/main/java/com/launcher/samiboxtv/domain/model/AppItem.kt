@@ -1,11 +1,13 @@
 package com.launcher.samiboxtv.domain.model
 
 import android.graphics.drawable.Drawable
+import androidx.compose.runtime.Immutable
 
 /**
  * Modelo de dominio que representa una aplicación instalada en el Launcher TV
  * con soporte para banners 16:9 y categorías.
  */
+@Immutable
 data class AppItem(
     val packageName: String,
     val activityName: String = "",

@@ -3,18 +3,23 @@ package com.launcher.samiboxtv.presentation.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.launcher.samiboxtv.core.dispatcher.DispatcherProvider
+import com.launcher.samiboxtv.domain.model.AppCardStyle
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.domain.model.SettingsSection
 import com.launcher.samiboxtv.domain.model.SystemMonitorTab
 import com.launcher.samiboxtv.domain.usecase.CheckUpdateUseCase
 import com.launcher.samiboxtv.domain.usecase.CleanMemoryUseCase
 import com.launcher.samiboxtv.domain.usecase.GetInstalledAppsUseCase
+import com.launcher.samiboxtv.domain.usecase.GetLauncherSettingsUseCase
 import com.launcher.samiboxtv.domain.usecase.GetRunningProcessesUseCase
 import com.launcher.samiboxtv.domain.usecase.HideAppUseCase
 import com.launcher.samiboxtv.domain.usecase.KillProcessUseCase
 import com.launcher.samiboxtv.domain.usecase.LaunchAppUseCase
+import com.launcher.samiboxtv.domain.usecase.ManageCategoriesUseCase
 import com.launcher.samiboxtv.domain.usecase.MoveAppUseCase
 import com.launcher.samiboxtv.domain.usecase.ObserveNetworkStatusUseCase
 import com.launcher.samiboxtv.domain.usecase.ObserveSystemTelemetryUseCase
+import com.launcher.samiboxtv.domain.usecase.SaveCardStyleUseCase
 import com.launcher.samiboxtv.domain.usecase.SetHiddenPackagesUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleAppVisibilityUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleFavoriteAppUseCase
@@ -46,6 +51,9 @@ class HomeViewModel(
     private val getRunningProcessesUseCase: GetRunningProcessesUseCase,
     private val cleanMemoryUseCase: CleanMemoryUseCase,
     private val killProcessUseCase: KillProcessUseCase,
+    private val getLauncherSettingsUseCase: GetLauncherSettingsUseCase,
+    private val saveCardStyleUseCase: SaveCardStyleUseCase,
+    private val manageCategoriesUseCase: ManageCategoriesUseCase,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
 
@@ -53,6 +61,7 @@ class HomeViewModel(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
+        loadSettings()
         loadApps()
         observeNetwork()
         observeTelemetry()
@@ -118,6 +127,73 @@ class HomeViewModel(
             HomeUiEvent.RefreshApps -> loadApps()
             HomeUiEvent.CheckUpdates -> checkForUpdates()
             HomeUiEvent.DismissUpdateDialog -> _uiState.update { it.copy(updateInfo = null) }
+            HomeUiEvent.OpenSettings -> _uiState.update { it.copy(isSettingsOpen = true) }
+            HomeUiEvent.CloseSettings -> _uiState.update { it.copy(isSettingsOpen = false) }
+            is HomeUiEvent.SelectSettingsSection -> _uiState.update { it.copy(activeSettingsSection = event.section) }
+            is HomeUiEvent.ChangeCardStyle -> changeCardStyle(event.style)
+            is HomeUiEvent.CreateCategory -> createCategory(event.name)
+            is HomeUiEvent.RemoveCategory -> removeCategory(event.name)
+            is HomeUiEvent.AssignCategory -> assignCategory(event.packageName, event.categoryName)
+        }
+    }
+
+    private fun loadSettings() {
+        viewModelScope.launch(dispatcherProvider.main) {
+            val settings = withContext(dispatcherProvider.io) {
+                getLauncherSettingsUseCase()
+            }
+            _uiState.update {
+                it.copy(
+                    cardStyle = settings.cardStyle,
+                    categories = settings.categories,
+                    appCategoryMap = settings.appCategoryMap
+                )
+            }
+        }
+    }
+
+    private fun changeCardStyle(style: AppCardStyle) {
+        viewModelScope.launch(dispatcherProvider.main) {
+            _uiState.update { it.copy(cardStyle = style) }
+            withContext(dispatcherProvider.io) {
+                saveCardStyleUseCase(style)
+            }
+        }
+    }
+
+    private fun createCategory(name: String) {
+        viewModelScope.launch(dispatcherProvider.main) {
+            val formatted = name.trim().uppercase()
+            if (formatted.isNotBlank()) {
+                val success = withContext(dispatcherProvider.io) {
+                    manageCategoriesUseCase.addCategory(formatted)
+                }
+                if (success) {
+                    loadSettings()
+                }
+            }
+        }
+    }
+
+    private fun removeCategory(name: String) {
+        viewModelScope.launch(dispatcherProvider.main) {
+            val success = withContext(dispatcherProvider.io) {
+                manageCategoriesUseCase.removeCategory(name)
+            }
+            if (success) {
+                loadSettings()
+                loadApps()
+            }
+        }
+    }
+
+    private fun assignCategory(packageName: String, categoryName: String) {
+        viewModelScope.launch(dispatcherProvider.main) {
+            withContext(dispatcherProvider.io) {
+                manageCategoriesUseCase.assignAppToCategory(packageName, categoryName)
+            }
+            loadSettings()
+            loadApps()
         }
     }
 

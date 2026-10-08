@@ -23,9 +23,12 @@ class GetInstalledAppsUseCase(
         val hiddenSet = preferencesRepository.getHiddenPackages()
         val favoriteSet = preferencesRepository.getFavoritePackages()
         val customOrder = preferencesRepository.getCustomOrder()
+        val categoryMap = preferencesRepository.getAppCategoryMap()
 
         val allMapped = installedApps.map { app ->
+            val assignedCat = categoryMap[app.packageName] ?: app.category.ifBlank { "APPS" }
             app.copy(
+                category = assignedCat,
                 isHidden = app.packageName in hiddenSet,
                 isFavorite = app.packageName in favoriteSet
             )

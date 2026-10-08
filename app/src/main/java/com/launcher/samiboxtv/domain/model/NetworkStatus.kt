@@ -1,5 +1,7 @@
 package com.launcher.samiboxtv.domain.model
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Representa los diferentes tipos de interfaz de conexión de red soportados por Android TV.
  */
@@ -19,6 +21,7 @@ enum class NetworkType {
  * @property ipAddress Dirección IP local del dispositivo (IPv4), si está disponible.
  * @property ssid Nombre de la red Wi-Fi si aplica y está disponible.
  */
+@Immutable
 data class NetworkStatus(
     val isConnected: Boolean = false,
     val type: NetworkType = NetworkType.DISCONNECTED,

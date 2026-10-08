@@ -1,18 +1,19 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-27T20:50:42.9633644Z",
-  "root": "E:\\AndroidStudio\\SamiBoxTV",
+  "generatedAt": "2026-10-08T02:27:02.6335059Z",
+  "root": "F:\\AndroidStudio\\SamiBoxTV",
   "files": [
     {
       "path": "app/src/main/java/com/launcher/samiboxtv/MainActivity.kt",
       "language": "kotlin",
-      "lines": 101,
+      "lines": 96,
       "imports": [
         "android.annotation.SuppressLint",
         "android.content.Intent",
         "android.net.Uri",
         "android.os.Bundle",
         "android.provider.Settings",
+        "android.view.KeyEvent",
         "android.widget.Toast",
         "androidx.activity.ComponentActivity",
         "androidx.activity.compose.setContent",
@@ -22,19 +23,23 @@
         "androidx.compose.ui.graphics.RectangleShape",
         "androidx.tv.material3.ExperimentalTvMaterial3Api",
         "androidx.tv.material3.Surface",
-        "com.launcher.samiboxtv.ui.HomeScreen",
-        "com.launcher.samiboxtv.ui.theme.SamiBoxTVTheme"
+        "com.launcher.samiboxtv.di.ViewModelFactory",
+        "com.launcher.samiboxtv.presentation.home.HomeScreen",
+        "com.launcher.samiboxtv.presentation.home.HomeViewModel",
+        "com.launcher.samiboxtv.presentation.theme.SamiBoxTVTheme",
+        "com.launcher.samiboxtv.services.monitor.MemoryUsageTester",
+        "com.launcher.samiboxtv.services.overlay.OverlayWindowManager"
       ],
       "symbols": [
         {
           "name": "MainActivity",
           "kind": "class",
-          "line": 20
+          "line": 25
         },
         {
           "name": "onCreate",
           "kind": "fun",
-          "line": 26,
+          "line": 35,
           "container": "MainActivity",
           "modifiers": [
             "override"
@@ -43,7 +48,7 @@
         {
           "name": "onDestroy",
           "kind": "fun",
-          "line": 60,
+          "line": 63,
           "container": "MainActivity",
           "modifiers": [
             "override"
@@ -52,17 +57,237 @@
         {
           "name": "dispatchKeyEvent",
           "kind": "fun",
-          "line": 66,
+          "line": 70,
           "container": "MainActivity",
+          "modifiers": [
+            "override"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/SamiBoxApplication.kt",
+      "language": "kotlin",
+      "lines": 38,
+      "imports": [
+        "android.app.Application",
+        "android.graphics.Bitmap",
+        "coil.ImageLoader",
+        "coil.ImageLoaderFactory",
+        "coil.memory.MemoryCache",
+        "com.launcher.samiboxtv.di.AppContainer",
+        "com.launcher.samiboxtv.di.DefaultAppContainer"
+      ],
+      "symbols": [
+        {
+          "name": "SamiBoxApplication",
+          "kind": "class",
+          "line": 15
+        },
+        {
+          "name": "onCreate",
+          "kind": "fun",
+          "line": 20,
+          "container": "SamiBoxApplication",
           "modifiers": [
             "override"
           ]
         },
         {
-          "name": "launchApp",
+          "name": "newImageLoader",
           "kind": "fun",
-          "line": 92,
-          "container": "MainActivity",
+          "line": 25,
+          "container": "SamiBoxApplication",
+          "modifiers": [
+            "override"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/core/base/UiState.kt",
+      "language": "kotlin",
+      "lines": 11,
+      "imports": [],
+      "symbols": [
+        {
+          "name": "UiState",
+          "kind": "interface",
+          "line": 6
+        },
+        {
+          "name": "UiEvent",
+          "kind": "interface",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/core/dispatcher/DispatcherProvider.kt",
+      "language": "kotlin",
+      "lines": 22,
+      "imports": [
+        "kotlinx.coroutines.CoroutineDispatcher",
+        "kotlinx.coroutines.Dispatchers"
+      ],
+      "symbols": [
+        {
+          "name": "DispatcherProvider",
+          "kind": "interface",
+          "line": 10
+        },
+        {
+          "name": "DefaultDispatcherProvider",
+          "kind": "class",
+          "line": 17
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/data/datasource/AppLocalDataSource.kt",
+      "language": "kotlin",
+      "lines": 73,
+      "imports": [
+        "android.content.Context",
+        "android.content.Intent",
+        "android.content.pm.PackageManager",
+        "com.launcher.samiboxtv.data.model.AppEntity"
+      ],
+      "symbols": [
+        {
+          "name": "AppLocalDataSource",
+          "kind": "interface",
+          "line": 11
+        },
+        {
+          "name": "getInstalledApplications",
+          "kind": "fun",
+          "line": 12,
+          "container": "AppLocalDataSource"
+        },
+        {
+          "name": "launchApplication",
+          "kind": "fun",
+          "line": 13,
+          "container": "AppLocalDataSource"
+        },
+        {
+          "name": "AppLocalDataSourceImpl",
+          "kind": "class",
+          "line": 16
+        },
+        {
+          "name": "getInstalledApplications",
+          "kind": "fun",
+          "line": 20,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "launchApplication",
+          "kind": "fun",
+          "line": 63,
+          "modifiers": [
+            "override"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/data/datasource/NetworkDataSource.kt",
+      "language": "kotlin",
+      "lines": 119,
+      "imports": [
+        "android.content.Context",
+        "android.net.ConnectivityManager",
+        "android.net.Network",
+        "android.net.NetworkCapabilities",
+        "com.launcher.samiboxtv.domain.model.NetworkStatus",
+        "com.launcher.samiboxtv.domain.model.NetworkType",
+        "kotlinx.coroutines.channels.awaitClose",
+        "kotlinx.coroutines.flow.Flow",
+        "kotlinx.coroutines.flow.callbackFlow",
+        "kotlinx.coroutines.flow.distinctUntilChanged",
+        "java.net.Inet4Address",
+        "java.net.NetworkInterface",
+        "java.util.Collections"
+      ],
+      "symbols": [
+        {
+          "name": "NetworkDataSource",
+          "kind": "interface",
+          "line": 20
+        },
+        {
+          "name": "observeNetworkStatus",
+          "kind": "fun",
+          "line": 21,
+          "container": "NetworkDataSource"
+        },
+        {
+          "name": "getCurrentNetworkStatus",
+          "kind": "fun",
+          "line": 22,
+          "container": "NetworkDataSource"
+        },
+        {
+          "name": "NetworkDataSourceImpl",
+          "kind": "class",
+          "line": 25
+        },
+        {
+          "name": "getCurrentNetworkStatus",
+          "kind": "fun",
+          "line": 33,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "observeNetworkStatus",
+          "kind": "fun",
+          "line": 55,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "onAvailable",
+          "kind": "fun",
+          "line": 67,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "onCapabilitiesChanged",
+          "kind": "fun",
+          "line": 71,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "onLost",
+          "kind": "fun",
+          "line": 75,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "onUnavailable",
+          "kind": "fun",
+          "line": 79,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "getLocalIpAddress",
+          "kind": "fun",
+          "line": 99,
           "modifiers": [
             "private"
           ]
@@ -70,33 +295,2163 @@
       ]
     },
     {
-      "path": "app/src/main/java/com/launcher/samiboxtv/MainViewModel.kt",
+      "path": "app/src/main/java/com/launcher/samiboxtv/data/datasource/PreferencesDataSource.kt",
       "language": "kotlin",
-      "lines": 83,
+      "lines": 93,
       "imports": [
-        "android.app.Application",
-        "androidx.lifecycle.AndroidViewModel",
-        "androidx.lifecycle.viewModelScope",
-        "com.launcher.samiboxtv.data.AppInfo",
-        "com.launcher.samiboxtv.data.AppPreferences",
-        "com.launcher.samiboxtv.data.AppRepository",
-        "kotlinx.coroutines.Dispatchers",
-        "kotlinx.coroutines.flow.MutableStateFlow",
-        "kotlinx.coroutines.flow.StateFlow",
-        "kotlinx.coroutines.flow.asStateFlow",
-        "kotlinx.coroutines.launch"
+        "android.content.Context",
+        "android.content.SharedPreferences"
       ],
       "symbols": [
         {
-          "name": "MainViewModel",
+          "name": "PreferencesDataSource",
+          "kind": "interface",
+          "line": 9
+        },
+        {
+          "name": "getHiddenApps",
+          "kind": "fun",
+          "line": 10,
+          "container": "PreferencesDataSource"
+        },
+        {
+          "name": "addHiddenApp",
+          "kind": "fun",
+          "line": 11,
+          "container": "PreferencesDataSource"
+        },
+        {
+          "name": "removeHiddenApp",
+          "kind": "fun",
+          "line": 12,
+          "container": "PreferencesDataSource"
+        },
+        {
+          "name": "setHiddenApps",
+          "kind": "fun",
+          "line": 13,
+          "container": "PreferencesDataSource"
+        },
+        {
+          "name": "toggleHiddenApp",
+          "kind": "fun",
+          "line": 14,
+          "container": "PreferencesDataSource"
+        },
+        {
+          "name": "getFavoriteApps",
+          "kind": "fun",
+          "line": 15,
+          "container": "PreferencesDataSource"
+        },
+        {
+          "name": "toggleFavoriteApp",
+          "kind": "fun",
+          "line": 16,
+          "container": "PreferencesDataSource"
+        },
+        {
+          "name": "getCustomOrder",
+          "kind": "fun",
+          "line": 17,
+          "container": "PreferencesDataSource"
+        },
+        {
+          "name": "saveCustomOrder",
+          "kind": "fun",
+          "line": 18,
+          "container": "PreferencesDataSource"
+        },
+        {
+          "name": "PreferencesDataSourceImpl",
           "kind": "class",
-          "line": 15
+          "line": 21
+        },
+        {
+          "name": "getHiddenApps",
+          "kind": "fun",
+          "line": 28,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "addHiddenApp",
+          "kind": "fun",
+          "line": 32,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "removeHiddenApp",
+          "kind": "fun",
+          "line": 38,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "setHiddenApps",
+          "kind": "fun",
+          "line": 44,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "toggleHiddenApp",
+          "kind": "fun",
+          "line": 48,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "getFavoriteApps",
+          "kind": "fun",
+          "line": 61,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "toggleFavoriteApp",
+          "kind": "fun",
+          "line": 65,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "getCustomOrder",
+          "kind": "fun",
+          "line": 78,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "saveCustomOrder",
+          "kind": "fun",
+          "line": 83,
+          "modifiers": [
+            "override"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/data/datasource/SystemTelemetryDataSource.kt",
+      "language": "kotlin",
+      "lines": 351,
+      "imports": [
+        "android.app.ActivityManager",
+        "android.content.Context",
+        "android.content.pm.ApplicationInfo",
+        "android.graphics.drawable.Drawable",
+        "android.os.Build",
+        "android.os.Environment",
+        "android.os.StatFs",
+        "android.os.SystemClock",
+        "com.launcher.samiboxtv.domain.model.CleanRamResult",
+        "com.launcher.samiboxtv.domain.model.ProcessInfo",
+        "com.launcher.samiboxtv.domain.model.SystemTelemetry",
+        "kotlinx.coroutines.currentCoroutineContext",
+        "kotlinx.coroutines.delay",
+        "kotlinx.coroutines.flow.Flow",
+        "kotlinx.coroutines.flow.distinctUntilChanged",
+        "kotlinx.coroutines.flow.flow",
+        "kotlinx.coroutines.isActive",
+        "java.io.BufferedReader",
+        "java.io.File",
+        "java.io.InputStreamReader"
+      ],
+      "symbols": [
+        {
+          "name": "SystemTelemetryDataSource",
+          "kind": "interface",
+          "line": 27
+        },
+        {
+          "name": "observeTelemetry",
+          "kind": "fun",
+          "line": 28,
+          "container": "SystemTelemetryDataSource"
+        },
+        {
+          "name": "getCurrentTelemetry",
+          "kind": "fun",
+          "line": 29,
+          "container": "SystemTelemetryDataSource"
+        },
+        {
+          "name": "getRunningProcesses",
+          "kind": "fun",
+          "line": 30,
+          "container": "SystemTelemetryDataSource"
+        },
+        {
+          "name": "cleanBackgroundProcesses",
+          "kind": "fun",
+          "line": 31,
+          "container": "SystemTelemetryDataSource"
+        },
+        {
+          "name": "killProcess",
+          "kind": "fun",
+          "line": 32,
+          "container": "SystemTelemetryDataSource"
+        },
+        {
+          "name": "SystemTelemetryDataSourceImpl",
+          "kind": "class",
+          "line": 35
+        },
+        {
+          "name": "CpuTicks",
+          "kind": "class",
+          "line": 43,
+          "modifiers": [
+            "private",
+            "data"
+          ]
+        },
+        {
+          "name": "getCurrentTelemetry",
+          "kind": "fun",
+          "line": 46,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "observeTelemetry",
+          "kind": "fun",
+          "line": 99,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "calculateUptime",
+          "kind": "fun",
+          "line": 106,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "readCpuTemperature",
+          "kind": "fun",
+          "line": 113,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "calculateCpuUsage",
+          "kind": "fun",
+          "line": 136,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "readCpuTicks",
+          "kind": "fun",
+          "line": 148,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "getRunningProcesses",
+          "kind": "fun",
+          "line": 163,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "cleanBackgroundProcesses",
+          "kind": "fun",
+          "line": 285,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "isCriticalPackage",
+          "kind": "fun",
+          "line": 333,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "killProcess",
+          "kind": "fun",
+          "line": 343,
+          "modifiers": [
+            "override"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/data/mapper/AppMapper.kt",
+      "language": "kotlin",
+      "lines": 31,
+      "imports": [
+        "com.launcher.samiboxtv.data.model.AppEntity",
+        "com.launcher.samiboxtv.domain.model.AppItem"
+      ],
+      "symbols": [
+        {
+          "name": "AppMapper",
+          "kind": "object",
+          "line": 9
+        },
+        {
+          "name": "toDomain",
+          "kind": "fun",
+          "line": 10,
+          "container": "AppMapper"
+        },
+        {
+          "name": "toEntity",
+          "kind": "fun",
+          "line": 22,
+          "container": "AppMapper"
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/data/model/AppEntity.kt",
+      "language": "kotlin",
+      "lines": 14,
+      "imports": [
+        "android.graphics.drawable.Drawable"
+      ],
+      "symbols": [
+        {
+          "name": "AppEntity",
+          "kind": "class",
+          "line": 8,
+          "modifiers": [
+            "data"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/data/repository/AppRepositoryImpl.kt",
+      "language": "kotlin",
+      "lines": 25,
+      "imports": [
+        "com.launcher.samiboxtv.core.dispatcher.DispatcherProvider",
+        "com.launcher.samiboxtv.data.datasource.AppLocalDataSource",
+        "com.launcher.samiboxtv.data.mapper.AppMapper",
+        "com.launcher.samiboxtv.domain.model.AppItem",
+        "com.launcher.samiboxtv.domain.repository.AppRepository",
+        "kotlinx.coroutines.withContext"
+      ],
+      "symbols": [
+        {
+          "name": "AppRepositoryImpl",
+          "kind": "class",
+          "line": 13
+        },
+        {
+          "name": "getInstalledApps",
+          "kind": "fun",
+          "line": 18,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        },
+        {
+          "name": "launchApp",
+          "kind": "fun",
+          "line": 22,
+          "modifiers": [
+            "override"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/data/repository/NetworkRepositoryImpl.kt",
+      "language": "kotlin",
+      "lines": 26,
+      "imports": [
+        "com.launcher.samiboxtv.core.dispatcher.DispatcherProvider",
+        "com.launcher.samiboxtv.data.datasource.NetworkDataSource",
+        "com.launcher.samiboxtv.domain.model.NetworkStatus",
+        "com.launcher.samiboxtv.domain.repository.NetworkRepository",
+        "kotlinx.coroutines.flow.Flow",
+        "kotlinx.coroutines.flow.flowOn"
+      ],
+      "symbols": [
+        {
+          "name": "NetworkRepositoryImpl",
+          "kind": "class",
+          "line": 13
+        },
+        {
+          "name": "observeNetworkStatus",
+          "kind": "fun",
+          "line": 18,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "getCurrentNetworkStatus",
+          "kind": "fun",
+          "line": 23,
+          "modifiers": [
+            "override"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/data/repository/PreferencesRepositoryImpl.kt",
+      "language": "kotlin",
+      "lines": 51,
+      "imports": [
+        "com.launcher.samiboxtv.core.dispatcher.DispatcherProvider",
+        "com.launcher.samiboxtv.data.datasource.PreferencesDataSource",
+        "com.launcher.samiboxtv.domain.repository.PreferencesRepository",
+        "kotlinx.coroutines.withContext"
+      ],
+      "symbols": [
+        {
+          "name": "PreferencesRepositoryImpl",
+          "kind": "class",
+          "line": 11
+        },
+        {
+          "name": "getHiddenPackages",
+          "kind": "fun",
+          "line": 16,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        },
+        {
+          "name": "hidePackage",
+          "kind": "fun",
+          "line": 20,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        },
+        {
+          "name": "unhidePackage",
+          "kind": "fun",
+          "line": 24,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        },
+        {
+          "name": "setHiddenPackages",
+          "kind": "fun",
+          "line": 28,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        },
+        {
+          "name": "toggleHidePackage",
+          "kind": "fun",
+          "line": 32,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        },
+        {
+          "name": "getFavoritePackages",
+          "kind": "fun",
+          "line": 36,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        },
+        {
+          "name": "toggleFavoritePackage",
+          "kind": "fun",
+          "line": 40,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        },
+        {
+          "name": "getCustomOrder",
+          "kind": "fun",
+          "line": 44,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        },
+        {
+          "name": "saveCustomOrder",
+          "kind": "fun",
+          "line": 48,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/data/repository/SystemTelemetryRepositoryImpl.kt",
+      "language": "kotlin",
+      "lines": 44,
+      "imports": [
+        "com.launcher.samiboxtv.core.dispatcher.DispatcherProvider",
+        "com.launcher.samiboxtv.data.datasource.SystemTelemetryDataSource",
+        "com.launcher.samiboxtv.domain.model.CleanRamResult",
+        "com.launcher.samiboxtv.domain.model.ProcessInfo",
+        "com.launcher.samiboxtv.domain.model.SystemTelemetry",
+        "com.launcher.samiboxtv.domain.repository.SystemTelemetryRepository",
+        "kotlinx.coroutines.flow.Flow",
+        "kotlinx.coroutines.flow.flowOn",
+        "kotlinx.coroutines.withContext"
+      ],
+      "symbols": [
+        {
+          "name": "SystemTelemetryRepositoryImpl",
+          "kind": "class",
+          "line": 16
+        },
+        {
+          "name": "observeTelemetry",
+          "kind": "fun",
+          "line": 21,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "getCurrentTelemetry",
+          "kind": "fun",
+          "line": 26,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "getRunningProcesses",
+          "kind": "fun",
+          "line": 30,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        },
+        {
+          "name": "cleanBackgroundProcesses",
+          "kind": "fun",
+          "line": 35,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        },
+        {
+          "name": "killProcess",
+          "kind": "fun",
+          "line": 40,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/data/repository/UpdateRepositoryImpl.kt",
+      "language": "kotlin",
+      "lines": 110,
+      "imports": [
+        "android.content.Context",
+        "android.content.pm.PackageManager",
+        "android.os.Build",
+        "com.launcher.samiboxtv.BuildConfig",
+        "com.launcher.samiboxtv.core.dispatcher.DispatcherProvider",
+        "com.launcher.samiboxtv.domain.model.UpdateInfo",
+        "com.launcher.samiboxtv.domain.repository.UpdateRepository",
+        "kotlinx.coroutines.withContext",
+        "org.json.JSONObject",
+        "java.io.BufferedReader",
+        "java.net.HttpURLConnection",
+        "java.net.URL"
+      ],
+      "symbols": [
+        {
+          "name": "UpdateRepositoryImpl",
+          "kind": "class",
+          "line": 16
+        },
+        {
+          "name": "checkForUpdates",
+          "kind": "fun",
+          "line": 21,
+          "modifiers": [
+            "override",
+            "suspend"
+          ]
+        },
+        {
+          "name": "getCurrentVersionName",
+          "kind": "fun",
+          "line": 83,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "isRemoteNewer",
+          "kind": "fun",
+          "line": 97,
+          "modifiers": [
+            "private"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/di/AppContainer.kt",
+      "language": "kotlin",
+      "lines": 181,
+      "imports": [
+        "android.content.Context",
+        "com.launcher.samiboxtv.core.dispatcher.DefaultDispatcherProvider",
+        "com.launcher.samiboxtv.core.dispatcher.DispatcherProvider",
+        "com.launcher.samiboxtv.data.datasource.AppLocalDataSource",
+        "com.launcher.samiboxtv.data.datasource.AppLocalDataSourceImpl",
+        "com.launcher.samiboxtv.data.datasource.PreferencesDataSource",
+        "com.launcher.samiboxtv.data.datasource.PreferencesDataSourceImpl",
+        "com.launcher.samiboxtv.data.repository.AppRepositoryImpl",
+        "com.launcher.samiboxtv.data.repository.PreferencesRepositoryImpl",
+        "com.launcher.samiboxtv.domain.repository.AppRepository",
+        "com.launcher.samiboxtv.domain.repository.PreferencesRepository",
+        "com.launcher.samiboxtv.domain.usecase.GetInstalledAppsUseCase",
+        "com.launcher.samiboxtv.domain.usecase.HideAppUseCase",
+        "com.launcher.samiboxtv.domain.usecase.LaunchAppUseCase",
+        "com.launcher.samiboxtv.domain.usecase.MoveAppUseCase",
+        "com.launcher.samiboxtv.domain.usecase.SetHiddenPackagesUseCase",
+        "com.launcher.samiboxtv.domain.usecase.ToggleAppVisibilityUseCase",
+        "com.launcher.samiboxtv.data.datasource.NetworkDataSource",
+        "com.launcher.samiboxtv.data.datasource.NetworkDataSourceImpl",
+        "com.launcher.samiboxtv.data.datasource.SystemTelemetryDataSource",
+        "com.launcher.samiboxtv.data.datasource.SystemTelemetryDataSourceImpl",
+        "com.launcher.samiboxtv.data.repository.NetworkRepositoryImpl",
+        "com.launcher.samiboxtv.data.repository.SystemTelemetryRepositoryImpl",
+        "com.launcher.samiboxtv.data.repository.UpdateRepositoryImpl",
+        "com.launcher.samiboxtv.domain.repository.NetworkRepository",
+        "com.launcher.samiboxtv.domain.repository.SystemTelemetryRepository",
+        "com.launcher.samiboxtv.domain.repository.UpdateRepository",
+        "com.launcher.samiboxtv.domain.usecase.CheckUpdateUseCase",
+        "com.launcher.samiboxtv.domain.usecase.CleanMemoryUseCase",
+        "com.launcher.samiboxtv.domain.usecase.GetRunningProcessesUseCase",
+        "com.launcher.samiboxtv.domain.usecase.KillProcessUseCase",
+        "com.launcher.samiboxtv.domain.usecase.ObserveNetworkStatusUseCase",
+        "com.launcher.samiboxtv.domain.usecase.ObserveSystemTelemetryUseCase",
+        "com.launcher.samiboxtv.domain.usecase.ToggleFavoriteAppUseCase",
+        "com.launcher.samiboxtv.domain.usecase.UnhideAppUseCase"
+      ],
+      "symbols": [
+        {
+          "name": "AppContainer",
+          "kind": "interface",
+          "line": 43
+        },
+        {
+          "name": "DefaultAppContainer",
+          "kind": "class",
+          "line": 66
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/di/ViewModelFactory.kt",
+      "language": "kotlin",
+      "lines": 37,
+      "imports": [
+        "androidx.lifecycle.ViewModel",
+        "androidx.lifecycle.ViewModelProvider",
+        "com.launcher.samiboxtv.presentation.home.HomeViewModel"
+      ],
+      "symbols": [
+        {
+          "name": "ViewModelFactory",
+          "kind": "class",
+          "line": 10
+        },
+        {
+          "name": "create",
+          "kind": "fun",
+          "line": 15,
+          "modifiers": [
+            "override"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/model/AppItem.kt",
+      "language": "kotlin",
+      "lines": 24,
+      "imports": [
+        "android.graphics.drawable.Drawable",
+        "androidx.compose.runtime.Immutable"
+      ],
+      "symbols": [
+        {
+          "name": "AppItem",
+          "kind": "class",
+          "line": 11,
+          "modifiers": [
+            "data"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/model/CleanRamResult.kt",
+      "language": "kotlin",
+      "lines": 11,
+      "imports": [],
+      "symbols": [
+        {
+          "name": "CleanRamResult",
+          "kind": "class",
+          "line": 6,
+          "modifiers": [
+            "data"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/model/NetworkStatus.kt",
+      "language": "kotlin",
+      "lines": 30,
+      "imports": [
+        "androidx.compose.runtime.Immutable"
+      ],
+      "symbols": [
+        {
+          "name": "NetworkType",
+          "kind": "class",
+          "line": 8,
+          "modifiers": [
+            "enum"
+          ]
+        },
+        {
+          "name": "NetworkStatus",
+          "kind": "class",
+          "line": 25,
+          "modifiers": [
+            "data"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/model/ProcessInfo.kt",
+      "language": "kotlin",
+      "lines": 18,
+      "imports": [
+        "android.graphics.drawable.Drawable",
+        "androidx.compose.runtime.Immutable"
+      ],
+      "symbols": [
+        {
+          "name": "ProcessInfo",
+          "kind": "class",
+          "line": 10,
+          "modifiers": [
+            "data"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/model/SystemMonitorTab.kt",
+      "language": "kotlin",
+      "lines": 9,
+      "imports": [],
+      "symbols": [
+        {
+          "name": "SystemMonitorTab",
+          "kind": "class",
+          "line": 6,
+          "modifiers": [
+            "enum"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/model/SystemTelemetry.kt",
+      "language": "kotlin",
+      "lines": 37,
+      "imports": [
+        "androidx.compose.runtime.Immutable"
+      ],
+      "symbols": [
+        {
+          "name": "SystemTelemetry",
+          "kind": "class",
+          "line": 23,
+          "modifiers": [
+            "data"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/model/UpdateInfo.kt",
+      "language": "kotlin",
+      "lines": 23,
+      "imports": [
+        "androidx.compose.runtime.Immutable"
+      ],
+      "symbols": [
+        {
+          "name": "UpdateInfo",
+          "kind": "class",
+          "line": 16,
+          "modifiers": [
+            "data"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/repository/AppRepository.kt",
+      "language": "kotlin",
+      "lines": 11,
+      "imports": [
+        "com.launcher.samiboxtv.domain.model.AppItem"
+      ],
+      "symbols": [
+        {
+          "name": "AppRepository",
+          "kind": "interface",
+          "line": 8
+        },
+        {
+          "name": "getInstalledApps",
+          "kind": "fun",
+          "line": 9,
+          "container": "AppRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        },
+        {
+          "name": "launchApp",
+          "kind": "fun",
+          "line": 10,
+          "container": "AppRepository"
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/repository/NetworkRepository.kt",
+      "language": "kotlin",
+      "lines": 19,
+      "imports": [
+        "com.launcher.samiboxtv.domain.model.NetworkStatus",
+        "kotlinx.coroutines.flow.Flow"
+      ],
+      "symbols": [
+        {
+          "name": "NetworkRepository",
+          "kind": "interface",
+          "line": 9
+        },
+        {
+          "name": "observeNetworkStatus",
+          "kind": "fun",
+          "line": 13,
+          "container": "NetworkRepository"
+        },
+        {
+          "name": "getCurrentNetworkStatus",
+          "kind": "fun",
+          "line": 18,
+          "container": "NetworkRepository"
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/repository/PreferencesRepository.kt",
+      "language": "kotlin",
+      "lines": 16,
+      "imports": [],
+      "symbols": [
+        {
+          "name": "PreferencesRepository",
+          "kind": "interface",
+          "line": 6
+        },
+        {
+          "name": "getHiddenPackages",
+          "kind": "fun",
+          "line": 7,
+          "container": "PreferencesRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        },
+        {
+          "name": "hidePackage",
+          "kind": "fun",
+          "line": 8,
+          "container": "PreferencesRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        },
+        {
+          "name": "unhidePackage",
+          "kind": "fun",
+          "line": 9,
+          "container": "PreferencesRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        },
+        {
+          "name": "setHiddenPackages",
+          "kind": "fun",
+          "line": 10,
+          "container": "PreferencesRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        },
+        {
+          "name": "toggleHidePackage",
+          "kind": "fun",
+          "line": 11,
+          "container": "PreferencesRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        },
+        {
+          "name": "getFavoritePackages",
+          "kind": "fun",
+          "line": 12,
+          "container": "PreferencesRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        },
+        {
+          "name": "toggleFavoritePackage",
+          "kind": "fun",
+          "line": 13,
+          "container": "PreferencesRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        },
+        {
+          "name": "getCustomOrder",
+          "kind": "fun",
+          "line": 14,
+          "container": "PreferencesRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        },
+        {
+          "name": "saveCustomOrder",
+          "kind": "fun",
+          "line": 15,
+          "container": "PreferencesRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/repository/SystemTelemetryRepository.kt",
+      "language": "kotlin",
+      "lines": 36,
+      "imports": [
+        "com.launcher.samiboxtv.domain.model.CleanRamResult",
+        "com.launcher.samiboxtv.domain.model.ProcessInfo",
+        "com.launcher.samiboxtv.domain.model.SystemTelemetry",
+        "kotlinx.coroutines.flow.Flow"
+      ],
+      "symbols": [
+        {
+          "name": "SystemTelemetryRepository",
+          "kind": "interface",
+          "line": 11
+        },
+        {
+          "name": "observeTelemetry",
+          "kind": "fun",
+          "line": 15,
+          "container": "SystemTelemetryRepository"
+        },
+        {
+          "name": "getCurrentTelemetry",
+          "kind": "fun",
+          "line": 20,
+          "container": "SystemTelemetryRepository"
+        },
+        {
+          "name": "getRunningProcesses",
+          "kind": "fun",
+          "line": 25,
+          "container": "SystemTelemetryRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        },
+        {
+          "name": "cleanBackgroundProcesses",
+          "kind": "fun",
+          "line": 30,
+          "container": "SystemTelemetryRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        },
+        {
+          "name": "killProcess",
+          "kind": "fun",
+          "line": 35,
+          "container": "SystemTelemetryRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/repository/UpdateRepository.kt",
+      "language": "kotlin",
+      "lines": 10,
+      "imports": [
+        "com.launcher.samiboxtv.domain.model.UpdateInfo"
+      ],
+      "symbols": [
+        {
+          "name": "UpdateRepository",
+          "kind": "interface",
+          "line": 8
+        },
+        {
+          "name": "checkForUpdates",
+          "kind": "fun",
+          "line": 9,
+          "container": "UpdateRepository",
+          "modifiers": [
+            "suspend"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/CheckUpdateUseCase.kt",
+      "language": "kotlin",
+      "lines": 13,
+      "imports": [
+        "com.launcher.samiboxtv.domain.model.UpdateInfo",
+        "com.launcher.samiboxtv.domain.repository.UpdateRepository"
+      ],
+      "symbols": [
+        {
+          "name": "CheckUpdateUseCase",
+          "kind": "class",
+          "line": 9
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 12,
+          "modifiers": [
+            "suspend",
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/CleanMemoryUseCase.kt",
+      "language": "kotlin",
+      "lines": 14,
+      "imports": [
+        "com.launcher.samiboxtv.domain.model.CleanRamResult",
+        "com.launcher.samiboxtv.domain.repository.SystemTelemetryRepository"
+      ],
+      "symbols": [
+        {
+          "name": "CleanMemoryUseCase",
+          "kind": "class",
+          "line": 9
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 12,
+          "modifiers": [
+            "suspend",
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/GetInstalledAppsUseCase.kt",
+      "language": "kotlin",
+      "lines": 58,
+      "imports": [
+        "com.launcher.samiboxtv.domain.model.AppItem",
+        "com.launcher.samiboxtv.domain.repository.AppRepository",
+        "com.launcher.samiboxtv.domain.repository.PreferencesRepository"
+      ],
+      "symbols": [
+        {
+          "name": "AppsGroup",
+          "kind": "class",
+          "line": 7,
+          "modifiers": [
+            "data"
+          ]
+        },
+        {
+          "name": "GetInstalledAppsUseCase",
+          "kind": "class",
+          "line": 17
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 21,
+          "modifiers": [
+            "suspend",
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/GetRunningProcessesUseCase.kt",
+      "language": "kotlin",
+      "lines": 14,
+      "imports": [
+        "com.launcher.samiboxtv.domain.model.ProcessInfo",
+        "com.launcher.samiboxtv.domain.repository.SystemTelemetryRepository"
+      ],
+      "symbols": [
+        {
+          "name": "GetRunningProcessesUseCase",
+          "kind": "class",
+          "line": 9
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 12,
+          "modifiers": [
+            "suspend",
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/HideAppUseCase.kt",
+      "language": "kotlin",
+      "lines": 14,
+      "imports": [
+        "com.launcher.samiboxtv.domain.repository.PreferencesRepository"
+      ],
+      "symbols": [
+        {
+          "name": "HideAppUseCase",
+          "kind": "class",
+          "line": 8
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 11,
+          "modifiers": [
+            "suspend",
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/KillProcessUseCase.kt",
+      "language": "kotlin",
+      "lines": 13,
+      "imports": [
+        "com.launcher.samiboxtv.domain.repository.SystemTelemetryRepository"
+      ],
+      "symbols": [
+        {
+          "name": "KillProcessUseCase",
+          "kind": "class",
+          "line": 8
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 11,
+          "modifiers": [
+            "suspend",
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/LaunchAppUseCase.kt",
+      "language": "kotlin",
+      "lines": 14,
+      "imports": [
+        "com.launcher.samiboxtv.domain.repository.AppRepository"
+      ],
+      "symbols": [
+        {
+          "name": "LaunchAppUseCase",
+          "kind": "class",
+          "line": 8
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 11,
+          "modifiers": [
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/MoveAppUseCase.kt",
+      "language": "kotlin",
+      "lines": 33,
+      "imports": [
+        "com.launcher.samiboxtv.domain.model.AppItem",
+        "com.launcher.samiboxtv.domain.repository.PreferencesRepository"
+      ],
+      "symbols": [
+        {
+          "name": "MoveAppUseCase",
+          "kind": "class",
+          "line": 9
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 12,
+          "modifiers": [
+            "suspend",
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/ObserveNetworkStatusUseCase.kt",
+      "language": "kotlin",
+      "lines": 15,
+      "imports": [
+        "com.launcher.samiboxtv.domain.model.NetworkStatus",
+        "com.launcher.samiboxtv.domain.repository.NetworkRepository",
+        "kotlinx.coroutines.flow.Flow"
+      ],
+      "symbols": [
+        {
+          "name": "ObserveNetworkStatusUseCase",
+          "kind": "class",
+          "line": 11
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 14,
+          "modifiers": [
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/ObserveSystemTelemetryUseCase.kt",
+      "language": "kotlin",
+      "lines": 15,
+      "imports": [
+        "com.launcher.samiboxtv.domain.model.SystemTelemetry",
+        "com.launcher.samiboxtv.domain.repository.SystemTelemetryRepository",
+        "kotlinx.coroutines.flow.Flow"
+      ],
+      "symbols": [
+        {
+          "name": "ObserveSystemTelemetryUseCase",
+          "kind": "class",
+          "line": 10
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 13,
+          "modifiers": [
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/SetHiddenPackagesUseCase.kt",
+      "language": "kotlin",
+      "lines": 14,
+      "imports": [
+        "com.launcher.samiboxtv.domain.repository.PreferencesRepository"
+      ],
+      "symbols": [
+        {
+          "name": "SetHiddenPackagesUseCase",
+          "kind": "class",
+          "line": 8
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 11,
+          "modifiers": [
+            "suspend",
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/ToggleAppVisibilityUseCase.kt",
+      "language": "kotlin",
+      "lines": 14,
+      "imports": [
+        "com.launcher.samiboxtv.domain.repository.PreferencesRepository"
+      ],
+      "symbols": [
+        {
+          "name": "ToggleAppVisibilityUseCase",
+          "kind": "class",
+          "line": 8
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 11,
+          "modifiers": [
+            "suspend",
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/ToggleFavoriteAppUseCase.kt",
+      "language": "kotlin",
+      "lines": 14,
+      "imports": [
+        "com.launcher.samiboxtv.domain.repository.PreferencesRepository"
+      ],
+      "symbols": [
+        {
+          "name": "ToggleFavoriteAppUseCase",
+          "kind": "class",
+          "line": 8
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 11,
+          "modifiers": [
+            "suspend",
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/domain/usecase/UnhideAppUseCase.kt",
+      "language": "kotlin",
+      "lines": 14,
+      "imports": [
+        "com.launcher.samiboxtv.domain.repository.PreferencesRepository"
+      ],
+      "symbols": [
+        {
+          "name": "UnhideAppUseCase",
+          "kind": "class",
+          "line": 8
+        },
+        {
+          "name": "invoke",
+          "kind": "fun",
+          "line": 11,
+          "modifiers": [
+            "suspend",
+            "operator"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/presentation/components/AddAppDialog.kt",
+      "language": "kotlin",
+      "lines": 241,
+      "imports": [
+        "androidx.compose.foundation.Image",
+        "androidx.compose.foundation.background",
+        "androidx.compose.foundation.border",
+        "androidx.compose.foundation.interaction.MutableInteractionSource",
+        "androidx.compose.foundation.interaction.collectIsFocusedAsState",
+        "androidx.compose.foundation.layout.Arrangement",
+        "androidx.compose.foundation.layout.Box",
+        "androidx.compose.foundation.layout.Column",
+        "androidx.compose.foundation.layout.PaddingValues",
+        "androidx.compose.foundation.layout.Row",
+        "androidx.compose.foundation.layout.Spacer",
+        "androidx.compose.foundation.layout.aspectRatio",
+        "androidx.compose.foundation.layout.fillMaxSize",
+        "androidx.compose.foundation.layout.fillMaxWidth",
+        "androidx.compose.foundation.layout.height",
+        "androidx.compose.foundation.layout.padding",
+        "androidx.compose.foundation.layout.size",
+        "androidx.compose.foundation.layout.width",
+        "androidx.compose.foundation.lazy.grid.GridCells",
+        "androidx.compose.foundation.lazy.grid.LazyVerticalGrid",
+        "androidx.compose.foundation.lazy.grid.items",
+        "androidx.compose.foundation.shape.RoundedCornerShape",
+        "androidx.compose.runtime.Composable",
+        "androidx.compose.runtime.getValue",
+        "androidx.compose.runtime.remember",
+        "androidx.compose.ui.Alignment",
+        "androidx.compose.ui.Modifier",
+        "androidx.compose.ui.draw.clip",
+        "androidx.compose.ui.graphics.Color",
+        "androidx.compose.ui.layout.ContentScale",
+        "androidx.compose.ui.text.font.FontWeight",
+        "androidx.compose.ui.text.style.TextAlign",
+        "androidx.compose.ui.text.style.TextOverflow",
+        "androidx.compose.ui.unit.dp",
+        "androidx.compose.ui.unit.sp",
+        "androidx.compose.ui.window.Dialog",
+        "androidx.compose.ui.window.DialogProperties",
+        "androidx.tv.material3.Button",
+        "androidx.tv.material3.ButtonDefaults",
+        "androidx.tv.material3.Card",
+        "androidx.tv.material3.CardDefaults",
+        "androidx.tv.material3.ExperimentalTvMaterial3Api",
+        "androidx.tv.material3.Text",
+        "coil.compose.rememberAsyncImagePainter",
+        "com.launcher.samiboxtv.domain.model.AppItem",
+        "com.launcher.samiboxtv.presentation.theme.CyberAmber",
+        "com.launcher.samiboxtv.presentation.theme.CyberCard",
+        "com.launcher.samiboxtv.presentation.theme.CyberCyan",
+        "com.launcher.samiboxtv.presentation.theme.CyberGrey",
+        "com.launcher.samiboxtv.presentation.theme.CyberMagenta",
+        "com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily"
+      ],
+      "symbols": [
+        {
+          "name": "AddAppDialog",
+          "kind": "fun",
+          "line": 57
+        },
+        {
+          "name": "AppVisibilityToggleCard",
+          "kind": "fun",
+          "line": 168,
+          "modifiers": [
+            "private"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/presentation/components/AppCard.kt",
+      "language": "kotlin",
+      "lines": 165,
+      "imports": [
+        "android.view.KeyEvent",
+        "androidx.compose.foundation.Image",
+        "androidx.compose.foundation.background",
+        "androidx.compose.foundation.basicMarquee",
+        "androidx.compose.foundation.border",
+        "androidx.compose.foundation.interaction.MutableInteractionSource",
+        "androidx.compose.foundation.interaction.collectIsFocusedAsState",
+        "androidx.compose.foundation.layout.Box",
+        "androidx.compose.foundation.layout.Column",
+        "androidx.compose.foundation.layout.Spacer",
+        "androidx.compose.foundation.layout.aspectRatio",
+        "androidx.compose.foundation.layout.fillMaxSize",
+        "androidx.compose.foundation.layout.fillMaxWidth",
+        "androidx.compose.foundation.layout.height",
+        "androidx.compose.foundation.layout.padding",
+        "androidx.compose.foundation.shape.RoundedCornerShape",
+        "androidx.compose.runtime.Composable",
+        "androidx.compose.runtime.getValue",
+        "androidx.compose.runtime.remember",
+        "androidx.compose.ui.Alignment",
+        "androidx.compose.ui.Modifier",
+        "androidx.compose.ui.graphics.Color",
+        "androidx.compose.ui.input.key.KeyEventType",
+        "androidx.compose.ui.input.key.key",
+        "androidx.compose.ui.input.key.nativeKeyCode",
+        "androidx.compose.ui.input.key.onKeyEvent",
+        "androidx.compose.ui.input.key.type",
+        "androidx.compose.ui.layout.ContentScale",
+        "androidx.compose.ui.text.font.FontWeight",
+        "androidx.compose.ui.text.style.TextAlign",
+        "androidx.compose.ui.text.style.TextOverflow",
+        "androidx.compose.ui.unit.dp",
+        "androidx.tv.material3.Border",
+        "androidx.tv.material3.Card",
+        "androidx.tv.material3.CardDefaults",
+        "androidx.tv.material3.ExperimentalTvMaterial3Api",
+        "androidx.tv.material3.Text",
+        "coil.compose.rememberAsyncImagePainter",
+        "com.launcher.samiboxtv.domain.model.AppItem",
+        "com.launcher.samiboxtv.presentation.theme.CyberCard",
+        "com.launcher.samiboxtv.presentation.theme.CyberCyan",
+        "com.launcher.samiboxtv.presentation.theme.CyberMagenta"
+      ],
+      "symbols": [
+        {
+          "name": "AppCard",
+          "kind": "fun",
+          "line": 48
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/presentation/components/AppContextMenu.kt",
+      "language": "kotlin",
+      "lines": 118,
+      "imports": [
+        "androidx.compose.foundation.background",
+        "androidx.compose.foundation.border",
+        "androidx.compose.foundation.layout.Arrangement",
+        "androidx.compose.foundation.layout.Box",
+        "androidx.compose.foundation.layout.Column",
+        "androidx.compose.foundation.layout.padding",
+        "androidx.compose.foundation.shape.RoundedCornerShape",
+        "androidx.compose.runtime.Composable",
+        "androidx.compose.runtime.LaunchedEffect",
+        "androidx.compose.runtime.getValue",
+        "androidx.compose.runtime.mutableStateOf",
+        "androidx.compose.runtime.remember",
+        "androidx.compose.runtime.setValue",
+        "androidx.compose.ui.Alignment",
+        "androidx.compose.ui.Modifier",
+        "androidx.compose.ui.graphics.Color",
+        "androidx.compose.ui.text.font.FontWeight",
+        "androidx.compose.ui.unit.dp",
+        "androidx.compose.ui.window.Dialog",
+        "androidx.tv.material3.Button",
+        "androidx.tv.material3.ButtonDefaults",
+        "androidx.tv.material3.ExperimentalTvMaterial3Api",
+        "androidx.tv.material3.Text",
+        "com.launcher.samiboxtv.domain.model.AppItem",
+        "com.launcher.samiboxtv.presentation.theme.CyberAmber",
+        "com.launcher.samiboxtv.presentation.theme.CyberCard",
+        "com.launcher.samiboxtv.presentation.theme.CyberCyan",
+        "com.launcher.samiboxtv.presentation.theme.CyberMagenta",
+        "kotlinx.coroutines.delay"
+      ],
+      "symbols": [
+        {
+          "name": "AppContextMenu",
+          "kind": "fun",
+          "line": 35
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/presentation/components/UpdateDialog.kt",
+      "language": "kotlin",
+      "lines": 205,
+      "imports": [
+        "android.content.Intent",
+        "android.net.Uri",
+        "androidx.compose.foundation.background",
+        "androidx.compose.foundation.border",
+        "androidx.compose.foundation.layout.Arrangement",
+        "androidx.compose.foundation.layout.Box",
+        "androidx.compose.foundation.layout.Column",
+        "androidx.compose.foundation.layout.Row",
+        "androidx.compose.foundation.layout.Spacer",
+        "androidx.compose.foundation.layout.fillMaxSize",
+        "androidx.compose.foundation.layout.fillMaxWidth",
+        "androidx.compose.foundation.layout.height",
+        "androidx.compose.foundation.layout.padding",
+        "androidx.compose.foundation.layout.width",
+        "androidx.compose.foundation.rememberScrollState",
+        "androidx.compose.foundation.shape.RoundedCornerShape",
+        "androidx.compose.foundation.verticalScroll",
+        "androidx.compose.runtime.Composable",
+        "androidx.compose.ui.Alignment",
+        "androidx.compose.ui.Modifier",
+        "androidx.compose.ui.draw.clip",
+        "androidx.compose.ui.graphics.Color",
+        "androidx.compose.ui.platform.LocalContext",
+        "androidx.compose.ui.text.font.FontWeight",
+        "androidx.compose.ui.unit.dp",
+        "androidx.compose.ui.unit.sp",
+        "androidx.compose.ui.window.Dialog",
+        "androidx.compose.ui.window.DialogProperties",
+        "androidx.tv.material3.Button",
+        "androidx.tv.material3.ButtonDefaults",
+        "androidx.tv.material3.ExperimentalTvMaterial3Api",
+        "androidx.tv.material3.Text",
+        "com.launcher.samiboxtv.domain.model.UpdateInfo",
+        "com.launcher.samiboxtv.presentation.theme.CyberAmber",
+        "com.launcher.samiboxtv.presentation.theme.CyberCyan",
+        "com.launcher.samiboxtv.presentation.theme.CyberGrey",
+        "com.launcher.samiboxtv.presentation.theme.CyberMagenta",
+        "com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily"
+      ],
+      "symbols": [
+        {
+          "name": "UpdateDialog",
+          "kind": "fun",
+          "line": 48
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/presentation/home/HomeScreen.kt",
+      "language": "kotlin",
+      "lines": 683,
+      "imports": [
+        "android.view.KeyEvent",
+        "androidx.compose.animation.core.animateFloatAsState",
+        "androidx.compose.foundation.Image",
+        "androidx.compose.foundation.background",
+        "androidx.compose.foundation.basicMarquee",
+        "androidx.compose.foundation.border",
+        "androidx.compose.foundation.clickable",
+        "androidx.compose.foundation.focusable",
+        "androidx.compose.foundation.layout.Arrangement",
+        "androidx.compose.foundation.layout.Box",
+        "androidx.compose.foundation.layout.Column",
+        "androidx.compose.foundation.layout.PaddingValues",
+        "androidx.compose.foundation.layout.Row",
+        "androidx.compose.foundation.layout.Spacer",
+        "androidx.compose.foundation.layout.aspectRatio",
+        "androidx.compose.foundation.layout.fillMaxSize",
+        "androidx.compose.foundation.layout.fillMaxWidth",
+        "androidx.compose.foundation.layout.height",
+        "androidx.compose.foundation.layout.padding",
+        "androidx.compose.foundation.layout.size",
+        "androidx.compose.foundation.layout.width",
+        "androidx.compose.foundation.lazy.LazyColumn",
+        "androidx.compose.foundation.lazy.LazyRow",
+        "androidx.compose.foundation.lazy.items",
+        "androidx.compose.foundation.shape.RoundedCornerShape",
+        "androidx.compose.runtime.Composable",
+        "androidx.compose.runtime.LaunchedEffect",
+        "androidx.compose.runtime.collectAsState",
+        "androidx.compose.runtime.getValue",
+        "androidx.compose.runtime.mutableStateOf",
+        "androidx.compose.runtime.remember",
+        "androidx.compose.runtime.setValue",
+        "androidx.compose.ui.Alignment",
+        "androidx.compose.ui.Modifier",
+        "androidx.compose.ui.draw.clip",
+        "androidx.compose.ui.draw.scale",
+        "androidx.compose.ui.focus.onFocusChanged",
+        "androidx.compose.ui.graphics.Brush",
+        "androidx.compose.ui.graphics.Color",
+        "androidx.compose.ui.graphics.ColorFilter",
+        "androidx.compose.ui.input.key.KeyEventType",
+        "androidx.compose.ui.input.key.key",
+        "androidx.compose.ui.input.key.nativeKeyCode",
+        "androidx.compose.ui.input.key.onKeyEvent",
+        "androidx.compose.ui.input.key.type",
+        "androidx.compose.ui.layout.ContentScale",
+        "androidx.compose.ui.res.painterResource",
+        "androidx.compose.foundation.BorderStroke",
+        "androidx.compose.ui.text.font.FontWeight",
+        "androidx.compose.ui.text.style.TextOverflow",
+        "androidx.compose.ui.unit.dp",
+        "androidx.compose.ui.unit.sp",
+        "androidx.tv.material3.Border",
+        "androidx.tv.material3.Card",
+        "androidx.tv.material3.CardDefaults",
+        "androidx.tv.material3.ExperimentalTvMaterial3Api",
+        "androidx.tv.material3.Text",
+        "coil.compose.rememberAsyncImagePainter",
+        "com.launcher.samiboxtv.BuildConfig",
+        "com.launcher.samiboxtv.R",
+        "com.launcher.samiboxtv.domain.model.AppItem",
+        "com.launcher.samiboxtv.domain.model.NetworkStatus",
+        "com.launcher.samiboxtv.domain.model.NetworkType",
+        "com.launcher.samiboxtv.domain.model.SystemTelemetry",
+        "com.launcher.samiboxtv.presentation.components.AddAppDialog",
+        "com.launcher.samiboxtv.presentation.components.AppContextMenu",
+        "com.launcher.samiboxtv.presentation.components.UpdateDialog",
+        "com.launcher.samiboxtv.presentation.overlay.SystemMonitorLog",
+        "com.launcher.samiboxtv.presentation.theme.CyberAmber",
+        "com.launcher.samiboxtv.presentation.theme.CyberCyan",
+        "com.launcher.samiboxtv.presentation.theme.CyberGrey",
+        "com.launcher.samiboxtv.presentation.theme.CyberMagenta",
+        "androidx.lifecycle.compose.collectAsStateWithLifecycle",
+        "com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily",
+        "kotlinx.coroutines.delay",
+        "java.text.SimpleDateFormat",
+        "java.util.Date",
+        "java.util.Locale",
+        "java.util.TimeZone"
+      ],
+      "symbols": [
+        {
+          "name": "HomeScreen",
+          "kind": "fun",
+          "line": 84
+        },
+        {
+          "name": "HomeScreenContent",
+          "kind": "fun",
+          "line": 141
+        },
+        {
+          "name": "SectionTitle",
+          "kind": "fun",
+          "line": 224
+        },
+        {
+          "name": "CyberHudHeader",
+          "kind": "fun",
+          "line": 238
+        },
+        {
+          "name": "TelemetryHudCard",
+          "kind": "fun",
+          "line": 291
+        },
+        {
+          "name": "NetworkIndicator",
+          "kind": "fun",
+          "line": 411
+        },
+        {
+          "name": "TvCyberBannerCard",
+          "kind": "fun",
+          "line": 469
+        },
+        {
+          "name": "AddAppCyberCard",
+          "kind": "fun",
+          "line": 582
+        },
+        {
+          "name": "ClockView",
+          "kind": "fun",
+          "line": 654
+        },
+        {
+          "name": "getFormattedTime",
+          "kind": "fun",
+          "line": 672
+        },
+        {
+          "name": "getRamAsciiBar",
+          "kind": "fun",
+          "line": 678
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/presentation/home/HomeUiEvent.kt",
+      "language": "kotlin",
+      "lines": 35,
+      "imports": [
+        "com.launcher.samiboxtv.core.base.UiEvent",
+        "com.launcher.samiboxtv.domain.model.AppItem",
+        "com.launcher.samiboxtv.domain.model.SystemMonitorTab"
+      ],
+      "symbols": [
+        {
+          "name": "HomeUiEvent",
+          "kind": "interface",
+          "line": 10,
+          "modifiers": [
+            "sealed"
+          ]
+        },
+        {
+          "name": "LaunchApp",
+          "kind": "class",
+          "line": 11,
+          "container": "HomeUiEvent",
+          "modifiers": [
+            "data"
+          ]
+        },
+        {
+          "name": "OpenContextMenu",
+          "kind": "class",
+          "line": 12,
+          "container": "HomeUiEvent",
+          "modifiers": [
+            "data"
+          ]
+        },
+        {
+          "name": "CloseContextMenu",
+          "kind": "object",
+          "line": 13,
+          "container": "HomeUiEvent"
+        },
+        {
+          "name": "StartMovingApp",
+          "kind": "class",
+          "line": 14,
+          "container": "HomeUiEvent",
+          "modifiers": [
+            "data"
+          ]
+        },
+        {
+          "name": "MoveApp",
+          "kind": "class",
+          "line": 15,
+          "container": "HomeUiEvent",
+          "modifiers": [
+            "data"
+          ]
+        },
+        {
+          "name": "FinishMovingApp",
+          "kind": "object",
+          "line": 16,
+          "container": "HomeUiEvent"
+        },
+        {
+          "name": "HideApp",
+          "kind": "class",
+          "line": 17,
+          "container": "HomeUiEvent",
+          "modifiers": [
+            "data"
+          ]
+        },
+        {
+          "name": "UnhideApp",
+          "kind": "class",
+          "line": 18,
+          "container": "HomeUiEvent",
+          "modifiers": [
+            "data"
+          ]
+        },
+        {
+          "name": "ToggleAppVisibility",
+          "kind": "class",
+          "line": 19,
+          "container": "HomeUiEvent",
+          "modifiers": [
+            "data"
+          ]
+        },
+        {
+          "name": "ToggleAppFavorite",
+          "kind": "class",
+          "line": 20,
+          "container": "HomeUiEvent",
+          "modifiers": [
+            "data"
+          ]
+        },
+        {
+          "name": "ShowAllApps",
+          "kind": "object",
+          "line": 21,
+          "container": "HomeUiEvent"
+        },
+        {
+          "name": "HideAllApps",
+          "kind": "object",
+          "line": 22,
+          "container": "HomeUiEvent"
+        },
+        {
+          "name": "OpenAddDialog",
+          "kind": "object",
+          "line": 23,
+          "container": "HomeUiEvent"
+        },
+        {
+          "name": "CloseAddDialog",
+          "kind": "object",
+          "line": 24,
+          "container": "HomeUiEvent"
+        },
+        {
+          "name": "OpenSystemLog",
+          "kind": "object",
+          "line": 25,
+          "container": "HomeUiEvent"
+        },
+        {
+          "name": "OpenSystemLogWithTab",
+          "kind": "class",
+          "line": 26,
+          "container": "HomeUiEvent",
+          "modifiers": [
+            "data"
+          ]
+        },
+        {
+          "name": "ChangeMonitorTab",
+          "kind": "class",
+          "line": 27,
+          "container": "HomeUiEvent",
+          "modifiers": [
+            "data"
+          ]
+        },
+        {
+          "name": "CloseSystemLog",
+          "kind": "object",
+          "line": 28,
+          "container": "HomeUiEvent"
+        },
+        {
+          "name": "LoadRunningProcesses",
+          "kind": "object",
+          "line": 29,
+          "container": "HomeUiEvent"
+        },
+        {
+          "name": "CleanRam",
+          "kind": "object",
+          "line": 30,
+          "container": "HomeUiEvent"
+        },
+        {
+          "name": "KillProcess",
+          "kind": "class",
+          "line": 31,
+          "container": "HomeUiEvent",
+          "modifiers": [
+            "data"
+          ]
+        },
+        {
+          "name": "RefreshApps",
+          "kind": "object",
+          "line": 32,
+          "container": "HomeUiEvent"
+        },
+        {
+          "name": "CheckUpdates",
+          "kind": "object",
+          "line": 33,
+          "container": "HomeUiEvent"
+        },
+        {
+          "name": "DismissUpdateDialog",
+          "kind": "object",
+          "line": 34,
+          "container": "HomeUiEvent"
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/presentation/home/HomeUiState.kt",
+      "language": "kotlin",
+      "lines": 40,
+      "imports": [
+        "androidx.compose.runtime.Immutable",
+        "com.launcher.samiboxtv.core.base.UiState",
+        "com.launcher.samiboxtv.domain.model.AppItem",
+        "com.launcher.samiboxtv.domain.model.NetworkStatus",
+        "com.launcher.samiboxtv.domain.model.ProcessInfo",
+        "com.launcher.samiboxtv.domain.model.SystemMonitorTab",
+        "com.launcher.samiboxtv.domain.model.SystemTelemetry",
+        "com.launcher.samiboxtv.domain.model.UpdateInfo"
+      ],
+      "symbols": [
+        {
+          "name": "HomeUiState",
+          "kind": "class",
+          "line": 17,
+          "modifiers": [
+            "data"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/presentation/home/HomeViewModel.kt",
+      "language": "kotlin",
+      "lines": 336,
+      "imports": [
+        "androidx.lifecycle.ViewModel",
+        "androidx.lifecycle.viewModelScope",
+        "com.launcher.samiboxtv.core.dispatcher.DispatcherProvider",
+        "com.launcher.samiboxtv.domain.model.AppItem",
+        "com.launcher.samiboxtv.domain.model.SystemMonitorTab",
+        "com.launcher.samiboxtv.domain.usecase.CheckUpdateUseCase",
+        "com.launcher.samiboxtv.domain.usecase.CleanMemoryUseCase",
+        "com.launcher.samiboxtv.domain.usecase.GetInstalledAppsUseCase",
+        "com.launcher.samiboxtv.domain.usecase.GetRunningProcessesUseCase",
+        "com.launcher.samiboxtv.domain.usecase.HideAppUseCase",
+        "com.launcher.samiboxtv.domain.usecase.KillProcessUseCase",
+        "com.launcher.samiboxtv.domain.usecase.LaunchAppUseCase",
+        "com.launcher.samiboxtv.domain.usecase.MoveAppUseCase",
+        "com.launcher.samiboxtv.domain.usecase.ObserveNetworkStatusUseCase",
+        "com.launcher.samiboxtv.domain.usecase.ObserveSystemTelemetryUseCase",
+        "com.launcher.samiboxtv.domain.usecase.SetHiddenPackagesUseCase",
+        "com.launcher.samiboxtv.domain.usecase.ToggleAppVisibilityUseCase",
+        "com.launcher.samiboxtv.domain.usecase.ToggleFavoriteAppUseCase",
+        "com.launcher.samiboxtv.domain.usecase.UnhideAppUseCase",
+        "kotlinx.coroutines.flow.MutableStateFlow",
+        "kotlinx.coroutines.flow.StateFlow",
+        "kotlinx.coroutines.flow.asStateFlow",
+        "kotlinx.coroutines.flow.flowOn",
+        "kotlinx.coroutines.flow.update",
+        "kotlinx.coroutines.launch",
+        "kotlinx.coroutines.withContext"
+      ],
+      "symbols": [
+        {
+          "name": "HomeViewModel",
+          "kind": "class",
+          "line": 34
+        },
+        {
+          "name": "observeNetwork",
+          "kind": "fun",
+          "line": 62,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "observeTelemetry",
+          "kind": "fun",
+          "line": 72,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "onEvent",
+          "kind": "fun",
+          "line": 82
+        },
+        {
+          "name": "loadRunningProcesses",
+          "kind": "fun",
+          "line": 124
+        },
+        {
+          "name": "cleanRam",
+          "kind": "fun",
+          "line": 133
+        },
+        {
+          "name": "killProcess",
+          "kind": "fun",
+          "line": 157
+        },
+        {
+          "name": "checkForUpdates",
+          "kind": "fun",
+          "line": 174,
+          "modifiers": [
+            "private"
+          ]
         },
         {
           "name": "loadApps",
           "kind": "fun",
-          "line": 31,
-          "container": "MainViewModel",
+          "line": 197,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "launchApp",
+          "kind": "fun",
+          "line": 229,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "openContextMenu",
+          "kind": "fun",
+          "line": 238,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "closeContextMenu",
+          "kind": "fun",
+          "line": 244,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "startMovingApp",
+          "kind": "fun",
+          "line": 248,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "finishMovingApp",
+          "kind": "fun",
+          "line": 257,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "moveApp",
+          "kind": "fun",
+          "line": 261,
           "modifiers": [
             "private"
           ]
@@ -104,33 +2459,453 @@
         {
           "name": "hideApp",
           "kind": "fun",
-          "line": 58,
-          "container": "MainViewModel"
+          "line": 280,
+          "modifiers": [
+            "private"
+          ]
         },
         {
           "name": "unhideApp",
           "kind": "fun",
-          "line": 63,
-          "container": "MainViewModel"
+          "line": 290,
+          "modifiers": [
+            "private"
+          ]
         },
         {
-          "name": "moveApp",
+          "name": "toggleVisibility",
           "kind": "fun",
-          "line": 68,
-          "container": "MainViewModel"
+          "line": 299,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "toggleFavorite",
+          "kind": "fun",
+          "line": 308,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "showAllApps",
+          "kind": "fun",
+          "line": 318,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "hideAllApps",
+          "kind": "fun",
+          "line": 327,
+          "modifiers": [
+            "private"
+          ]
         }
       ]
     },
     {
-      "path": "app/src/main/java/com/launcher/samiboxtv/MemoryUsageTester.kt",
+      "path": "app/src/main/java/com/launcher/samiboxtv/presentation/overlay/SystemInfoOverlay.kt",
       "language": "kotlin",
-      "lines": 62,
+      "lines": 329,
+      "imports": [
+        "android.app.ActivityManager",
+        "android.content.Context",
+        "android.net.TrafficStats",
+        "android.net.wifi.WifiManager",
+        "android.os.Build",
+        "android.os.Environment",
+        "android.os.StatFs",
+        "android.os.SystemClock",
+        "android.view.Choreographer",
+        "android.view.WindowManager",
+        "androidx.compose.animation.AnimatedVisibility",
+        "androidx.compose.animation.fadeIn",
+        "androidx.compose.animation.fadeOut",
+        "androidx.compose.animation.slideInHorizontally",
+        "androidx.compose.animation.slideOutHorizontally",
+        "androidx.compose.foundation.background",
+        "androidx.compose.foundation.border",
+        "androidx.compose.foundation.layout.Arrangement",
+        "androidx.compose.foundation.layout.Box",
+        "androidx.compose.foundation.layout.Column",
+        "androidx.compose.foundation.layout.Row",
+        "androidx.compose.foundation.layout.Spacer",
+        "androidx.compose.foundation.layout.fillMaxSize",
+        "androidx.compose.foundation.layout.height",
+        "androidx.compose.foundation.layout.padding",
+        "androidx.compose.foundation.layout.width",
+        "androidx.compose.foundation.shape.RoundedCornerShape",
+        "androidx.compose.runtime.Composable",
+        "androidx.compose.runtime.DisposableEffect",
+        "androidx.compose.runtime.LaunchedEffect",
+        "androidx.compose.runtime.getValue",
+        "androidx.compose.runtime.mutableStateOf",
+        "androidx.compose.runtime.remember",
+        "androidx.compose.runtime.setValue",
+        "androidx.compose.ui.Alignment",
+        "androidx.compose.ui.Modifier",
+        "androidx.compose.ui.graphics.Color",
+        "androidx.compose.ui.platform.LocalContext",
+        "androidx.compose.ui.text.font.FontFamily",
+        "androidx.compose.ui.text.font.FontWeight",
+        "androidx.compose.ui.unit.dp",
+        "androidx.compose.ui.unit.sp",
+        "androidx.tv.material3.Text",
+        "com.launcher.samiboxtv.presentation.theme.CyberAmber",
+        "com.launcher.samiboxtv.presentation.theme.CyberCyan",
+        "com.launcher.samiboxtv.presentation.theme.CyberGrey",
+        "com.launcher.samiboxtv.presentation.theme.CyberMagenta",
+        "com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily",
+        "kotlinx.coroutines.delay",
+        "java.util.concurrent.atomic.AtomicInteger",
+        "java.util.concurrent.atomic.AtomicLong"
+      ],
+      "symbols": [
+        {
+          "name": "SystemInfoOverlay",
+          "kind": "fun",
+          "line": 56
+        },
+        {
+          "name": "doFrame",
+          "kind": "fun",
+          "line": 82,
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "OverlayRow",
+          "kind": "fun",
+          "line": 198,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "getRamInfo",
+          "kind": "fun",
+          "line": 217,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "getStorageInternal",
+          "kind": "fun",
+          "line": 226,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "getStorageExternal",
+          "kind": "fun",
+          "line": 233,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "getNetworkSpeed",
+          "kind": "fun",
+          "line": 245,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "readCpuTemp",
+          "kind": "fun",
+          "line": 253,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "CpuTicks",
+          "kind": "class",
+          "line": 268,
+          "modifiers": [
+            "private",
+            "data"
+          ]
+        },
+        {
+          "name": "readCpuTicks",
+          "kind": "fun",
+          "line": 270,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "readCpuUsageDelta",
+          "kind": "fun",
+          "line": 285,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "getIpAddress",
+          "kind": "fun",
+          "line": 298,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "getUptime",
+          "kind": "fun",
+          "line": 309,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "getRefreshRate",
+          "kind": "fun",
+          "line": 317,
+          "modifiers": [
+            "private"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/presentation/overlay/SystemMonitorLog.kt",
+      "language": "kotlin",
+      "lines": 731,
+      "imports": [
+        "android.content.Context",
+        "android.content.Intent",
+        "android.content.pm.ApplicationInfo",
+        "android.content.pm.PackageManager",
+        "android.net.Uri",
+        "android.util.Log",
+        "androidx.compose.foundation.BorderStroke",
+        "androidx.compose.foundation.Image",
+        "androidx.compose.foundation.background",
+        "androidx.compose.foundation.border",
+        "androidx.compose.foundation.clickable",
+        "androidx.compose.foundation.focusable",
+        "androidx.compose.foundation.layout.Arrangement",
+        "androidx.compose.foundation.layout.Box",
+        "androidx.compose.foundation.layout.Column",
+        "androidx.compose.foundation.layout.Row",
+        "androidx.compose.foundation.layout.Spacer",
+        "androidx.compose.foundation.layout.fillMaxSize",
+        "androidx.compose.foundation.layout.fillMaxWidth",
+        "androidx.compose.foundation.layout.height",
+        "androidx.compose.foundation.layout.padding",
+        "androidx.compose.foundation.layout.size",
+        "androidx.compose.foundation.layout.width",
+        "androidx.compose.foundation.lazy.LazyColumn",
+        "androidx.compose.foundation.lazy.items",
+        "androidx.compose.foundation.shape.RoundedCornerShape",
+        "androidx.compose.runtime.Composable",
+        "androidx.compose.runtime.getValue",
+        "androidx.compose.runtime.mutableStateOf",
+        "androidx.compose.runtime.remember",
+        "androidx.compose.runtime.setValue",
+        "androidx.compose.ui.Alignment",
+        "androidx.compose.ui.Modifier",
+        "androidx.compose.ui.draw.clip",
+        "androidx.compose.ui.graphics.Color",
+        "androidx.compose.ui.platform.LocalContext",
+        "androidx.compose.ui.text.font.FontFamily",
+        "androidx.compose.ui.text.font.FontWeight",
+        "androidx.compose.ui.text.style.TextOverflow",
+        "androidx.compose.ui.unit.dp",
+        "androidx.compose.ui.unit.sp",
+        "androidx.compose.ui.window.Dialog",
+        "androidx.compose.ui.window.DialogProperties",
+        "androidx.tv.material3.Border",
+        "androidx.tv.material3.Button",
+        "androidx.tv.material3.ButtonDefaults",
+        "androidx.tv.material3.Card",
+        "androidx.tv.material3.CardDefaults",
+        "androidx.tv.material3.ExperimentalTvMaterial3Api",
+        "androidx.tv.material3.Text",
+        "coil.compose.rememberAsyncImagePainter",
+        "com.launcher.samiboxtv.domain.model.NetworkStatus",
+        "com.launcher.samiboxtv.domain.model.ProcessInfo",
+        "com.launcher.samiboxtv.domain.model.SystemMonitorTab",
+        "com.launcher.samiboxtv.domain.model.SystemTelemetry",
+        "com.launcher.samiboxtv.presentation.theme.CyberAmber",
+        "com.launcher.samiboxtv.presentation.theme.CyberCard",
+        "com.launcher.samiboxtv.presentation.theme.CyberCyan",
+        "com.launcher.samiboxtv.presentation.theme.CyberGrey",
+        "com.launcher.samiboxtv.presentation.theme.CyberMagenta",
+        "com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily"
+      ],
+      "symbols": [
+        {
+          "name": "ScannedApp",
+          "kind": "class",
+          "line": 65,
+          "modifiers": [
+            "data"
+          ]
+        },
+        {
+          "name": "scanAllApps",
+          "kind": "fun",
+          "line": 72
+        },
+        {
+          "name": "SystemMonitorLog",
+          "kind": "fun",
+          "line": 121
+        },
+        {
+          "name": "TelemetryHudBox",
+          "kind": "fun",
+          "line": 484,
+          "modifiers": [
+            "private"
+          ]
+        },
+        {
+          "name": "ProcessLogItem",
+          "kind": "fun",
+          "line": 554
+        },
+        {
+          "name": "AppLogItem",
+          "kind": "fun",
+          "line": 662
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/presentation/theme/Color.kt",
+      "language": "kotlin",
+      "lines": 12,
+      "imports": [
+        "androidx.compose.ui.graphics.Color"
+      ],
+      "symbols": []
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/presentation/theme/Theme.kt",
+      "language": "kotlin",
+      "lines": 27,
+      "imports": [
+        "androidx.compose.runtime.Composable",
+        "androidx.tv.material3.ExperimentalTvMaterial3Api",
+        "androidx.tv.material3.MaterialTheme",
+        "androidx.tv.material3.darkColorScheme"
+      ],
+      "symbols": [
+        {
+          "name": "SamiBoxTVTheme",
+          "kind": "fun",
+          "line": 10
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/presentation/theme/Type.kt",
+      "language": "kotlin",
+      "lines": 52,
+      "imports": [
+        "androidx.compose.ui.text.TextStyle",
+        "androidx.compose.ui.text.font.Font",
+        "androidx.compose.ui.text.font.FontFamily",
+        "androidx.compose.ui.text.font.FontWeight",
+        "androidx.compose.ui.unit.sp",
+        "androidx.tv.material3.ExperimentalTvMaterial3Api",
+        "androidx.tv.material3.Typography",
+        "com.launcher.samiboxtv.R"
+      ],
+      "symbols": []
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/services/accessibility/SamiBoxAccessibilityService.kt",
+      "language": "kotlin",
+      "lines": 52,
+      "imports": [
+        "android.accessibilityservice.AccessibilityService",
+        "android.view.KeyEvent",
+        "android.view.accessibility.AccessibilityEvent",
+        "com.launcher.samiboxtv.services.overlay.OverlayWindowManager"
+      ],
+      "symbols": [
+        {
+          "name": "SamiBoxAccessibilityService",
+          "kind": "class",
+          "line": 12
+        },
+        {
+          "name": "onServiceConnected",
+          "kind": "fun",
+          "line": 16,
+          "container": "SamiBoxAccessibilityService",
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "onKeyEvent",
+          "kind": "fun",
+          "line": 21,
+          "container": "SamiBoxAccessibilityService",
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "onAccessibilityEvent",
+          "kind": "fun",
+          "line": 35,
+          "container": "SamiBoxAccessibilityService",
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "onInterrupt",
+          "kind": "fun",
+          "line": 37,
+          "container": "SamiBoxAccessibilityService",
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "onDestroy",
+          "kind": "fun",
+          "line": 41,
+          "container": "SamiBoxAccessibilityService",
+          "modifiers": [
+            "override"
+          ]
+        },
+        {
+          "name": "isRunning",
+          "kind": "fun",
+          "line": 50,
+          "container": "SamiBoxAccessibilityService"
+        }
+      ]
+    },
+    {
+      "path": "app/src/main/java/com/launcher/samiboxtv/services/monitor/MemoryUsageTester.kt",
+      "language": "kotlin",
+      "lines": 73,
       "imports": [
         "android.app.ActivityManager",
         "android.content.Context",
         "android.util.Log",
         "kotlinx.coroutines.CoroutineScope",
         "kotlinx.coroutines.Dispatchers",
+        "kotlinx.coroutines.Job",
+        "kotlinx.coroutines.SupervisorJob",
         "kotlinx.coroutines.delay",
         "kotlinx.coroutines.isActive",
         "kotlinx.coroutines.launch"
@@ -139,18 +2914,24 @@
         {
           "name": "MemoryUsageTester",
           "kind": "class",
-          "line": 12
+          "line": 17
         },
         {
           "name": "startMonitoring",
           "kind": "fun",
-          "line": 16,
+          "line": 23,
+          "container": "MemoryUsageTester"
+        },
+        {
+          "name": "stopMonitoring",
+          "kind": "fun",
+          "line": 33,
           "container": "MemoryUsageTester"
         },
         {
           "name": "logMemoryUsage",
           "kind": "fun",
-          "line": 25,
+          "line": 38,
           "container": "MemoryUsageTester",
           "modifiers": [
             "private"
@@ -159,9 +2940,9 @@
       ]
     },
     {
-      "path": "app/src/main/java/com/launcher/samiboxtv/OverlayWindowManager.kt",
+      "path": "app/src/main/java/com/launcher/samiboxtv/services/overlay/OverlayWindowManager.kt",
       "language": "kotlin",
-      "lines": 110,
+      "lines": 114,
       "imports": [
         "android.content.Context",
         "android.graphics.PixelFormat",
@@ -181,7 +2962,7 @@
         "androidx.savedstate.SavedStateRegistryController",
         "androidx.savedstate.SavedStateRegistryOwner",
         "androidx.savedstate.setViewTreeSavedStateRegistryOwner",
-        "com.launcher.samiboxtv.ui.SystemInfoOverlay",
+        "com.launcher.samiboxtv.presentation.overlay.SystemInfoOverlay",
         "kotlinx.coroutines.CoroutineScope",
         "kotlinx.coroutines.launch"
       ],
@@ -189,42 +2970,42 @@
         {
           "name": "OverlayWindowManager",
           "kind": "class",
-          "line": 25
+          "line": 29
         },
         {
           "name": "canDrawOverlays",
           "kind": "fun",
-          "line": 30,
+          "line": 35,
           "container": "OverlayWindowManager"
         },
         {
           "name": "show",
           "kind": "fun",
-          "line": 33,
+          "line": 38,
           "container": "OverlayWindowManager"
         },
         {
           "name": "hide",
           "kind": "fun",
-          "line": 74,
+          "line": 80,
           "container": "OverlayWindowManager"
         },
         {
           "name": "toggle",
           "kind": "fun",
-          "line": 81,
+          "line": 89,
           "container": "OverlayWindowManager"
         },
         {
           "name": "isVisible",
           "kind": "fun",
-          "line": 85,
+          "line": 93,
           "container": "OverlayWindowManager"
         },
         {
           "name": "OverlayLifecycleOwner",
           "kind": "class",
-          "line": 90,
+          "line": 96,
           "modifiers": [
             "private"
           ]
@@ -232,639 +3013,16 @@
         {
           "name": "start",
           "kind": "fun",
-          "line": 98,
+          "line": 107,
           "container": "OverlayLifecycleOwner"
         },
         {
           "name": "stop",
           "kind": "fun",
-          "line": 105,
+          "line": 111,
           "container": "OverlayLifecycleOwner"
         }
       ]
-    },
-    {
-      "path": "app/src/main/java/com/launcher/samiboxtv/SamiBoxAccessibilityService.kt",
-      "language": "kotlin",
-      "lines": 55,
-      "imports": [
-        "android.accessibilityservice.AccessibilityService",
-        "android.view.KeyEvent",
-        "android.view.accessibility.AccessibilityEvent"
-      ],
-      "symbols": [
-        {
-          "name": "SamiBoxAccessibilityService",
-          "kind": "class",
-          "line": 14
-        },
-        {
-          "name": "onServiceConnected",
-          "kind": "fun",
-          "line": 18,
-          "container": "SamiBoxAccessibilityService",
-          "modifiers": [
-            "override"
-          ]
-        },
-        {
-          "name": "onKeyEvent",
-          "kind": "fun",
-          "line": 24,
-          "container": "SamiBoxAccessibilityService",
-          "modifiers": [
-            "override"
-          ]
-        },
-        {
-          "name": "onAccessibilityEvent",
-          "kind": "fun",
-          "line": 39,
-          "container": "SamiBoxAccessibilityService",
-          "modifiers": [
-            "override"
-          ]
-        },
-        {
-          "name": "onInterrupt",
-          "kind": "fun",
-          "line": 40,
-          "container": "SamiBoxAccessibilityService",
-          "modifiers": [
-            "override"
-          ]
-        },
-        {
-          "name": "onDestroy",
-          "kind": "fun",
-          "line": 44,
-          "container": "SamiBoxAccessibilityService",
-          "modifiers": [
-            "override"
-          ]
-        },
-        {
-          "name": "isRunning",
-          "kind": "fun",
-          "line": 53,
-          "container": "SamiBoxAccessibilityService"
-        }
-      ]
-    },
-    {
-      "path": "app/src/main/java/com/launcher/samiboxtv/data/AppInfo.kt",
-      "language": "kotlin",
-      "lines": 9,
-      "imports": [
-        "android.graphics.drawable.Drawable"
-      ],
-      "symbols": [
-        {
-          "name": "AppInfo",
-          "kind": "class",
-          "line": 5,
-          "modifiers": [
-            "data"
-          ]
-        }
-      ]
-    },
-    {
-      "path": "app/src/main/java/com/launcher/samiboxtv/data/AppPreferences.kt",
-      "language": "kotlin",
-      "lines": 33,
-      "imports": [
-        "android.content.Context",
-        "android.content.SharedPreferences"
-      ],
-      "symbols": [
-        {
-          "name": "AppPreferences",
-          "kind": "class",
-          "line": 6
-        },
-        {
-          "name": "getHiddenApps",
-          "kind": "fun",
-          "line": 9,
-          "container": "AppPreferences"
-        },
-        {
-          "name": "hideApp",
-          "kind": "fun",
-          "line": 13,
-          "container": "AppPreferences"
-        },
-        {
-          "name": "unhideApp",
-          "kind": "fun",
-          "line": 19,
-          "container": "AppPreferences"
-        },
-        {
-          "name": "getCustomOrder",
-          "kind": "fun",
-          "line": 25,
-          "container": "AppPreferences"
-        },
-        {
-          "name": "saveCustomOrder",
-          "kind": "fun",
-          "line": 30,
-          "container": "AppPreferences"
-        }
-      ]
-    },
-    {
-      "path": "app/src/main/java/com/launcher/samiboxtv/data/AppRepository.kt",
-      "language": "kotlin",
-      "lines": 39,
-      "imports": [
-        "android.content.Context",
-        "android.content.pm.PackageManager"
-      ],
-      "symbols": [
-        {
-          "name": "AppRepository",
-          "kind": "class",
-          "line": 6
-        },
-        {
-          "name": "getInstalledApps",
-          "kind": "fun",
-          "line": 7,
-          "container": "AppRepository"
-        }
-      ]
-    },
-    {
-      "path": "app/src/main/java/com/launcher/samiboxtv/ui/AddAppDialog.kt",
-      "language": "kotlin",
-      "lines": 77,
-      "imports": [
-        "androidx.compose.foundation.background",
-        "androidx.compose.foundation.layout.Arrangement",
-        "androidx.compose.foundation.layout.Box",
-        "androidx.compose.foundation.layout.Column",
-        "androidx.compose.foundation.layout.PaddingValues",
-        "androidx.compose.foundation.layout.fillMaxSize",
-        "androidx.compose.foundation.layout.padding",
-        "androidx.compose.foundation.lazy.grid.GridCells",
-        "androidx.compose.foundation.lazy.grid.LazyVerticalGrid",
-        "androidx.compose.foundation.lazy.grid.items",
-        "androidx.compose.foundation.shape.RoundedCornerShape",
-        "androidx.compose.runtime.Composable",
-        "androidx.compose.runtime.collectAsState",
-        "androidx.compose.runtime.getValue",
-        "androidx.compose.ui.Alignment",
-        "androidx.compose.ui.Modifier",
-        "androidx.compose.ui.graphics.Color",
-        "androidx.compose.ui.unit.dp",
-        "androidx.compose.ui.window.Dialog",
-        "androidx.compose.ui.window.DialogProperties",
-        "androidx.tv.material3.Text",
-        "com.launcher.samiboxtv.MainViewModel"
-      ],
-      "symbols": [
-        {
-          "name": "AddAppDialog",
-          "kind": "fun",
-          "line": 27
-        }
-      ]
-    },
-    {
-      "path": "app/src/main/java/com/launcher/samiboxtv/ui/AppCard.kt",
-      "language": "kotlin",
-      "lines": 146,
-      "imports": [
-        "androidx.compose.foundation.Image",
-        "androidx.compose.foundation.background",
-        "androidx.compose.foundation.border",
-        "androidx.compose.foundation.layout.Box",
-        "androidx.compose.foundation.layout.Column",
-        "androidx.compose.foundation.layout.Spacer",
-        "androidx.compose.foundation.layout.aspectRatio",
-        "androidx.compose.foundation.layout.fillMaxSize",
-        "androidx.compose.foundation.layout.fillMaxWidth",
-        "androidx.compose.foundation.layout.height",
-        "androidx.compose.foundation.layout.padding",
-        "androidx.compose.foundation.shape.RoundedCornerShape",
-        "androidx.compose.foundation.basicMarquee",
-        "androidx.compose.runtime.Composable",
-        "androidx.compose.runtime.getValue",
-        "androidx.compose.runtime.remember",
-        "androidx.compose.ui.Alignment",
-        "androidx.compose.ui.Modifier",
-        "androidx.compose.ui.graphics.Color",
-        "androidx.compose.foundation.interaction.MutableInteractionSource",
-        "androidx.compose.foundation.interaction.collectIsFocusedAsState",
-        "androidx.compose.ui.input.key.KeyEventType",
-        "androidx.compose.ui.input.key.key",
-        "androidx.compose.ui.input.key.nativeKeyCode",
-        "androidx.compose.ui.input.key.onKeyEvent",
-        "androidx.compose.ui.input.key.type",
-        "androidx.compose.ui.layout.ContentScale",
-        "androidx.compose.ui.text.style.TextAlign",
-        "androidx.compose.ui.text.style.TextOverflow",
-        "androidx.compose.ui.unit.dp",
-        "androidx.tv.material3.Card",
-        "androidx.tv.material3.ExperimentalTvMaterial3Api",
-        "androidx.tv.material3.Text",
-        "coil.compose.rememberAsyncImagePainter",
-        "com.launcher.samiboxtv.data.AppInfo"
-      ],
-      "symbols": [
-        {
-          "name": "AppCard",
-          "kind": "fun",
-          "line": 41
-        }
-      ]
-    },
-    {
-      "path": "app/src/main/java/com/launcher/samiboxtv/ui/AppContextMenu.kt",
-      "language": "kotlin",
-      "lines": 93,
-      "imports": [
-        "androidx.compose.foundation.background",
-        "androidx.compose.foundation.layout.Arrangement",
-        "androidx.compose.foundation.layout.Box",
-        "androidx.compose.foundation.layout.Column",
-        "androidx.compose.foundation.layout.padding",
-        "androidx.compose.foundation.shape.RoundedCornerShape",
-        "androidx.compose.runtime.Composable",
-        "androidx.compose.runtime.LaunchedEffect",
-        "androidx.compose.runtime.getValue",
-        "androidx.compose.runtime.mutableStateOf",
-        "androidx.compose.runtime.remember",
-        "androidx.compose.runtime.setValue",
-        "androidx.compose.ui.Alignment",
-        "androidx.compose.ui.Modifier",
-        "androidx.compose.ui.graphics.Color",
-        "androidx.compose.ui.unit.dp",
-        "androidx.compose.ui.window.Dialog",
-        "androidx.tv.material3.Button",
-        "androidx.tv.material3.ExperimentalTvMaterial3Api",
-        "androidx.tv.material3.Text",
-        "com.launcher.samiboxtv.data.AppInfo",
-        "kotlinx.coroutines.delay"
-      ],
-      "symbols": [
-        {
-          "name": "AppContextMenu",
-          "kind": "fun",
-          "line": 28
-        }
-      ]
-    },
-    {
-      "path": "app/src/main/java/com/launcher/samiboxtv/ui/HomeScreen.kt",
-      "language": "kotlin",
-      "lines": 285,
-      "imports": [
-        "androidx.compose.foundation.Image",
-        "androidx.compose.foundation.background",
-        "androidx.compose.foundation.layout.Arrangement",
-        "androidx.compose.foundation.layout.Box",
-        "androidx.compose.foundation.layout.Column",
-        "androidx.compose.foundation.layout.PaddingValues",
-        "androidx.compose.foundation.layout.Row",
-        "androidx.compose.foundation.layout.aspectRatio",
-        "androidx.compose.foundation.layout.fillMaxSize",
-        "androidx.compose.foundation.layout.fillMaxWidth",
-        "androidx.compose.foundation.layout.padding",
-        "androidx.compose.foundation.layout.size",
-        "androidx.compose.foundation.lazy.grid.GridCells",
-        "androidx.compose.foundation.lazy.grid.LazyVerticalGrid",
-        "androidx.compose.foundation.lazy.grid.items",
-        "androidx.compose.foundation.pager.HorizontalPager",
-        "androidx.compose.foundation.pager.rememberPagerState",
-        "androidx.compose.runtime.Composable",
-        "androidx.compose.runtime.LaunchedEffect",
-        "androidx.compose.foundation.basicMarquee",
-        "androidx.compose.runtime.collectAsState",
-        "androidx.compose.runtime.getValue",
-        "androidx.compose.runtime.mutableStateOf",
-        "androidx.compose.foundation.interaction.collectIsFocusedAsState",
-        "androidx.compose.foundation.layout.height",
-        "androidx.compose.runtime.remember",
-        "androidx.compose.runtime.setValue",
-        "androidx.compose.ui.Alignment",
-        "androidx.compose.ui.Modifier",
-        "androidx.compose.ui.graphics.Color",
-        "androidx.compose.ui.text.font.Font",
-        "androidx.compose.ui.text.font.FontFamily",
-        "androidx.compose.ui.text.font.FontWeight",
-        "androidx.compose.ui.tooling.preview.Devices",
-        "androidx.compose.ui.tooling.preview.Preview",
-        "androidx.compose.ui.unit.dp",
-        "androidx.compose.ui.unit.sp",
-        "androidx.tv.material3.Card",
-        "androidx.tv.material3.ExperimentalTvMaterial3Api",
-        "androidx.tv.material3.Text",
-        "com.launcher.samiboxtv.MainViewModel",
-        "com.launcher.samiboxtv.R",
-        "com.launcher.samiboxtv.data.AppInfo",
-        "kotlinx.coroutines.delay",
-        "java.text.SimpleDateFormat",
-        "java.util.Date",
-        "java.util.Locale",
-        "java.util.TimeZone"
-      ],
-      "symbols": [
-        {
-          "name": "HomeScreen",
-          "kind": "fun",
-          "line": 53
-        },
-        {
-          "name": "HomeScreenContent",
-          "kind": "fun",
-          "line": 98
-        },
-        {
-          "name": "LauncherHeader",
-          "kind": "fun",
-          "line": 217
-        },
-        {
-          "name": "ClockView",
-          "kind": "fun",
-          "line": 245
-        },
-        {
-          "name": "getFormattedTime",
-          "kind": "fun",
-          "line": 263
-        },
-        {
-          "name": "HomeScreenPreview",
-          "kind": "fun",
-          "line": 271
-        }
-      ]
-    },
-    {
-      "path": "app/src/main/java/com/launcher/samiboxtv/ui/SystemInfoOverlay.kt",
-      "language": "kotlin",
-      "lines": 357,
-      "imports": [
-        "android.app.ActivityManager",
-        "android.content.Context",
-        "android.net.TrafficStats",
-        "android.os.Environment",
-        "android.os.StatFs",
-        "androidx.compose.animation.*",
-        "androidx.compose.foundation.background",
-        "androidx.compose.foundation.layout.*",
-        "androidx.compose.foundation.shape.RoundedCornerShape",
-        "androidx.compose.runtime.*",
-        "androidx.compose.ui.Alignment",
-        "androidx.compose.ui.Modifier",
-        "androidx.compose.ui.graphics.Color",
-        "androidx.compose.ui.text.font.Font",
-        "androidx.compose.ui.text.font.FontFamily",
-        "androidx.compose.ui.unit.dp",
-        "androidx.compose.ui.unit.sp",
-        "androidx.tv.material3.Text",
-        "com.launcher.samiboxtv.R",
-        "android.net.wifi.WifiManager",
-        "android.os.Build",
-        "android.os.SystemClock",
-        "android.view.Choreographer",
-        "android.view.WindowManager",
-        "androidx.compose.ui.platform.LocalContext",
-        "androidx.compose.ui.tooling.preview.Devices",
-        "androidx.compose.ui.tooling.preview.Preview",
-        "kotlinx.coroutines.delay",
-        "java.util.concurrent.atomic.AtomicInteger",
-        "java.util.concurrent.atomic.AtomicLong"
-      ],
-      "symbols": [
-        {
-          "name": "getRamInfo",
-          "kind": "fun",
-          "line": 43,
-          "modifiers": [
-            "private"
-          ]
-        },
-        {
-          "name": "getStorageInternal",
-          "kind": "fun",
-          "line": 52,
-          "modifiers": [
-            "private"
-          ]
-        },
-        {
-          "name": "getStorageExternal",
-          "kind": "fun",
-          "line": 59,
-          "modifiers": [
-            "private"
-          ]
-        },
-        {
-          "name": "getNetworkSpeed",
-          "kind": "fun",
-          "line": 69,
-          "modifiers": [
-            "private"
-          ]
-        },
-        {
-          "name": "readCpuTemp",
-          "kind": "fun",
-          "line": 77,
-          "modifiers": [
-            "private"
-          ]
-        },
-        {
-          "name": "CpuTicks",
-          "kind": "class",
-          "line": 91,
-          "modifiers": [
-            "private",
-            "data"
-          ]
-        },
-        {
-          "name": "readCpuTicks",
-          "kind": "fun",
-          "line": 93,
-          "modifiers": [
-            "private"
-          ]
-        },
-        {
-          "name": "readCpuUsageDelta",
-          "kind": "fun",
-          "line": 107,
-          "modifiers": [
-            "private"
-          ]
-        },
-        {
-          "name": "getIpAddress",
-          "kind": "fun",
-          "line": 120,
-          "modifiers": [
-            "private"
-          ]
-        },
-        {
-          "name": "getUptime",
-          "kind": "fun",
-          "line": 129,
-          "modifiers": [
-            "private"
-          ]
-        },
-        {
-          "name": "getRefreshRate",
-          "kind": "fun",
-          "line": 136,
-          "modifiers": [
-            "private"
-          ]
-        },
-        {
-          "name": "SystemInfoOverlay",
-          "kind": "fun",
-          "line": 150
-        },
-        {
-          "name": "doFrame",
-          "kind": "fun",
-          "line": 176,
-          "modifiers": [
-            "override"
-          ]
-        },
-        {
-          "name": "OverlayRow",
-          "kind": "fun",
-          "line": 290,
-          "modifiers": [
-            "private"
-          ]
-        },
-        {
-          "name": "OverlayStaticPreview",
-          "kind": "fun",
-          "line": 311
-        },
-        {
-          "name": "SystemInfoOverlayPreview",
-          "kind": "fun",
-          "line": 355
-        }
-      ]
-    },
-    {
-      "path": "app/src/main/java/com/launcher/samiboxtv/ui/SystemMonitorLog.kt",
-      "language": "kotlin",
-      "lines": 244,
-      "imports": [
-        "android.content.Context",
-        "android.content.Intent",
-        "android.content.pm.ApplicationInfo",
-        "android.content.pm.PackageManager",
-        "android.net.Uri",
-        "androidx.compose.foundation.BorderStroke",
-        "androidx.compose.foundation.background",
-        "androidx.compose.foundation.layout.*",
-        "androidx.compose.foundation.lazy.LazyColumn",
-        "androidx.compose.foundation.lazy.items",
-        "androidx.compose.foundation.shape.RoundedCornerShape",
-        "androidx.compose.runtime.*",
-        "androidx.compose.ui.Alignment",
-        "androidx.compose.ui.Modifier",
-        "androidx.compose.ui.graphics.Color",
-        "androidx.compose.ui.platform.LocalContext",
-        "androidx.compose.ui.text.font.Font",
-        "androidx.compose.ui.text.font.FontFamily",
-        "androidx.compose.ui.text.style.TextOverflow",
-        "androidx.compose.ui.unit.dp",
-        "androidx.compose.ui.unit.sp",
-        "androidx.tv.material3.Border",
-        "androidx.tv.material3.Card",
-        "androidx.tv.material3.CardDefaults",
-        "androidx.tv.material3.ExperimentalTvMaterial3Api",
-        "androidx.tv.material3.Text",
-        "com.launcher.samiboxtv.R"
-      ],
-      "symbols": [
-        {
-          "name": "ScannedApp",
-          "kind": "class",
-          "line": 33,
-          "modifiers": [
-            "data"
-          ]
-        },
-        {
-          "name": "scanAllApps",
-          "kind": "fun",
-          "line": 42
-        },
-        {
-          "name": "SystemMonitorLog",
-          "kind": "fun",
-          "line": 124
-        },
-        {
-          "name": "AppLogItem",
-          "kind": "fun",
-          "line": 174
-        }
-      ]
-    },
-    {
-      "path": "app/src/main/java/com/launcher/samiboxtv/ui/theme/Color.kt",
-      "language": "kotlin",
-      "lines": 11,
-      "imports": [
-        "androidx.compose.ui.graphics.Color"
-      ],
-      "symbols": []
-    },
-    {
-      "path": "app/src/main/java/com/launcher/samiboxtv/ui/theme/Theme.kt",
-      "language": "kotlin",
-      "lines": 34,
-      "imports": [
-        "androidx.compose.foundation.isSystemInDarkTheme",
-        "androidx.compose.runtime.Composable",
-        "androidx.tv.material3.ExperimentalTvMaterial3Api",
-        "androidx.tv.material3.MaterialTheme",
-        "androidx.tv.material3.darkColorScheme",
-        "androidx.tv.material3.lightColorScheme"
-      ],
-      "symbols": [
-        {
-          "name": "SamiBoxTVTheme",
-          "kind": "fun",
-          "line": 12
-        }
-      ]
-    },
-    {
-      "path": "app/src/main/java/com/launcher/samiboxtv/ui/theme/Type.kt",
-      "language": "kotlin",
-      "lines": 36,
-      "imports": [
-        "androidx.compose.ui.text.TextStyle",
-        "androidx.compose.ui.text.font.FontFamily",
-        "androidx.compose.ui.text.font.FontWeight",
-        "androidx.compose.ui.unit.sp",
-        "androidx.tv.material3.ExperimentalTvMaterial3Api",
-        "androidx.tv.material3.Typography"
-      ],
-      "symbols": []
     }
   ]
 }

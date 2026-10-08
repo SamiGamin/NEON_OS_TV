@@ -61,6 +61,9 @@ interface AppContainer {
     val getRunningProcessesUseCase: GetRunningProcessesUseCase
     val cleanMemoryUseCase: CleanMemoryUseCase
     val killProcessUseCase: KillProcessUseCase
+    val getLauncherSettingsUseCase: com.launcher.samiboxtv.domain.usecase.GetLauncherSettingsUseCase
+    val saveCardStyleUseCase: com.launcher.samiboxtv.domain.usecase.SaveCardStyleUseCase
+    val manageCategoriesUseCase: com.launcher.samiboxtv.domain.usecase.ManageCategoriesUseCase
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -177,5 +180,17 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val setHiddenPackagesUseCase: SetHiddenPackagesUseCase by lazy {
         SetHiddenPackagesUseCase(preferencesRepository = preferencesRepository)
+    }
+
+    override val getLauncherSettingsUseCase: com.launcher.samiboxtv.domain.usecase.GetLauncherSettingsUseCase by lazy {
+        com.launcher.samiboxtv.domain.usecase.GetLauncherSettingsUseCase(preferencesRepository = preferencesRepository)
+    }
+
+    override val saveCardStyleUseCase: com.launcher.samiboxtv.domain.usecase.SaveCardStyleUseCase by lazy {
+        com.launcher.samiboxtv.domain.usecase.SaveCardStyleUseCase(preferencesRepository = preferencesRepository)
+    }
+
+    override val manageCategoriesUseCase: com.launcher.samiboxtv.domain.usecase.ManageCategoriesUseCase by lazy {
+        com.launcher.samiboxtv.domain.usecase.ManageCategoriesUseCase(preferencesRepository = preferencesRepository)
     }
 }

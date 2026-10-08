@@ -82,12 +82,38 @@ class MainActivity : ComponentActivity() {
                     }
                     return true
                 }
+                KeyEvent.KEYCODE_SETTINGS -> {
+                    viewModel.onEvent(com.launcher.samiboxtv.presentation.home.HomeUiEvent.OpenSettings)
+                    return true
+                }
                 KeyEvent.KEYCODE_BACK -> {
                     if (overlayManager.isVisible()) {
                         overlayManager.hide()
                         return true
                     }
-                    return true
+                    val state = viewModel.uiState.value
+                    when {
+                        state.isSettingsOpen -> {
+                            viewModel.onEvent(com.launcher.samiboxtv.presentation.home.HomeUiEvent.CloseSettings)
+                            return true
+                        }
+                        state.isSystemLogOpen -> {
+                            viewModel.onEvent(com.launcher.samiboxtv.presentation.home.HomeUiEvent.CloseSystemLog)
+                            return true
+                        }
+                        state.isAddDialogOpen -> {
+                            viewModel.onEvent(com.launcher.samiboxtv.presentation.home.HomeUiEvent.CloseAddDialog)
+                            return true
+                        }
+                        state.selectedAppForMenu != null -> {
+                            viewModel.onEvent(com.launcher.samiboxtv.presentation.home.HomeUiEvent.CloseContextMenu)
+                            return true
+                        }
+                        else -> {
+                            // En la pantalla principal de un Launcher TV, la tecla BACK no debe cerrar la app
+                            return true
+                        }
+                    }
                 }
             }
         }

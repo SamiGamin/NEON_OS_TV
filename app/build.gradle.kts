@@ -89,7 +89,7 @@ tasks.register("renameReleaseApk") {
         val unsignedFile = File(releaseDir, "app-release-unsigned.apk")
         val source = if (apkFile.exists()) apkFile else unsignedFile
         if (source.exists()) {
-            val target = File(releaseDir, "SamiBoxTV-v$vName-release.apk")
+            val target = File(releaseDir, "NEONOS_TV-v$vName-release.apk")
             source.copyTo(target, overwrite = true)
             println("==> APK Release generado: ${target.name}")
         }
@@ -102,7 +102,7 @@ tasks.register("renameDebugApk") {
         val vName = android.defaultConfig.versionName ?: "1.0"
         val apkFile = File(debugDir, "app-debug.apk")
         if (apkFile.exists()) {
-            val target = File(debugDir, "SamiBoxTV-v$vName-debug.apk")
+            val target = File(debugDir, "NEONOS_TV-v$vName-debug.apk")
             apkFile.copyTo(target, overwrite = true)
             println("==> APK Debug generado: ${target.name}")
         }
@@ -121,7 +121,7 @@ afterEvaluate {
 }
 
 base {
-    archivesName.set("SamiBoxTV-v${android.defaultConfig.versionName}")
+    archivesName.set("NEONOS_TV-v${android.defaultConfig.versionName}")
 }
 
 dependencies {
@@ -134,6 +134,7 @@ dependencies {
     implementation(libs.androidx.tv.foundation)
     implementation(libs.androidx.tv.material)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
 
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

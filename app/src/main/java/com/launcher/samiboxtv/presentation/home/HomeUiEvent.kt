@@ -32,4 +32,11 @@ sealed interface HomeUiEvent : UiEvent {
     object RefreshApps : HomeUiEvent
     object CheckUpdates : HomeUiEvent
     object DismissUpdateDialog : HomeUiEvent
+    object OpenSettings : HomeUiEvent
+    object CloseSettings : HomeUiEvent
+    data class SelectSettingsSection(val section: com.launcher.samiboxtv.domain.model.SettingsSection) : HomeUiEvent
+    data class ChangeCardStyle(val style: com.launcher.samiboxtv.domain.model.AppCardStyle) : HomeUiEvent
+    data class CreateCategory(val name: String) : HomeUiEvent
+    data class RemoveCategory(val name: String) : HomeUiEvent
+    data class AssignCategory(val packageName: String, val categoryName: String) : HomeUiEvent
 }

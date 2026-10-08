@@ -1,5 +1,7 @@
 package com.launcher.samiboxtv.domain.model
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Modelo de datos con la telemetría en tiempo real del hardware y sistema operativo del TV Box.
  *
@@ -17,6 +19,7 @@ package com.launcher.samiboxtv.domain.model
  * @property deviceModel Fabricante y modelo del dispositivo (e.g., Xiaomi Box, Rockchip TV Box).
  * @property androidVersion Versión de Android y nivel de API.
  */
+@Immutable
 data class SystemTelemetry(
     val ramUsedMb: Long = 0,
     val ramTotalMb: Long = 0,

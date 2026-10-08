@@ -1,5 +1,6 @@
 package com.launcher.samiboxtv.presentation.home
 
+import androidx.compose.runtime.Immutable
 import com.launcher.samiboxtv.core.base.UiState
 import com.launcher.samiboxtv.domain.model.AppItem
 import com.launcher.samiboxtv.domain.model.NetworkStatus
@@ -12,6 +13,7 @@ import com.launcher.samiboxtv.domain.model.UpdateInfo
  * Estado inmutable de la pantalla principal del Launcher con categorías HUD,
  * catálogo de aplicaciones, telemetría de red, hardware y actualizaciones.
  */
+@Immutable
 data class HomeUiState(
     val isLoading: Boolean = true,
     val featuredApps: List<AppItem> = emptyList(),
@@ -31,6 +33,11 @@ data class HomeUiState(
     val updateCheckMessage: String? = null,
     val networkStatus: NetworkStatus = NetworkStatus(),
     val systemTelemetry: SystemTelemetry = SystemTelemetry(),
+    val isSettingsOpen: Boolean = false,
+    val activeSettingsSection: com.launcher.samiboxtv.domain.model.SettingsSection = com.launcher.samiboxtv.domain.model.SettingsSection.FAVORITES,
+    val cardStyle: com.launcher.samiboxtv.domain.model.AppCardStyle = com.launcher.samiboxtv.domain.model.AppCardStyle.BANNER_16_9,
+    val categories: List<String> = listOf("STREAMING", "GAMING", "APPS"),
+    val appCategoryMap: Map<String, String> = emptyMap(),
     val errorMessage: String? = null
 ) : UiState {
     // Compatibilidad para reordenamiento u otros consumidores

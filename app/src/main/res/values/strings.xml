@@ -1,4 +1,8 @@
 <resources>
-    <string name="app_name">SamiBox TV</string>
+    <string name="app_name">NEONOS TV</string>
     <string name="accessibility_service_description">Permite a SamiBox TV mostrar el monitor del sistema sobre cualquier aplicación usando la tecla MENU.</string>
+    <!-- Nombre o encabezado principal -->
+    <string name="header_app_title">NEONOS TV</string>
+    <!-- Versión formateada con placeholder -->
+    <string name="header_app_version">SAMIDEV  v%1$s</string>
 </resources>

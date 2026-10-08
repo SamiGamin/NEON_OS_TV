@@ -48,4 +48,32 @@ class PreferencesRepositoryImpl(
     override suspend fun saveCustomOrder(order: List<String>) = withContext(dispatcherProvider.io) {
         preferencesDataSource.saveCustomOrder(order)
     }
+
+    override suspend fun getCardStyle(): com.launcher.samiboxtv.domain.model.AppCardStyle = withContext(dispatcherProvider.io) {
+        com.launcher.samiboxtv.domain.model.AppCardStyle.fromName(preferencesDataSource.getCardStyle())
+    }
+
+    override suspend fun setCardStyle(style: com.launcher.samiboxtv.domain.model.AppCardStyle) = withContext(dispatcherProvider.io) {
+        preferencesDataSource.setCardStyle(style.name)
+    }
+
+    override suspend fun getCustomCategories(): List<String> = withContext(dispatcherProvider.io) {
+        preferencesDataSource.getCustomCategories()
+    }
+
+    override suspend fun addCustomCategory(categoryName: String): Boolean = withContext(dispatcherProvider.io) {
+        preferencesDataSource.addCustomCategory(categoryName)
+    }
+
+    override suspend fun removeCustomCategory(categoryName: String): Boolean = withContext(dispatcherProvider.io) {
+        preferencesDataSource.removeCustomCategory(categoryName)
+    }
+
+    override suspend fun getAppCategoryMap(): Map<String, String> = withContext(dispatcherProvider.io) {
+        preferencesDataSource.getAppCategoryMap()
+    }
+
+    override suspend fun setAppCategory(packageName: String, categoryName: String) = withContext(dispatcherProvider.io) {
+        preferencesDataSource.setAppCategory(packageName, categoryName)
+    }
 }

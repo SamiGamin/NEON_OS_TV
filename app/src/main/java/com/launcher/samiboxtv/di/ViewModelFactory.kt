@@ -29,6 +29,9 @@ class ViewModelFactory(
                 getRunningProcessesUseCase = appContainer.getRunningProcessesUseCase,
                 cleanMemoryUseCase = appContainer.cleanMemoryUseCase,
                 killProcessUseCase = appContainer.killProcessUseCase,
+                getLauncherSettingsUseCase = appContainer.getLauncherSettingsUseCase,
+                saveCardStyleUseCase = appContainer.saveCardStyleUseCase,
+                manageCategoriesUseCase = appContainer.manageCategoriesUseCase,
                 dispatcherProvider = appContainer.dispatcherProvider
             ) as T
         }

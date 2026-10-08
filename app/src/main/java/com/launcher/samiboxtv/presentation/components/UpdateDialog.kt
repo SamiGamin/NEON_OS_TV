@@ -1,7 +1,6 @@
 package com.launcher.samiboxtv.presentation.components
 
-import android.content.Intent
-import android.net.Uri
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +18,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,17 +38,23 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
+import com.launcher.samiboxtv.core.dispatcher.ApkInstallerHelper
 import com.launcher.samiboxtv.domain.model.UpdateInfo
 import com.launcher.samiboxtv.presentation.theme.CyberAmber
 import com.launcher.samiboxtv.presentation.theme.CyberCyan
 import com.launcher.samiboxtv.presentation.theme.CyberGrey
 import com.launcher.samiboxtv.presentation.theme.CyberMagenta
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
+import kotlinx.coroutines.launch
+import java.io.File
 
-/**
- * Diálogo Cyberpunk para notificar y gestionar nuevas actualizaciones del Launcher
- * obtenidas desde GitHub Releases.
- */
+private enum class UpdateDownloadState {
+    IDLE,
+    DOWNLOADING,
+    READY_TO_INSTALL,
+    ERROR
+}
+
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun UpdateDialog(
@@ -50,10 +62,20 @@ fun UpdateDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val techFont = ShareTechMonoFontFamily
 
+    var downloadState by remember { mutableStateOf(UpdateDownloadState.IDLE) }
+    var downloadProgress by remember { mutableFloatStateOf(0f) }
+    val animatedProgress by animateFloatAsState(targetValue = downloadProgress, label = "ProgressAnim")
+
+    val apkFile = remember { File(context.cacheDir, "update_launcher.apk") }
+
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            // Evitar cerrar accidentalmente mientras descarga
+            if (downloadState != UpdateDownloadState.DOWNLOADING) onDismiss()
+        },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(
@@ -144,16 +166,69 @@ fun UpdateDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // Botones de Acción (TV Remote D-Pad friendly)
+                // Barra de Progreso Cyberpunk (Visible al descargar o al ocurrir un error)
+                if (downloadState != UpdateDownloadState.IDLE) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = when (downloadState) {
+                                    UpdateDownloadState.DOWNLOADING -> "DESCARGANDO PAQUETE OTA..."
+                                    UpdateDownloadState.READY_TO_INSTALL -> "PAQUETE DESCARGADO // LISTO PARA INSTALAR"
+                                    UpdateDownloadState.ERROR -> "ERROR DE DESCARGA // VERIFICA TU RED"
+                                    else -> ""
+                                },
+                                color = if (downloadState == UpdateDownloadState.ERROR) Color(0xFFFF5252) else CyberCyan,
+                                fontFamily = techFont,
+                                fontSize = 11.sp
+                            )
+                            if (downloadState == UpdateDownloadState.DOWNLOADING) {
+                                Text(
+                                    text = "${(downloadProgress * 100).toInt()}%",
+                                    color = CyberAmber,
+                                    fontFamily = techFont,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Barra contenedora
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFF141A28))
+                                .border(1.dp, CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(animatedProgress)
+                                    .background(CyberMagenta)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
+                // Botones de Acción
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Botón Cancelar / Recordar
                     Button(
                         onClick = onDismiss,
+                        enabled = downloadState != UpdateDownloadState.DOWNLOADING,
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0xFF141A28),
                             focusedContainerColor = Color(0xFF26324D)
@@ -161,7 +236,7 @@ fun UpdateDialog(
                         shape = ButtonDefaults.shape(RoundedCornerShape(6.dp))
                     ) {
                         Text(
-                            text = "RECORDAR MÁS TARDE",
+                            text = if (downloadState == UpdateDownloadState.DOWNLOADING) "DESCARGANDO..." else "RECORDAR MÁS TARDE",
                             color = CyberGrey,
                             fontFamily = techFont,
                             fontSize = 12.sp,
@@ -171,27 +246,60 @@ fun UpdateDialog(
 
                     Spacer(modifier = Modifier.width(16.dp))
 
+                    // Botón Principal de Acción
                     Button(
                         onClick = {
-                            val downloadUrl = updateInfo.apkDownloadUrl
-                            if (!downloadUrl.isNullOrBlank()) {
-                                try {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
-                                    context.startActivity(intent)
-                                } catch (_: Exception) {
-                                    // Fallback a navegador
+                            when (downloadState) {
+                                UpdateDownloadState.IDLE, UpdateDownloadState.ERROR -> {
+                                    val url = updateInfo.apkDownloadUrl
+                                    if (!url.isNullOrBlank()) {
+                                        downloadState = UpdateDownloadState.DOWNLOADING
+                                        downloadProgress = 0f
+
+                                        coroutineScope.launch {
+                                            val success = ApkInstallerHelper.downloadApk(
+                                                downloadUrl = url,
+                                                outputFile = apkFile,
+                                                onProgress = { progress ->
+                                                    downloadProgress = progress
+                                                }
+                                            )
+
+                                            if (success) {
+                                                downloadState = UpdateDownloadState.READY_TO_INSTALL
+                                                // Abre el instalador nativo inmediatamente tras completar
+                                                ApkInstallerHelper.launchInstallApk(context, apkFile)
+                                            } else {
+                                                downloadState = UpdateDownloadState.ERROR
+                                            }
+                                        }
+                                    }
+                                }
+                                UpdateDownloadState.READY_TO_INSTALL -> {
+                                    // Si el usuario vuelve a presionar el botón
+                                    ApkInstallerHelper.launchInstallApk(context, apkFile)
+                                }
+                                UpdateDownloadState.DOWNLOADING -> {
+                                    // Ignorar clics mientras descarga
                                 }
                             }
-                            onDismiss()
                         },
                         colors = ButtonDefaults.colors(
-                            containerColor = CyberMagenta,
-                            focusedContainerColor = CyberCyan
+                            containerColor = when (downloadState) {
+                                UpdateDownloadState.READY_TO_INSTALL -> CyberCyan
+                                else -> CyberMagenta
+                            },
+                            focusedContainerColor = CyberAmber
                         ),
                         shape = ButtonDefaults.shape(RoundedCornerShape(6.dp))
                     ) {
                         Text(
-                            text = "DESCARGAR E INSTALAR",
+                            text = when (downloadState) {
+                                UpdateDownloadState.IDLE -> "DESCARGAR E INSTALAR"
+                                UpdateDownloadState.DOWNLOADING -> "DESCARGANDO..."
+                                UpdateDownloadState.READY_TO_INSTALL -> "INSTALAR AHORA"
+                                UpdateDownloadState.ERROR -> "REINTENTAR DESCARGA"
+                            },
                             color = Color.Black,
                             fontFamily = techFont,
                             fontSize = 12.sp,

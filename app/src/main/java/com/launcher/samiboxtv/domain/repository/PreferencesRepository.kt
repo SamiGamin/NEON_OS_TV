@@ -13,4 +13,11 @@ interface PreferencesRepository {
     suspend fun toggleFavoritePackage(packageName: String): Boolean
     suspend fun getCustomOrder(): List<String>
     suspend fun saveCustomOrder(order: List<String>)
+    suspend fun getCardStyle(): com.launcher.samiboxtv.domain.model.AppCardStyle
+    suspend fun setCardStyle(style: com.launcher.samiboxtv.domain.model.AppCardStyle)
+    suspend fun getCustomCategories(): List<String>
+    suspend fun addCustomCategory(categoryName: String): Boolean
+    suspend fun removeCustomCategory(categoryName: String): Boolean
+    suspend fun getAppCategoryMap(): Map<String, String>
+    suspend fun setAppCategory(packageName: String, categoryName: String)
 }
