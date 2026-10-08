@@ -62,6 +62,19 @@
             
         </activity>
 
+        <activity
+            android:name=".util.FakeHomeActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:label="SamiBox TV Reset"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <!-- Servicio de accesibilidad para capturar teclas globalmente -->
         <service
             android:name=".services.accessibility.SamiBoxAccessibilityService"

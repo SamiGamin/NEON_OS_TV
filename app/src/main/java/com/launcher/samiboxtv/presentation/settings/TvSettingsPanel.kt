@@ -68,6 +68,7 @@ import com.launcher.samiboxtv.presentation.theme.CyberCyan
 import com.launcher.samiboxtv.presentation.theme.CyberGrey
 import com.launcher.samiboxtv.presentation.theme.CyberMagenta
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
+import com.launcher.samiboxtv.util.DefaultLauncherHelper
 
 /**
  * Panel de Ajustes y Configuración estilo Android TV / Google TV.
@@ -82,6 +83,7 @@ fun TvSettingsPanel(
     val context = LocalContext.current
     var showAddCategoryDialog by remember { mutableStateOf(false) }
     var selectedAppForCategoryChange by remember { mutableStateOf<AppItem?>(null) }
+    var showDefaultLauncherDialog by remember { mutableStateOf(false) }
     val initialFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -236,7 +238,8 @@ fun TvSettingsPanel(
                                 onToggleHudOverlay = {
                                     onEvent(HomeUiEvent.ToggleHudOverlay)
                                     onEvent(HomeUiEvent.CloseSettings)
-                                }
+                                },
+                                onOpenDefaultLauncherDialog = { showDefaultLauncherDialog = true }
                             )
                         }
                     }
@@ -267,6 +270,14 @@ fun TvSettingsPanel(
                 onEvent(HomeUiEvent.AssignCategory(app.packageName, newCategory))
                 selectedAppForCategoryChange = null
             }
+        )
+    }
+
+    // Diálogo avanzado para forzar o anclar Launcher Predeterminado
+    if (showDefaultLauncherDialog) {
+        DefaultLauncherDialog(
+            context = context,
+            onDismiss = { showDefaultLauncherDialog = false }
         )
     }
 }
@@ -665,29 +676,24 @@ private fun SystemSettingsContent(
     updateCheckMessage: String?,
     onOpenTelemetry: () -> Unit,
     onCheckUpdates: () -> Unit,
-    onToggleHudOverlay: () -> Unit
+    onToggleHudOverlay: () -> Unit,
+    onOpenDefaultLauncherDialog: () -> Unit
 ) {
+    val isAggressiveActive = remember { DefaultLauncherHelper.isAccessibilityServiceEnabled(context) }
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         SettingsActionItem(
             title = "⌂ ESTABLECER COMO LAUNCHER PREDETERMINADO",
-            subtitle = "Abre los ajustes de Android para que la casita siempre abra SamiBox TV",
-            isHighlighted = false,
-            onClick = {
-                try {
-                    val intent = Intent(Settings.ACTION_HOME_SETTINGS).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(intent)
-                } catch (_: Exception) {
-                    val fallback = Intent(Settings.ACTION_SETTINGS).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(fallback)
-                }
-            }
+            subtitle = if (isAggressiveActive) {
+                "[✓ ANCLAJE AGRESIVO ACTIVO] Clic para ver opciones del botón Home"
+            } else {
+                "Forzar selector de Android o activar anclaje agresivo para TV Box"
+            },
+            isHighlighted = isAggressiveActive,
+            onClick = onOpenDefaultLauncherDialog
         )
 
         SettingsActionItem(
@@ -782,6 +788,193 @@ private fun SettingsActionItem(
                 },
                 fontSize = 9.sp,
                 fontFamily = ShareTechMonoFontFamily
+            )
+        }
+    }
+}
+
+@Composable
+private fun DefaultLauncherDialog(
+    context: Context,
+    onDismiss: () -> Unit
+) {
+    val isAggressiveActive = remember { DefaultLauncherHelper.isAccessibilityServiceEnabled(context) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.75f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(560.dp)
+                    .background(Color(0xFF090E1B), RoundedCornerShape(14.dp))
+                    .border(1.5.dp, CyberCyan, RoundedCornerShape(14.dp))
+                    .padding(24.dp)
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "⌂ CONFIGURAR BOTÓN HOME",
+                            color = CyberCyan,
+                            fontFamily = ShareTechMonoFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (isAggressiveActive) CyberCyan.copy(alpha = 0.2f) else CyberAmber.copy(alpha = 0.2f))
+                                .border(1.dp, if (isAggressiveActive) CyberCyan else CyberAmber, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (isAggressiveActive) "ANCLAJE ACTIVO" else "MODO NORMAL",
+                                color = if (isAggressiveActive) CyberCyan else CyberAmber,
+                                fontSize = 10.sp,
+                                fontFamily = ShareTechMonoFontFamily,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Selecciona una estrategia según las restricciones de tu TV Box (Android 10/11):",
+                        color = Color(0xFFA6C5E2),
+                        fontSize = 11.sp,
+                        fontFamily = ShareTechMonoFontFamily
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    LauncherOptionItem(
+                        title = "1. ⚡ FORZAR SELECTOR DE ANDROID",
+                        subtitle = "Invalida la caché del sistema para que Android pregunte qué launcher abrir. Elige SamiBox TV y toca 'SIEMPRE'.",
+                        isHighlighted = false,
+                        onClick = {
+                            DefaultLauncherHelper.resetAndPromptDefaultLauncher(context)
+                            onDismiss()
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    LauncherOptionItem(
+                        title = if (isAggressiveActive) {
+                            "2. 🛡 MODO AGRESIVO (ACCESIBILIDAD) [✓ ACTIVO]"
+                        } else {
+                            "2. 🛡 MODO AGRESIVO (ACCESIBILIDAD) [ACTIVAR]"
+                        },
+                        subtitle = if (isAggressiveActive) {
+                            "El servicio ya intercepta el botón HOME y bloquea el launcher de fábrica automáticamente."
+                        } else {
+                            "Recomendado para Android 10/11 con launcher bloqueado. Abre Ajustes de Accesibilidad para encender SamiBox TV."
+                        },
+                        isHighlighted = isAggressiveActive,
+                        onClick = {
+                            DefaultLauncherHelper.openAccessibilitySettings(context)
+                            onDismiss()
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    LauncherOptionItem(
+                        title = "3. ⚙ AJUSTES DE APPS DEL SISTEMA",
+                        subtitle = "Abre la pantalla de ajustes de aplicaciones para cambiar el inicio de Android manualmente.",
+                        isHighlighted = false,
+                        onClick = {
+                            DefaultLauncherHelper.openDefaultAppsSettings(context)
+                            onDismiss()
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        var cancelFocused by remember { mutableStateOf(false) }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (cancelFocused) Color(0xFF1F2B48) else Color(0xFF141C30))
+                                .border(
+                                    1.dp,
+                                    if (cancelFocused) CyberAmber else Color.Transparent,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .onFocusChanged { cancelFocused = it.isFocused }
+                                .tvClickable { onDismiss() }
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = "CERRAR",
+                                color = if (cancelFocused) CyberAmber else CyberGrey,
+                                fontFamily = ShareTechMonoFontFamily,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LauncherOptionItem(
+    title: String,
+    subtitle: String,
+    isHighlighted: Boolean,
+    onClick: () -> Unit
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(8.dp)
+
+    val borderColor = when {
+        isFocused -> CyberAmber
+        isHighlighted -> CyberCyan
+        else -> CyberCyan.copy(alpha = 0.25f)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(if (isFocused) Color(0xFF1B2848) else Color(0xFF0F172B))
+            .border(width = if (isFocused) 2.dp else 1.dp, color = borderColor, shape = shape)
+            .onFocusChanged { isFocused = it.isFocused }
+            .tvClickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Column {
+            Text(
+                text = title,
+                color = if (isFocused) CyberAmber else (if (isHighlighted) CyberCyan else Color.White),
+                fontSize = 12.sp,
+                fontFamily = ShareTechMonoFontFamily,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(
+                text = subtitle,
+                color = if (isHighlighted) CyberCyan.copy(alpha = 0.9f) else Color(0xFF88A8C7),
+                fontSize = 10.sp,
+                fontFamily = ShareTechMonoFontFamily,
+                lineHeight = 13.sp
             )
         }
     }
