@@ -1,31 +1,89 @@
-# 🚀 SamiBox TV - Roadmap (Hoja de Ruta)
+# 🚀 SamiBox TV — Hoja de Ruta (Roadmap) y Visión Futura
 
-Este documento detalla las ideas y funcionalidades planificadas para las próximas actualizaciones del **SamiBox TV Launcher**, manteniendo y mejorando el estilo Retro de Consola 8-Bits y la usabilidad para cajas genéricas Android TV.
-
-## 🎨 1. Personalización y Estética Retro Superior
-- **Wallpapers Dinámicos (Live Backgrounds):** Reemplazar el fondo estático por un fondo animado retro, como estrellas desplazándose (tipo *Space Invaders*) o una cuadrícula de *vaporwave / retrowave*.
-- **Efectos de Sonido 8-Bits:** Integrar sonidos de *beeps* estilo arcade al moverse por la cuadrícula con el control remoto, y un sonido de "moneda" o inicio al seleccionar/abrir una aplicación.
-- **Selector de Paleta de Colores:** Permitir elegir diferentes perfiles de colores clásicos directamente desde una app de ajustes del launcher (Ej: Tema "GameBoy" en tonos verdes, "VirtualBoy" en tonos rojos, o el actual "Arcade Neón").
-
-## 🎮 2. Organización y Accesibilidad Avanzada
-- **Carpetas y Categorías Automáticas:** Sistema inteligente que separe los juegos (Games) del contenido en streaming (Media) en diferentes páginas o pestañas (Tabs) en la parte superior.
-- **Atajos (Shortcuts) y Accesos Directos:** Permitir anclar acciones específicas, como abrir directamente un juego o iniciar una película específica si la aplicación lo permite.
-- **Teclado Retro de Búsqueda:** Un pequeño buscador en la esquina superior que abra un teclado pixelado para encontrar apps rápidamente cuando el usuario tiene más de 100 instaladas.
-
-## ⚙️ 3. Funciones de Sistema y Mantenimiento
-- **Desinstalación Rápida:** Añadir la opción de "Desinstalar Aplicación" en el menú contextual emergente (`AppContextMenu`) para poder borrar bloatware chino directamente desde el launcher usando intents de sistema.
-- **Protector de Pantalla (Daydream):** Crear un protector de pantalla propio de *SamiBox TV* que aparezca tras 5 minutos de inactividad, mostrando el mensaje titilante "INSERT COIN" o rebotando el logo estilo DVD.
-- **Medidor de Temperatura/Red:** Un pequeño widget al lado de la hora para visualizar si la TV Box está recalentándose o si la conexión Wi-Fi es buena (muy útil para cajas genéricas chinas).
-
-## 📡 4. Soporte y Rendimiento Extremo
-- **Carga Asíncrona (Lazy Loading) Inteligente de Iconos:** Mejorar el motor de iconos para que solo cargue en memoria las 10 apps que ves en la pantalla actual `HorizontalPager`, reduciendo el uso de RAM al mínimo absoluto.
-- **Soporte de Actualizaciones OTA (Over the Air):** Un sistema de verificación con Github para avisar cuando compiles y lances una nueva versión comunitaria de SamiBox TV.
+Este documento define la evolución técnica y funcional de **SamiBox TV Launcher**, consolidando los hitos ya implementados y trazando las nuevas características prioritarias para futuras versiones.
 
 ---
 
-> **Nota para el desarrollador:** Cualquier implementación de estas características debe guiarse siempre por la primicia de: **Navegación ágil mediante D-Pad** (flechas del control remoto original) y respeto a la paleta Monospaced y colores oscuros para proteger pantallas grandes (TVs).
+## ✅ 1. Logros Implementados & Mejoras Consolidadas
 
+Las siguientes funciones fueron completadas e integradas con éxito en el launcher:
 
-teclas de control remoto para el modificar 
-key pressed 82 para un monitor de sistema fps y ram temperatura de la caja y uso de memoria ram y uso de almacenamiento interno y externo   y uso de red  en una pantalla en la esquina superior derecha  y que se pueda cerrar con la tecla back sin salir de la aplicacion semitrasparente y que se quede en segundo plano y que se pueda abrir y cerrar con la tecla 82  
-tecla 166 y 167 pendientes de usar  
+* **[✓] Modo Reordenamiento Fantasma en Vivo (Estilo Projectivy):**
+  * Activación desde el panel contextual lateral.
+  * Tarjeta interactiva con escala, resplandor pulsante neón (`◄ MOVER ►`) y animación física fluida (`Modifier.animateItem()`).
+  * Intercambio en tiempo real con D-Pad Izquierda/Derecha y persistencia local inmediata.
+* **[✓] Filas y Categorías Temáticas Dinámicas:**
+  * Organización horizontal por secciones (*STREAMING*, *GAMING*, *APPS* y categorías personalizadas).
+  * Panel de gestión de categorías en Ajustes para crear y eliminar filas libremente.
+* **[✓] Menú Lateral Contextual (`AppContextSideDrawer`):**
+  * Panel deslizable a la derecha (400dp) con autofoco D-Pad.
+  * Desinstalación nativa de aplicaciones (`Intent.ACTION_DELETE`), acceso a ajustes del sistema, favoritos y categorización.
+* **[✓] Personalización Visual y Modo Minimalista:**
+  * Selector de proporciones de tarjeta (16:9, Cuadrado 1:1, Compacto).
+  * Conmutador para **Mostrar/Ocultar Nombres de Apps** (modo minimalista de solo iconos a 54dp con arte limpio).
+* **[✓] Cyber Media Hub (Explorador & Reproductor de Medios Nativo):**
+  * Detección automática de memorias internas y discos USB externos (`/storage/XXXX-XXXX`) con cálculo de espacio.
+  * Escaneo reactivo de videos (.mp4, .mkv, .avi, .ts) y música (.mp3, .flac, .wav, .m4a) en `Dispatchers.IO`.
+  * Reproductor nativo en pantalla completa con **Jetpack Media3 (ExoPlayer)** y HUD OSD adaptado a control remoto.
+* **[✓] Monitor de Telemetría Global (System Info Overlay):**
+  * Activación/cierre global con la tecla `MENU` (Keycode 82) vía `AccessibilityService`.
+  * Medición de FPS en tiempo real con Choreographer, CPU diferencial (`/proc/stat`), uso de RAM, temperatura, velocidad de red y almacenamiento.
+  * Suspensión total de telemetría cuando el HUD está inactivo para prevenir consumo de recursos.
+* **[✓] Actualizaciones OTA Nativas:**
+  * Consulta directa con GitHub Releases, descarga en segundo plano y ejecución de `PackageInstaller`.
+* **[✓] Selector de Launcher Predeterminado:**
+  * Detección reforzada y apertura de selector de Home nativo para Android 8 hasta Android 14.
+
+---
+
+## 🔮 2. Nuevas Metas y Próximas Características
+
+### 🎨 A. Personalización Estética & Fondos Cyberpunk
+- **Selector de Fondos Personalizados:**
+  - Permitir al usuario elegir una imagen estática almacenada en el dispositivo o en una unidad USB (integrado con el Media Hub) como fondo de pantalla del Launcher.
+  - Opciones de gradientes o rejillas matriciales cyber con costo computacional cero (sin renders pesados ni overdraw).
+- **Control de Brillo y Atenuación de Fondo:**
+  - Control deslizante para oscurecer el fondo de pantalla y garantizar máximo contraste con las tarjetas de apps.
+
+### 🔊 B. Efectos de Sonido Cyberpunk (SFX)
+- **Feedback Auditivo para D-Pad:**
+  - Integrar efectos de sonido sutiles y futuristas (beeps de baja frecuencia, clics digitales de alta fidelidad) al desplazarse entre tarjetas y categorías.
+  - Sonido de confirmación al ejecutar aplicaciones o confirmar reordenamiento.
+  - Opción en Ajustes para habilitar/deshabilitar sonidos y ajustar volumen independientemente del sistema.
+
+### 🛡 C. Protector de Pantalla / Screensaver Cyberpunk (Daydream)
+- **Modo de Reposo HUD:**
+  - Activación tras 5 o 10 minutos de inactividad en la pantalla principal.
+  - Reloj digital gigante estilo holográfico neón, fecha y métricas básicas de hardware.
+  - Algoritmo anti-quemado (*pixel shift*) para televisores OLED y paneles LED: traslación lenta de elementos para evitar retención de imagen.
+
+### 🔍 D. Búsqueda Global Rápida (Global Search)
+- **Buscador de Apps y Medios:**
+  - Botón de búsqueda accesible en la cabecera superior.
+  - Teclado virtual optimizado para control remoto con sugerencias en tiempo real.
+  - Capacidad de filtrar aplicaciones instaladas y archivos multimedia de discos USB simultáneamente.
+
+### 🎮 E. Mapeo Avanzado de Teclas del Control Remoto
+- **Asignación de Teclas Multimedia y Especiales:**
+  - Aprovechar teclas adicionales como `KEYCODE_CHANNEL_UP` (166) y `KEYCODE_CHANNEL_DOWN` (167) para saltar rápidamente entre categorías de la pantalla principal.
+  - Atajos numéricos (teclas 0 a 9) para lanzar aplicaciones favoritas asignadas con una sola pulsación.
+  - Atajos de botones de color (Rojo, Verde, Amarillo, Azul) para funciones directas: abrir Media Hub, abrir Ajustes o alternar Overlay.
+
+### 🔒 F. Perfiles y Modo Kiosko / Control Parental
+- **Protección con PIN:**
+  - Bloquear el acceso a la sección de Ajustes y a la desinstalación de aplicaciones mediante un código PIN numérico de 4 dígitos.
+  - Opción de ocultar aplicaciones específicas para niños o invitados.
+
+### 🌦 G. Widgets de Cabecera (Header HUD)
+- **Widget de Clima Local:**
+  - Consulta ligera de clima y temperatura de la ciudad actual en la barra superior.
+- **Feeds RSS de Noticias:**
+  - Marquesina sutil opcional con titulares de tecnología o videojuegos configurables.
+
+---
+
+## ⚡ 3. Directrices de Rendimiento Obligatorias para Nuevas Funciones
+1. **Dispositivos Objetivo de 1GB a 2GB de RAM:** Ninguna nueva función debe elevar el consumo base de RAM por encima de 90 MB.
+2. **Cero Overdraw:** Prohibido el uso de capas de desenfoque (`blur`) en tiempo real o sombras complejas con múltiples pasadas de GPU.
+3. **Todo el I/O fuera de Main:** Lecturas de almacenamiento USB, llamadas de red de widgets o accesos a bases de datos deben ejecutarse estrictamente bajo `Dispatchers.IO`.
+4. **Navegación 100% D-Pad:** Cada pantalla o diálogo nuevo debe contar con orden de foco determinista y accesible con un control remoto estándar de 5 botones (Arriba, Abajo, Izquierda, Derecha, OK).
