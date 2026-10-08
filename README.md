@@ -31,7 +31,7 @@ Para mantener la estética futurista y Cyberpunk neón de la interfaz, hemos inc
 ### 🖥 Banner Promocional de la Tienda (Store Banner)
 *   **Prompt:** `Futuristic cyberpunk Android TV launcher showcase banner, neon cyan and hot pink glowing grid lines on a deep black space background, high-tech HUD metrics, virtual terminal screen, glowing digital clock displaying '12:00' in electric orange, sleek minimalist smart TV app cards floating, premium cinematic lighting, volumetric atmosphere, octane render, 8k resolution, wide aspect ratio 16:9, cyberpunk tech theme`
 
-![Banner Cyberpunk Oficial](https://github.com/SamiGamin/SamiBoxTV/blob/master/app/src/main/res/drawable/banner.png)
+![Banner Cyberpunk Oficial]([https://github.com/SamiGamin/SamiBoxTV/blob/master/app/src/main/res/drawable/banner.png](https://github.com/SamiGamin/SamiBoxTV/blob/master/app/src/main/res/drawable/banner.jpg?raw=true))
 
 ## 🛠 Instalación y Configuración
 
