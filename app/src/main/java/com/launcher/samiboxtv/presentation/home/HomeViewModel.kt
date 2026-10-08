@@ -5,10 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.launcher.samiboxtv.core.dispatcher.DispatcherProvider
 import com.launcher.samiboxtv.domain.model.AppCardStyle
 import com.launcher.samiboxtv.domain.model.AppItem
-import com.launcher.samiboxtv.domain.model.SettingsSection
 import com.launcher.samiboxtv.domain.model.SystemMonitorTab
 import com.launcher.samiboxtv.domain.usecase.CheckUpdateUseCase
 import com.launcher.samiboxtv.domain.usecase.CleanMemoryUseCase
+import com.launcher.samiboxtv.domain.usecase.ClearProcessCacheUseCase
 import com.launcher.samiboxtv.domain.usecase.GetInstalledAppsUseCase
 import com.launcher.samiboxtv.domain.usecase.GetLauncherSettingsUseCase
 import com.launcher.samiboxtv.domain.usecase.GetRunningProcessesUseCase
@@ -24,11 +24,14 @@ import com.launcher.samiboxtv.domain.usecase.SetHiddenPackagesUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleAppVisibilityUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleFavoriteAppUseCase
 import com.launcher.samiboxtv.domain.usecase.UnhideAppUseCase
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -51,6 +54,7 @@ class HomeViewModel(
     private val getRunningProcessesUseCase: GetRunningProcessesUseCase,
     private val cleanMemoryUseCase: CleanMemoryUseCase,
     private val killProcessUseCase: KillProcessUseCase,
+    private val clearProcessCacheUseCase: ClearProcessCacheUseCase,
     private val getLauncherSettingsUseCase: GetLauncherSettingsUseCase,
     private val saveCardStyleUseCase: SaveCardStyleUseCase,
     private val manageCategoriesUseCase: ManageCategoriesUseCase,
@@ -60,11 +64,12 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private var telemetryJob: Job? = null
+
     init {
         loadSettings()
         loadApps()
         observeNetwork()
-        observeTelemetry()
         checkForUpdates()
     }
 
@@ -78,14 +83,40 @@ class HomeViewModel(
         }
     }
 
-    private fun observeTelemetry() {
-        viewModelScope.launch(dispatcherProvider.main) {
-            observeSystemTelemetryUseCase(intervalMillis = 3000)
-                .flowOn(dispatcherProvider.io)
-                .collect { telemetry ->
-                    _uiState.update { it.copy(systemTelemetry = telemetry) }
+    private fun startTelemetrySession() {
+        telemetryJob?.cancel()
+        telemetryJob = viewModelScope.launch(dispatcherProvider.main) {
+            // 1. Recolección de telemetría de hardware (RAM, CPU, Uptime) cada 3.0s
+            launch {
+                observeSystemTelemetryUseCase(intervalMillis = 3000)
+                    .flowOn(dispatcherProvider.io)
+                    .collect { telemetry ->
+                        _uiState.update { it.copy(systemTelemetry = telemetry) }
+                    }
+            }
+
+            // 2. Refresco periódico de procesos en RAM cada 3.5 segundos bajo Dispatchers.IO
+            launch {
+                while (isActive) {
+                    val processes = withContext(dispatcherProvider.io) {
+                        getRunningProcessesUseCase()
+                    }
+                    _uiState.update { it.copy(runningProcesses = processes) }
+                    delay(3500)
                 }
+            }
         }
+    }
+
+    private fun stopTelemetrySession() {
+        telemetryJob?.cancel()
+        telemetryJob = null
+        clearProcessCacheUseCase()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopTelemetrySession()
     }
 
     fun onEvent(event: HomeUiEvent) {
@@ -106,13 +137,11 @@ class HomeViewModel(
             HomeUiEvent.CloseAddDialog -> _uiState.update { it.copy(isAddDialogOpen = false) }
             HomeUiEvent.OpenSystemLog -> {
                 _uiState.update { it.copy(isSystemLogOpen = true, activeMonitorTab = SystemMonitorTab.RAM_PROCESSES) }
-                loadRunningProcesses()
+                startTelemetrySession()
             }
             is HomeUiEvent.OpenSystemLogWithTab -> {
                 _uiState.update { it.copy(isSystemLogOpen = true, activeMonitorTab = event.tab) }
-                if (event.tab == SystemMonitorTab.RAM_PROCESSES) {
-                    loadRunningProcesses()
-                }
+                startTelemetrySession()
             }
             is HomeUiEvent.ChangeMonitorTab -> {
                 _uiState.update { it.copy(activeMonitorTab = event.tab) }
@@ -120,7 +149,16 @@ class HomeViewModel(
                     loadRunningProcesses()
                 }
             }
-            HomeUiEvent.CloseSystemLog -> _uiState.update { it.copy(isSystemLogOpen = false, ramCleanMessage = null) }
+            HomeUiEvent.CloseSystemLog -> {
+                stopTelemetrySession()
+                _uiState.update {
+                    it.copy(
+                        isSystemLogOpen = false,
+                        ramCleanMessage = null,
+                        runningProcesses = emptyList()
+                    )
+                }
+            }
             HomeUiEvent.LoadRunningProcesses -> loadRunningProcesses()
             HomeUiEvent.CleanRam -> cleanRam()
             is HomeUiEvent.KillProcess -> killProcess(event.packageName)
@@ -134,6 +172,7 @@ class HomeViewModel(
             is HomeUiEvent.CreateCategory -> createCategory(event.name)
             is HomeUiEvent.RemoveCategory -> removeCategory(event.name)
             is HomeUiEvent.AssignCategory -> assignCategory(event.packageName, event.categoryName)
+            HomeUiEvent.ToggleHudOverlay -> _uiState.update { it.copy(isHudOverlayVisible = !it.isHudOverlayVisible) }
         }
     }
 

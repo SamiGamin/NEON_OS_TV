@@ -27,10 +27,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,6 +64,7 @@ import com.launcher.samiboxtv.presentation.theme.CyberCyan
 import com.launcher.samiboxtv.presentation.theme.CyberGrey
 import com.launcher.samiboxtv.presentation.theme.CyberMagenta
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
+import com.launcher.samiboxtv.util.AppUsagePermissionHelper
 
 data class ScannedApp(
     val name: String,
@@ -69,11 +73,15 @@ data class ScannedApp(
     val isBloatware: Boolean
 )
 
-fun scanAllApps(context: Context): List<ScannedApp> {
+suspend fun scanAllApps(context: Context): List<ScannedApp> = withContext(Dispatchers.IO) {
     val pm = context.packageManager
-    val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+    val packages = try {
+        pm.getInstalledApplications(0)
+    } catch (_: Exception) {
+        emptyList()
+    }
 
-    val knownBloatware = listOf(
+    val knownBloatware = setOf(
         "com.hkw.simplelauncher",
         "com.wolf.google.lm",
         "com.luancher.apps",
@@ -98,22 +106,23 @@ fun scanAllApps(context: Context): List<ScannedApp> {
         "com.allwinnertech.miracast"
     )
 
-    val scannedList = mutableListOf<ScannedApp>()
+    val scannedList = ArrayList<ScannedApp>(packages.size)
 
     for (appInfo in packages) {
         val pkg = appInfo.packageName
-        val appName = pm.getApplicationLabel(appInfo).toString()
+        val appName = try {
+            pm.getApplicationLabel(appInfo).toString()
+        } catch (_: Exception) {
+            pkg
+        }
         val isSystemApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
         val isBloatware = knownBloatware.contains(pkg)
         scannedList.add(ScannedApp(appName, pkg, isSystemApp, isBloatware))
     }
 
-    val sorted = scannedList.sortedWith(
+    scannedList.sortedWith(
         compareBy({ !it.isBloatware }, { it.isSystemApp }, { it.name.lowercase() })
     )
-
-    Log.d("SAMIBOX_SCANNER", "TOTAL APPS: ${sorted.size}")
-    return sorted
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -132,9 +141,23 @@ fun SystemMonitorLog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val scannedApps: List<ScannedApp> by remember { mutableStateOf(scanAllApps(context)) }
+    var scannedApps by remember { mutableStateOf<List<ScannedApp>>(emptyList()) }
+    var isLoadingApps by remember { mutableStateOf(false) }
     var showOnlyUserApps by remember { mutableStateOf(false) }
+    var selectedProcessForAction by remember { mutableStateOf<ProcessInfo?>(null) }
     val techFont = ShareTechMonoFontFamily
+
+    val hasUsageStatsPermission = remember(activeTab) {
+        AppUsagePermissionHelper.hasUsageStatsPermission(context)
+    }
+
+    LaunchedEffect(activeTab) {
+        if (activeTab == SystemMonitorTab.INSTALLED_APPS && scannedApps.isEmpty()) {
+            isLoadingApps = true
+            scannedApps = scanAllApps(context)
+            isLoadingApps = false
+        }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -294,7 +317,7 @@ fun SystemMonitorLog(
                             shape = ButtonDefaults.shape(RoundedCornerShape(6.dp))
                         ) {
                             Text(
-                                text = "📦 TODAS LAS APPS (${scannedApps.size})",
+                                text = if (scannedApps.isEmpty()) "📦 TODAS LAS APPS" else "📦 TODAS LAS APPS (${scannedApps.size})",
                                 fontFamily = techFont,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
@@ -430,6 +453,43 @@ fun SystemMonitorLog(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        if (!hasUsageStatsPermission) {
+                            item {
+                                Card(
+                                    onClick = { AppUsagePermissionHelper.requestUsageStatsPermission(context) },
+                                    shape = CardDefaults.shape(RoundedCornerShape(6.dp)),
+                                    colors = CardDefaults.colors(
+                                        containerColor = Color(0xFF26180B),
+                                        focusedContainerColor = Color(0xFF3D2611)
+                                    ),
+                                    border = CardDefaults.border(
+                                        border = Border(
+                                            border = BorderStroke(1.dp, CyberAmber.copy(alpha = 0.7f)),
+                                            shape = RoundedCornerShape(6.dp)
+                                        ),
+                                        focusedBorder = Border(
+                                            border = BorderStroke(2.dp, CyberAmber),
+                                            shape = RoundedCornerShape(6.dp)
+                                        )
+                                    ),
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "⚠ ACCESO A DATOS DE USO REQUERIDO (ANDROID 10/11)  >  Clic aquí para autorizar en Ajustes y listar apps en segundo plano.",
+                                            color = CyberAmber,
+                                            fontFamily = techFont,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         if (filteredProcesses.isEmpty()) {
                             item {
                                 Box(
@@ -451,7 +511,7 @@ fun SystemMonitorLog(
                                 ProcessLogItem(
                                     process = proc,
                                     techFont = techFont,
-                                    onKill = { onKillProcess(proc.packageName) }
+                                    onKill = { selectedProcessForAction = proc }
                                 )
                             }
                         }
@@ -466,13 +526,124 @@ fun SystemMonitorLog(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(items = scannedApps, key = { it.packageName }) { app ->
-                            AppLogItem(app = app, techFont = techFont, context = context)
+                    if (isLoadingApps) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "> ESCANEANDO PAQUETES DEL SISTEMA...",
+                                color = CyberCyan,
+                                fontFamily = techFont,
+                                fontSize = 13.sp
+                            )
                         }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(items = scannedApps, key = { it.packageName }) { app ->
+                                AppLogItem(app = app, techFont = techFont, context = context)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (selectedProcessForAction != null) {
+        val proc = selectedProcessForAction!!
+        Dialog(
+            onDismissRequest = { selectedProcessForAction = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.55f)
+                    .background(Color(0xFF0D1424), RoundedCornerShape(12.dp))
+                    .border(1.5.dp, CyberCyan, RoundedCornerShape(12.dp))
+                    .padding(22.dp)
+            ) {
+                Column {
+                    Text(
+                        text = "GESTIÓN DE APLICACIÓN // ${proc.appName}",
+                        fontFamily = techFont,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = CyberCyan
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${proc.packageName}  //  ${proc.memoryUsageMb} MB RAM ESTIMADO",
+                        fontFamily = techFont,
+                        fontSize = 11.sp,
+                        color = CyberGrey
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            onKillProcess(proc.packageName)
+                            selectedProcessForAction = null
+                        },
+                        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                        colors = ButtonDefaults.colors(
+                            containerColor = Color(0xFF16253B),
+                            focusedContainerColor = CyberCyan
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp)
+                    ) {
+                        Text(
+                            text = "⚡ LIBERAR EN SEGUNDO PLANO (RAM)",
+                            fontFamily = techFont,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            AppUsagePermissionHelper.openAppForceStopSettings(context, proc.packageName)
+                            selectedProcessForAction = null
+                        },
+                        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                        colors = ButtonDefaults.colors(
+                            containerColor = Color(0xFF2E1924),
+                            focusedContainerColor = CyberMagenta
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp)
+                    ) {
+                        Text(
+                            text = "⚙ FORZAR DETENCIÓN (AJUSTES ANDROID)",
+                            fontFamily = techFont,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = CyberMagenta
+                        )
+                    }
+
+                    Button(
+                        onClick = { selectedProcessForAction = null },
+                        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                        colors = ButtonDefaults.colors(
+                            containerColor = Color(0xFF141926),
+                            focusedContainerColor = CyberGrey
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "✕ CANCELAR",
+                            fontFamily = techFont,
+                            fontSize = 11.sp
+                        )
                     }
                 }
             }

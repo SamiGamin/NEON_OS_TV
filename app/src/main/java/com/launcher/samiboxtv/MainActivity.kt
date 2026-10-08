@@ -71,15 +71,7 @@ class MainActivity : ComponentActivity() {
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_MENU -> {
-                    if (overlayManager.canDrawOverlays()) {
-                        overlayManager.toggle()
-                    } else {
-                        Toast.makeText(
-                            this,
-                            "Activa el permiso de superposición en Ajustes",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+                    viewModel.onEvent(com.launcher.samiboxtv.presentation.home.HomeUiEvent.ToggleHudOverlay)
                     return true
                 }
                 KeyEvent.KEYCODE_SETTINGS -> {
@@ -107,6 +99,10 @@ class MainActivity : ComponentActivity() {
                         }
                         state.selectedAppForMenu != null -> {
                             viewModel.onEvent(com.launcher.samiboxtv.presentation.home.HomeUiEvent.CloseContextMenu)
+                            return true
+                        }
+                        state.isHudOverlayVisible -> {
+                            viewModel.onEvent(com.launcher.samiboxtv.presentation.home.HomeUiEvent.ToggleHudOverlay)
                             return true
                         }
                         else -> {

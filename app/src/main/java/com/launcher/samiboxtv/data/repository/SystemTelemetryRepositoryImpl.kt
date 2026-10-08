@@ -41,4 +41,8 @@ class SystemTelemetryRepositoryImpl(
         withContext(dispatcherProvider.io) {
             systemTelemetryDataSource.killProcess(packageName)
         }
+
+    override fun clearProcessCache() {
+        systemTelemetryDataSource.clearProcessCache()
+    }
 }

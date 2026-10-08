@@ -13,13 +13,16 @@
         tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.GET_TASKS"
         android:maxSdkVersion="21" />
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
-        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Permite limpiar procesos en segundo plano para liberar RAM -->
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+    <!-- Permite saber qué apps se han usado recientemente y siguen en memoria (Android 10/11) -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:name=".SamiBoxApplication"

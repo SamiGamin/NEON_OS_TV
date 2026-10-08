@@ -19,3 +19,6 @@ local.properties
 *.jks
 keystore.properties
 release.keystore
+.agents
+.augment
+.mobiai

@@ -38,7 +38,8 @@ data class HomeUiState(
     val cardStyle: com.launcher.samiboxtv.domain.model.AppCardStyle = com.launcher.samiboxtv.domain.model.AppCardStyle.BANNER_16_9,
     val categories: List<String> = listOf("STREAMING", "GAMING", "APPS"),
     val appCategoryMap: Map<String, String> = emptyMap(),
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isHudOverlayVisible: Boolean = false
 ) : UiState {
     // Compatibilidad para reordenamiento u otros consumidores
     val visibleApps: List<AppItem> get() = allApps

@@ -225,11 +225,16 @@ fun TvSettingsPanel(
                         SettingsSection.SYSTEM -> {
                             SystemSettingsContent(
                                 context = context,
+                                isHudOverlayVisible = uiState.isHudOverlayVisible,
                                 onOpenTelemetry = {
                                     onEvent(HomeUiEvent.CloseSettings)
                                     onEvent(HomeUiEvent.OpenSystemLog)
                                 },
-                                onCheckUpdates = { onEvent(HomeUiEvent.CheckUpdates) }
+                                onCheckUpdates = { onEvent(HomeUiEvent.CheckUpdates) },
+                                onToggleHudOverlay = {
+                                    onEvent(HomeUiEvent.ToggleHudOverlay)
+                                    onEvent(HomeUiEvent.CloseSettings)
+                                }
                             )
                         }
                     }
@@ -429,7 +434,7 @@ private fun CategoriesSettingsContent(
             SettingsActionItem(
                 title = "+ CREAR NUEVA FILA / CATEGORÍA",
                 subtitle = "Agrega una nueva sección temática para organizar tus apps",
-                isHighlighted = true,
+                isHighlighted = false,
                 onClick = onAddCategory
             )
         }
@@ -653,8 +658,10 @@ private fun AppStyleSettingsContent(
 @Composable
 private fun SystemSettingsContent(
     context: Context,
+    isHudOverlayVisible: Boolean,
     onOpenTelemetry: () -> Unit,
-    onCheckUpdates: () -> Unit
+    onCheckUpdates: () -> Unit,
+    onToggleHudOverlay: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -663,7 +670,7 @@ private fun SystemSettingsContent(
         SettingsActionItem(
             title = "⌂ ESTABLECER COMO LAUNCHER PREDETERMINADO",
             subtitle = "Abre los ajustes de Android para que la casita siempre abra SamiBox TV",
-            isHighlighted = true,
+            isHighlighted = false,
             onClick = {
                 try {
                     val intent = Intent(Settings.ACTION_HOME_SETTINGS).apply {
@@ -703,6 +710,12 @@ private fun SystemSettingsContent(
             subtitle = "Verificar si hay una nueva versión disponible en GitHub Releases",
             isHighlighted = false,
             onClick = onCheckUpdates
+        )
+        SettingsActionItem(
+            title = if (isHudOverlayVisible) "🎮 HUD OVERLAY // FPS EN VIVO [ACTIVADO]" else "🎮 HUD OVERLAY // FPS EN VIVO [DESACTIVADO]",
+            subtitle = if (isHudOverlayVisible) "Contador de fotogramas por segundo (FPS) en vivo en pantalla. Clic para ocultar" else "Contador de fotogramas por segundo (FPS) en vivo en pantalla. Clic para mostrar",
+            isHighlighted = isHudOverlayVisible,
+            onClick = onToggleHudOverlay
         )
     }
 }

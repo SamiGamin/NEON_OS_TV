@@ -1,9 +1,11 @@
 package com.launcher.samiboxtv.data.datasource
 
 import android.app.ActivityManager
+import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.graphics.drawable.Drawable
+import com.launcher.samiboxtv.util.AppUsagePermissionHelper
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
@@ -30,6 +32,7 @@ interface SystemTelemetryDataSource {
     fun getRunningProcesses(): List<ProcessInfo>
     fun cleanBackgroundProcesses(): CleanRamResult
     fun killProcess(packageName: String): Boolean
+    fun clearProcessCache()
 }
 
 class SystemTelemetryDataSourceImpl(
@@ -160,10 +163,14 @@ class SystemTelemetryDataSourceImpl(
         }
     }
 
+    private data class ProcessMeta(val appName: String, val isSystem: Boolean, val icon: Drawable?)
+    private val processMetaCache = java.util.concurrent.ConcurrentHashMap<String, ProcessMeta>()
+
     override fun getRunningProcesses(): List<ProcessInfo> {
         val result = mutableListOf<ProcessInfo>()
         val pm = context.packageManager
         val myPkg = context.packageName
+        val seenPackages = mutableSetOf<String>()
 
         // 1. Lectura de procesos reales y memoria física RSS mediante ps nativo de Linux/Android
         try {
@@ -186,28 +193,35 @@ class SystemTelemetryDataSourceImpl(
 
                     val memMb = (rssKb / 1024L).coerceAtLeast(1L)
                     val basePkg = if (procName.contains(":")) procName.substringBefore(":") else procName
+                    seenPackages.add(basePkg)
 
-                    var appName = procName
-                    var isSystem = true
-                    var icon: Drawable? = null
-
-                    try {
-                        val appInfo = pm.getApplicationInfo(basePkg, 0)
-                        appName = pm.getApplicationLabel(appInfo).toString()
-                        isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                        icon = pm.getApplicationIcon(appInfo)
-                    } catch (_: Exception) {
-                        appName = when (procName) {
+                    val meta: ProcessMeta = if (!basePkg.contains(".")) {
+                        // Demonio del sistema Linux/Android: no consultar PackageManager para evitar excepciones lentas
+                        val name = when (procName) {
                             "system_server" -> "Android System Server"
                             "surfaceflinger" -> "Surface Flinger (Gráficos TV)"
                             "audioserver" -> "Servidor de Audio"
                             "mediaserver" -> "Servidor Multimedia"
                             "netd" -> "Servicio de Red (netd)"
-                            "zygote" -> "Zygote (Motor de Apps)"
-                            else -> if (procName.contains(".")) {
-                                procName.substringAfterLast(".").replaceFirstChar { it.uppercase() }
-                            } else {
-                                procName
+                            "zygote", "zygote64" -> "Zygote (Motor de Apps)"
+                            "adbd" -> "Servicio Depuración ADB"
+                            "logd" -> "Servicio de Logs (logd)"
+                            "vold" -> "Servicio de Almacenamiento (vold)"
+                            "servicemanager" -> "Service Manager"
+                            else -> procName
+                        }
+                        ProcessMeta(name, isSystem = true, icon = null)
+                    } else {
+                        processMetaCache.getOrPut(basePkg) {
+                            try {
+                                val appInfo = pm.getApplicationInfo(basePkg, 0)
+                                val appName = pm.getApplicationLabel(appInfo).toString()
+                                val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                                val icon = pm.getApplicationIcon(appInfo)
+                                ProcessMeta(appName, isSystem, icon)
+                            } catch (_: Exception) {
+                                val fallbackName = procName.substringAfterLast(".").replaceFirstChar { it.uppercase() }
+                                ProcessMeta(fallbackName, isSystem = true, icon = null)
                             }
                         }
                     }
@@ -216,11 +230,11 @@ class SystemTelemetryDataSourceImpl(
                         ProcessInfo(
                             pid = pid,
                             processName = procName,
-                            appName = appName,
+                            appName = meta.appName,
                             packageName = basePkg,
                             memoryUsageMb = memMb,
-                            isSystemApp = isSystem,
-                            icon = icon
+                            isSystemApp = meta.isSystem,
+                            icon = meta.icon
                         )
                     )
                 }
@@ -231,7 +245,58 @@ class SystemTelemetryDataSourceImpl(
             e.printStackTrace()
         }
 
-        // 2. Si ps no arrojó resultados (fallback con ActivityManager)
+        // 2. Integración con UsageStatsManager para Android 10 y 11 (API 29+)
+        if (AppUsagePermissionHelper.hasUsageStatsPermission(context)) {
+            try {
+                val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+                val now = System.currentTimeMillis()
+                val stats = usageStatsManager?.queryUsageStats(
+                    UsageStatsManager.INTERVAL_DAILY,
+                    now - (20 * 60 * 1000),
+                    now
+                ) ?: emptyList()
+
+                val defaultRamPerApp = 95L // Consumo promedio de una app TV en reposo
+
+                for (usage in stats) {
+                    val pkg = usage.packageName
+                    if (pkg == myPkg || seenPackages.contains(pkg)) continue
+
+                    // Filtrar apps que tuvieron actividad reciente en los últimos 20 minutos
+                    if (usage.lastTimeUsed > (now - 20 * 60 * 1000)) {
+                        seenPackages.add(pkg)
+                        val meta = processMetaCache.getOrPut(pkg) {
+                            try {
+                                val appInfo = pm.getApplicationInfo(pkg, 0)
+                                val appName = pm.getApplicationLabel(appInfo).toString()
+                                val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                                val icon = pm.getApplicationIcon(appInfo)
+                                ProcessMeta(appName, isSystem, icon)
+                            } catch (_: Exception) {
+                                val fallbackName = pkg.substringAfterLast(".").replaceFirstChar { it.uppercase() }
+                                ProcessMeta(fallbackName, isSystem = true, icon = null)
+                            }
+                        }
+
+                        result.add(
+                            ProcessInfo(
+                                pid = 0, // En Android 10/11 el PID está anonimizado en user space
+                                processName = pkg,
+                                appName = meta.appName,
+                                packageName = pkg,
+                                memoryUsageMb = defaultRamPerApp,
+                                isSystemApp = meta.isSystem,
+                                icon = meta.icon
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        // 3. Si no arrojó resultados (fallback con ActivityManager)
         if (result.isEmpty()) {
             val am = activityManager
             if (am != null) {
@@ -278,8 +343,10 @@ class SystemTelemetryDataSourceImpl(
             }
         }
 
-        // Ordenar: aplicaciones con mayor consumo de memoria primero
-        return result.sortedByDescending { it.memoryUsageMb }
+        // Ordenar: aplicaciones de usuario primero, mayor consumo de memoria primero
+        return result.sortedWith(
+            compareBy({ it.isSystemApp }, { -it.memoryUsageMb }, { it.appName.lowercase() })
+        )
     }
 
     override fun cleanBackgroundProcesses(): CleanRamResult {
@@ -347,5 +414,9 @@ class SystemTelemetryDataSourceImpl(
         } catch (_: Exception) {
             false
         }
+    }
+
+    override fun clearProcessCache() {
+        processMetaCache.clear()
     }
 }

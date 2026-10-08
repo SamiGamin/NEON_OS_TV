@@ -39,4 +39,6 @@ sealed interface HomeUiEvent : UiEvent {
     data class CreateCategory(val name: String) : HomeUiEvent
     data class RemoveCategory(val name: String) : HomeUiEvent
     data class AssignCategory(val packageName: String, val categoryName: String) : HomeUiEvent
+
+    data object ToggleHudOverlay : HomeUiEvent
 }

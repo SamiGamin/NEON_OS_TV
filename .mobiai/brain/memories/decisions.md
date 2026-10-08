@@ -141,5 +141,30 @@ Built a split-pane lateral drawer styled identically to canonical Android TV / G
 - [PreferencesDataSource.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/data/datasource/PreferencesDataSource.kt)
 - [PreferencesRepositoryImpl.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/data/repository/PreferencesRepositoryImpl.kt)
 - [HomeScreen.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/presentation/home/HomeScreen.kt)
+- [HomeScreen.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/presentation/home/HomeScreen.kt)
 - [HomeViewModel.kt](file:///F:/AndroidStudio/SamiBoxTV/app/src/main/java/com/launcher/samiboxtv/presentation/home/HomeViewModel.kt)
 
+---
+
+## Agent Workflow & Testing Constraints: Pure Local Compose Architecture and Code Analysis
+
+- id: agent-workflow-compose-and-testing-confirmation
+- type: workflow_constraint
+- status: active
+- platform: android
+- area: agent-workflow-and-testing
+- date: 2026-10-08
+
+### Decision / Problem / Pattern
+To avoid unnecessary execution delays, context saturation, and background device interference:
+1. Use MobiAI skills strictly focused on Compose architecture and static code analysis.
+2. Under no circumstances run ADB shell commands (e.g., input keyevents, package installs), automated device tests, or screen captures (`screencap`, temporary `.png` files).
+3. The assistant must limit operations to directly inspecting, editing, and compiling local files (`./gradlew assembleDebug` or targeted Gradle compilation).
+4. For any major, critical changes or before running any testing suite, the assistant MUST explicitly ask the user for confirmation beforehand.
+
+### Reason / Root Cause / Solution
+Ensures ultra-fast, clean, local-only developer cycles without locking devices or polluting context windows.
+
+### Files
+- [GEMINI.md](file:///F:/AndroidStudio/SamiBoxTV/GEMINI.md)
+- [.mobiai/brain/config.json](file:///F:/AndroidStudio/SamiBoxTV/.mobiai/brain/config.json)

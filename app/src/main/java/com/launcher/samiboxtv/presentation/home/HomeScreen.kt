@@ -2,6 +2,7 @@ package com.launcher.samiboxtv.presentation.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,6 +28,7 @@ import com.launcher.samiboxtv.presentation.components.UpdateDialog
 import com.launcher.samiboxtv.presentation.components.cards.AddAppCyberCard
 import com.launcher.samiboxtv.presentation.components.cards.TvCyberBannerCard
 import com.launcher.samiboxtv.presentation.components.hud.CyberHudHeader
+import com.launcher.samiboxtv.presentation.overlay.SystemInfoOverlay
 import com.launcher.samiboxtv.presentation.overlay.SystemMonitorLog
 import com.launcher.samiboxtv.presentation.settings.TvSettingsPanel
 import com.launcher.samiboxtv.presentation.theme.CyberCyan
@@ -43,11 +45,16 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    HomeScreenContent(
-        uiState = uiState,
-        onEvent = viewModel::onEvent,
-        modifier = modifier
-    )
+    Box(modifier = modifier.fillMaxSize()) {
+        HomeScreenContent(
+            uiState = uiState,
+            onEvent = viewModel::onEvent,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // HUD flotante con contador de FPS en vivo
+        SystemInfoOverlay(visible = uiState.isHudOverlayVisible)
+    }
 
     // Overlays y Diálogos
     uiState.selectedAppForMenu?.let { app ->

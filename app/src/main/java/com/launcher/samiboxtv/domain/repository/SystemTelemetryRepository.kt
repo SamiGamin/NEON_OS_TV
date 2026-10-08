@@ -33,4 +33,9 @@ interface SystemTelemetryRepository {
      * Finaliza los procesos en segundo plano de un paquete específico.
      */
     suspend fun killProcess(packageName: String): Boolean
+
+    /**
+     * Limpia la caché en memoria de metadatos e iconos (Drawables) de procesos para evitar fugas de contexto.
+     */
+    fun clearProcessCache()
 }
