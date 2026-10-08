@@ -40,6 +40,7 @@ import androidx.tv.material3.Text
 import coil.compose.rememberAsyncImagePainter
 import com.launcher.samiboxtv.domain.model.AppCardStyle
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.presentation.theme.CyberAmber
 import com.launcher.samiboxtv.presentation.theme.CyberCyan
 import com.launcher.samiboxtv.presentation.theme.CyberMagenta
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
@@ -49,6 +50,7 @@ import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
 fun TvCyberBannerCard(
     appItem: AppItem,
     cardStyle: AppCardStyle = AppCardStyle.BANNER_16_9,
+    isEditing: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -69,11 +71,14 @@ fun TvCyberBannerCard(
         ),
         border = CardDefaults.border(
             border = Border(
-                border = BorderStroke(1.dp, CyberCyan.copy(alpha = 0.2f)),
+                border = BorderStroke(
+                    if (isEditing) 2.dp else 1.dp,
+                    if (isEditing) CyberAmber else CyberCyan.copy(alpha = 0.2f)
+                ),
                 shape = RoundedCornerShape(8.dp)
             ),
             focusedBorder = Border(
-                border = BorderStroke(2.dp, CyberCyan),
+                border = BorderStroke(2.dp, if (isEditing) CyberAmber else CyberCyan),
                 shape = RoundedCornerShape(8.dp)
             ),
             pressedBorder = Border(
@@ -153,6 +158,26 @@ fun TvCyberBannerCard(
                     .padding(horizontal = 10.dp, vertical = 8.dp)
                     .then(if (isFocused) Modifier.basicMarquee() else Modifier)
             )
+
+            // Indicador visual de modo mover activo
+            if (isEditing) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(CyberAmber)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "⇄ MOVIENDO",
+                        color = Color.Black,
+                        fontSize = 9.sp,
+                        fontFamily = ShareTechMonoFontFamily,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }

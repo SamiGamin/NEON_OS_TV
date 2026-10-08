@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!-- Permite compartir archivos guardados en context.cacheDir -->
+    <!-- Permite compartir archivos guardados en context.cacheDir y externalCacheDir -->
     <cache-path name="apk_cache" path="." />
+    <external-cache-path name="external_apk_cache" path="." />
+    <files-path name="apk_files" path="." />
+    <external-files-path name="external_apk_files" path="." />
 </paths>

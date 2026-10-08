@@ -377,17 +377,21 @@ class HomeViewModel(
     private fun moveApp(app: AppItem, direction: Int) {
         viewModelScope.launch(dispatcherProvider.main) {
             val currentList = _uiState.value.allApps
+            val categoryMap = _uiState.value.appCategoryMap
             val updatedList = withContext(dispatcherProvider.io) {
-                moveAppUseCase(currentList, app, direction)
+                moveAppUseCase(currentList, app, direction, categoryMap)
             }
             val featured = updatedList
                 .filter { it.isFavorite || it.bannerDrawable != null }
                 .ifEmpty { updatedList.take(6) }
 
+            val updatedApp = updatedList.find { it.packageName == app.packageName } ?: app
+
             _uiState.update {
                 it.copy(
                     allApps = updatedList,
-                    featuredApps = featured
+                    featuredApps = featured,
+                    editingApp = updatedApp
                 )
             }
         }

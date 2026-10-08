@@ -67,9 +67,13 @@ fun UpdateDialog(
 
     var downloadState by remember { mutableStateOf(UpdateDownloadState.IDLE) }
     var downloadProgress by remember { mutableFloatStateOf(0f) }
+    var installStatusMessage by remember { mutableStateOf<String?>(null) }
     val animatedProgress by animateFloatAsState(targetValue = downloadProgress, label = "ProgressAnim")
 
-    val apkFile = remember { File(context.cacheDir, "update_launcher.apk") }
+    val apkFile = remember {
+        val dir = context.externalCacheDir ?: context.cacheDir
+        File(dir, "update_launcher.apk")
+    }
     val themeColor = if (updateInfo.hasUpdate) CyberMagenta else CyberCyan
 
     Dialog(
@@ -179,11 +183,15 @@ fun UpdateDialog(
                             Text(
                                 text = when (downloadState) {
                                     UpdateDownloadState.DOWNLOADING -> "DESCARGANDO PAQUETE OTA..."
-                                    UpdateDownloadState.READY_TO_INSTALL -> "PAQUETE DESCARGADO // LISTO PARA INSTALAR"
-                                    UpdateDownloadState.ERROR -> "ERROR DE DESCARGA // VERIFICA TU RED"
+                                    UpdateDownloadState.READY_TO_INSTALL -> installStatusMessage ?: "PAQUETE DESCARGADO // LISTO PARA INSTALAR"
+                                    UpdateDownloadState.ERROR -> installStatusMessage ?: "ERROR DE DESCARGA // VERIFICA TU RED"
                                     else -> ""
                                 },
-                                color = if (downloadState == UpdateDownloadState.ERROR) Color(0xFFFF5252) else CyberCyan,
+                                color = if (downloadState == UpdateDownloadState.ERROR || installStatusMessage?.startsWith("AUTORIZA", ignoreCase = true) == true) {
+                                    Color(0xFFFF5252)
+                                } else {
+                                    CyberCyan
+                                },
                                 fontFamily = techFont,
                                 fontSize = 11.sp
                             )
@@ -242,9 +250,17 @@ fun UpdateDialog(
                                         )
                                         if (success) {
                                             downloadState = UpdateDownloadState.READY_TO_INSTALL
-                                            ApkInstallerHelper.launchInstallApk(context, apkFile)
+                                            val launched = ApkInstallerHelper.launchInstallApk(context, apkFile)
+                                            if (!launched) {
+                                                installStatusMessage = if (!ApkInstallerHelper.canRequestPackageInstalls(context)) {
+                                                    "AUTORIZA FUENTES DESCONOCIDAS EN AJUSTES Y VUELVE A PULSAR INSTALAR"
+                                                } else {
+                                                    "PULSA 'INSTALAR AHORA' PARA ABRIR EL INSTALADOR NATIVO"
+                                                }
+                                            }
                                         } else {
                                             downloadState = UpdateDownloadState.ERROR
+                                            installStatusMessage = "ERROR AL DESCARGAR EL APK // VERIFICA TU RED"
                                         }
                                     }
                                 },
@@ -330,15 +346,26 @@ fun UpdateDialog(
 
                                                 if (success) {
                                                     downloadState = UpdateDownloadState.READY_TO_INSTALL
-                                                    ApkInstallerHelper.launchInstallApk(context, apkFile)
+                                                    val launched = ApkInstallerHelper.launchInstallApk(context, apkFile)
+                                                    if (!launched) {
+                                                        installStatusMessage = if (!ApkInstallerHelper.canRequestPackageInstalls(context)) {
+                                                            "AUTORIZA FUENTES DESCONOCIDAS EN AJUSTES Y VUELVE A PULSAR INSTALAR"
+                                                        } else {
+                                                            "PULSA 'INSTALAR AHORA' PARA ABRIR EL INSTALADOR NATIVO"
+                                                        }
+                                                    }
                                                 } else {
                                                     downloadState = UpdateDownloadState.ERROR
+                                                    installStatusMessage = "ERROR AL DESCARGAR EL APK // VERIFICA TU RED"
                                                 }
                                             }
                                         }
                                     }
                                     UpdateDownloadState.READY_TO_INSTALL -> {
-                                        ApkInstallerHelper.launchInstallApk(context, apkFile)
+                                        val launched = ApkInstallerHelper.launchInstallApk(context, apkFile)
+                                        if (!launched && !ApkInstallerHelper.canRequestPackageInstalls(context)) {
+                                            installStatusMessage = "AUTORIZA FUENTES DESCONOCIDAS EN AJUSTES Y VUELVE A PULSAR INSTALAR"
+                                        }
                                     }
                                     UpdateDownloadState.DOWNLOADING -> {
                                         // Ignorar clics mientras descarga

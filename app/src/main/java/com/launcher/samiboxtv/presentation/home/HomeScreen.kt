@@ -24,6 +24,7 @@ import androidx.tv.material3.Text
 import com.launcher.samiboxtv.domain.model.AppItem
 import com.launcher.samiboxtv.presentation.components.AddAppDialog
 import com.launcher.samiboxtv.presentation.components.AppContextMenu
+import com.launcher.samiboxtv.presentation.components.MoveAppDialog
 import com.launcher.samiboxtv.presentation.components.UpdateDialog
 import com.launcher.samiboxtv.presentation.components.cards.AddAppCyberCard
 import com.launcher.samiboxtv.presentation.components.cards.TvCyberBannerCard
@@ -64,6 +65,27 @@ fun HomeScreen(
             onMove = { viewModel.onEvent(HomeUiEvent.StartMovingApp(app)) },
             onHide = { viewModel.onEvent(HomeUiEvent.HideApp(app)) },
             onToggleFavorite = { viewModel.onEvent(HomeUiEvent.ToggleAppFavorite(app)) }
+        )
+    }
+
+    uiState.editingApp?.let { app ->
+        val catName = if (app.isFavorite) "FAVORITOS" else (uiState.appCategoryMap[app.packageName] ?: app.category.ifBlank { "APPS" })
+        val sectionApps = if (app.isFavorite) {
+            uiState.allApps.filter { it.isFavorite }
+        } else {
+            uiState.allApps.filter { !it.isFavorite && (uiState.appCategoryMap[it.packageName] ?: it.category.ifBlank { "APPS" }).equals(catName, ignoreCase = true) }
+        }
+        val currentIdx = sectionApps.indexOfFirst { it.packageName == app.packageName }.takeIf { it != -1 }?.plus(1) ?: 1
+        val totalCount = sectionApps.size.coerceAtLeast(1)
+
+        MoveAppDialog(
+            appItem = app,
+            categoryName = catName,
+            currentPosition = currentIdx,
+            totalPositions = totalCount,
+            onMoveLeft = { viewModel.onEvent(HomeUiEvent.MoveApp(app, -1)) },
+            onMoveRight = { viewModel.onEvent(HomeUiEvent.MoveApp(app, 1)) },
+            onDismiss = { viewModel.onEvent(HomeUiEvent.FinishMovingApp) }
         )
     }
 
@@ -221,7 +243,14 @@ private fun CategoryAppRow(
                 TvCyberBannerCard(
                     appItem = app,
                     cardStyle = uiState.cardStyle,
-                    onClick = { onEvent(HomeUiEvent.LaunchApp(app)) },
+                    isEditing = uiState.editingApp?.packageName == app.packageName,
+                    onClick = {
+                        if (uiState.editingApp != null) {
+                            onEvent(HomeUiEvent.FinishMovingApp)
+                        } else {
+                            onEvent(HomeUiEvent.LaunchApp(app))
+                        }
+                    },
                     onLongClick = { onEvent(HomeUiEvent.OpenContextMenu(app)) },
                     modifier = Modifier.width(cardWidth)
                 )

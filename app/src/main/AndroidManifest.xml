@@ -24,6 +24,9 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- Permite solicitar la instalación de paquetes APK para actualizaciones OTA (Android 8.0+) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <application
         android:name=".SamiBoxApplication"
         android:allowBackup="true"
