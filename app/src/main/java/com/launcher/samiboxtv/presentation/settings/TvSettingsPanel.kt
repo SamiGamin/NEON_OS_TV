@@ -8,7 +8,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import com.launcher.samiboxtv.presentation.components.AssignCategoryDialog
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,13 +23,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
-import androidx.tv.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +39,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
@@ -51,25 +47,28 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.launcher.samiboxtv.R
 import com.launcher.samiboxtv.domain.model.AppCardStyle
 import com.launcher.samiboxtv.domain.model.AppItem
 import com.launcher.samiboxtv.domain.model.SettingsSection
+import com.launcher.samiboxtv.presentation.components.AssignCategoryDialog
 import com.launcher.samiboxtv.presentation.home.HomeUiEvent
 import com.launcher.samiboxtv.presentation.home.HomeUiState
-import com.launcher.samiboxtv.util.CategoryHelper
 import com.launcher.samiboxtv.presentation.theme.CyberAmber
 import com.launcher.samiboxtv.presentation.theme.CyberCyan
 import com.launcher.samiboxtv.presentation.theme.CyberGrey
 import com.launcher.samiboxtv.presentation.theme.CyberMagenta
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
+import com.launcher.samiboxtv.util.CategoryHelper
 import com.launcher.samiboxtv.util.DefaultLauncherHelper
 
 /**
@@ -80,7 +79,6 @@ import com.launcher.samiboxtv.util.DefaultLauncherHelper
 fun TvSettingsPanel(
     uiState: HomeUiState,
     onEvent: (HomeUiEvent) -> Unit,
-    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var showAddCategoryDialog by remember { mutableStateOf(false) }
@@ -233,14 +231,9 @@ fun TvSettingsPanel(
                                 context = context,
                                 isCheckingUpdates = uiState.isCheckingUpdates,
                                 updateCheckMessage = uiState.updateCheckMessage,
-                                isHudOverlayVisible = uiState.isHudOverlayVisible,
                                 onOpenTelemetry = {
                                     onEvent(HomeUiEvent.CloseSettings)
                                     onEvent(HomeUiEvent.OpenSystemLog)
-                                },
-                                onToggleHudOverlay = {
-                                    onEvent(HomeUiEvent.ToggleHudOverlay)
-                                    onEvent(HomeUiEvent.CloseSettings)
                                 },
                                 onCheckUpdates = { onEvent(HomeUiEvent.CheckUpdates) },
                                 onOpenDefaultLauncherDialog = { showDefaultLauncherDialog = true }
@@ -724,9 +717,7 @@ private fun SystemSettingsContent(
     context: Context,
     isCheckingUpdates: Boolean,
     updateCheckMessage: String?,
-    isHudOverlayVisible: Boolean,
     onOpenTelemetry: () -> Unit,
-    onToggleHudOverlay: () -> Unit,
     onCheckUpdates: () -> Unit,
     onOpenDefaultLauncherDialog: () -> Unit
 ) {
@@ -736,13 +727,6 @@ private fun SystemSettingsContent(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        SettingsActionItem(
-            title = "📊 HUD OVERLAY (FPS & RENDIMIENTO)",
-            subtitle = if (isHudOverlayVisible) "[✓ ACTIVO] Ocultar contador de FPS y telemetría flotante en pantalla" else "Mostrar contador de FPS y telemetría en tiempo real sobre la pantalla",
-            isHighlighted = isHudOverlayVisible,
-            onClick = onToggleHudOverlay
-        )
-
         SettingsActionItem(
             title = "⌂ ESTABLECER COMO LAUNCHER PREDETERMINADO",
             subtitle = if (isAggressiveActive) {
