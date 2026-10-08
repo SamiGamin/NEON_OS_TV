@@ -30,5 +30,6 @@ enum class SettingsSection(
         title = "SISTEMA & TV",
         subtitle = "Launcher por defecto, ajustes de TV y telemetría",
         symbol = "⚙"
-    )
+    ),
+    DEVELOPER("MODO DESARROLLADOR", "Monitoreo, registro de teclas y logs de red", "λ")
 }

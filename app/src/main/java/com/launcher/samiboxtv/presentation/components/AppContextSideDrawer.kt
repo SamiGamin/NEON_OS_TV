@@ -47,7 +47,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Text
 import coil.compose.rememberAsyncImagePainter
 import kotlinx.coroutines.delay
-import com.launcher.samiboxtv.core.dispatcher.AppActionsHelper
+import com.launcher.samiboxtv.util.AppActionsHelper
 import com.launcher.samiboxtv.domain.model.AppItem
 import com.launcher.samiboxtv.presentation.theme.CyberAmber
 import com.launcher.samiboxtv.presentation.theme.CyberCyan

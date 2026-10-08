@@ -58,4 +58,9 @@ sealed interface HomeUiEvent : UiEvent {
     data object CloseMediaPlayer : HomeUiEvent
     data object PlayNextMedia : HomeUiEvent
     data object PlayPreviousMedia : HomeUiEvent
+
+    data object ToggleDevMode : HomeUiEvent
+    data object ToggleLogServer : HomeUiEvent
+    data object ToggleKeyDebugToast : HomeUiEvent
+    data object ClearLogs : HomeUiEvent
 }

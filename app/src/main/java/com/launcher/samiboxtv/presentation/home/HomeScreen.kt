@@ -1,5 +1,6 @@
 package com.launcher.samiboxtv.presentation.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +55,37 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var appToMoveCategory by remember { mutableStateOf<AppItem?>(null) }
+    // 1. Prioridad Máxima: Si estás reorganizando tarjetas (modo fantasma)
+    BackHandler(enabled = uiState.movingAppPackageName != null) {
+        viewModel.onEvent(HomeUiEvent.ConfirmReorder)
+    }
+
+    // 2. Prioridad Menú Contextual (Side Drawer)
+    BackHandler(enabled = uiState.selectedAppForMenu != null) {
+        viewModel.onEvent(HomeUiEvent.CloseContextMenu)
+    }
+
+    // 3. Prioridad Diálogo de Crear Categoría / Añadir
+    BackHandler(enabled = uiState.isAddDialogOpen) {
+        viewModel.onEvent(HomeUiEvent.CloseAddDialog)
+    }
+
+    // 4. Prioridad Centro de Telemetría / RAM
+    BackHandler(enabled = uiState.isSystemLogOpen) {
+        viewModel.onEvent(HomeUiEvent.CloseSystemLog)
+    }
+
+    // 5. Prioridad Panel de Ajustes Lateral
+    BackHandler(enabled = uiState.isSettingsOpen) {
+        viewModel.onEvent(HomeUiEvent.CloseSettings)
+    }
+
+    // 6. Base del Launcher: Bloquea la salida en la pantalla principal
+    // (Al estar siempre activo con enabled = true cuando todo lo demás está cerrado,
+    // evita que la Activity del TV se cierre y deje la pantalla en negro).
+    BackHandler(enabled = true) {
+        // Intencionalmente vacío: un Launcher nunca debe salir al pulsar Atrás
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         HomeScreenContent(

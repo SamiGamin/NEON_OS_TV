@@ -51,7 +51,12 @@ data class HomeUiState(
     val mediaFilesList: List<MediaFile> = emptyList(),
     val isLoadingMedia: Boolean = false,
     val currentPlayingMedia: MediaFile? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+
+    val isDevModeActive: Boolean = false,
+    val isLogServerRunning: Boolean = false,
+    val logServerUrl: String = "",
+    val showKeyDebugToast: Boolean = false
 ) : UiState {
     // Compatibilidad para reordenamiento u otros consumidores
     val visibleApps: List<AppItem> get() = allApps

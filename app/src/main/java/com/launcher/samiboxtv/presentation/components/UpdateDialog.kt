@@ -38,7 +38,7 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
-import com.launcher.samiboxtv.core.dispatcher.ApkInstallerHelper
+import com.launcher.samiboxtv.util.ApkInstallerHelper
 import com.launcher.samiboxtv.domain.model.UpdateInfo
 import com.launcher.samiboxtv.presentation.theme.CyberAmber
 import com.launcher.samiboxtv.presentation.theme.CyberCyan

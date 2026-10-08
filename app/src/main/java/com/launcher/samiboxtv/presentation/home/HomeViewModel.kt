@@ -30,6 +30,7 @@ import com.launcher.samiboxtv.domain.usecase.SetHiddenPackagesUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleAppVisibilityUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleFavoriteAppUseCase
 import com.launcher.samiboxtv.domain.usecase.UnhideAppUseCase
+import com.launcher.samiboxtv.util.DevLogManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -193,6 +194,33 @@ class HomeViewModel(
             HomeUiEvent.CloseMediaPlayer -> _uiState.update { it.copy(currentPlayingMedia = null) }
             HomeUiEvent.PlayNextMedia -> playNextMedia()
             HomeUiEvent.PlayPreviousMedia -> playPreviousMedia()
+
+            is HomeUiEvent.ToggleDevMode -> {
+                val newDevState = !_uiState.value.isDevModeActive
+                _uiState.update { it.copy(isDevModeActive = newDevState) }
+                DevLogManager.log("DEV", "Modo desarrollador: ${if (newDevState) "ACTIVADO" else "DESACTIVADO"}")
+            }
+
+            is HomeUiEvent.ToggleLogServer -> {
+                val currentlyRunning = _uiState.value.isLogServerRunning
+                if (currentlyRunning) {
+                    DevLogManager.stopServer()
+                    _uiState.update { it.copy(isLogServerRunning = false, logServerUrl = "") }
+                } else {
+                    DevLogManager.startServer(viewModelScope)
+                    val ip = DevLogManager.getLocalIpAddress()
+                    val url = "http://$ip:${DevLogManager.SERVER_PORT}"
+                    _uiState.update { it.copy(isLogServerRunning = true, logServerUrl = url) }
+                }
+            }
+
+            is HomeUiEvent.ToggleKeyDebugToast -> {
+                _uiState.update { it.copy(showKeyDebugToast = !it.showKeyDebugToast) }
+            }
+
+            is HomeUiEvent.ClearLogs -> {
+                DevLogManager.log("SYSTEM", "Historial de logs reiniciado manualmente")
+            }
         }
     }
 

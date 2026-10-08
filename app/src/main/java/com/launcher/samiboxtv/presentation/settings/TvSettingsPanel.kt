@@ -1,8 +1,7 @@
 package com.launcher.samiboxtv.presentation.settings
 
 import android.content.Context
-import android.content.Intent
-import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -70,6 +69,7 @@ import com.launcher.samiboxtv.presentation.theme.CyberMagenta
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
 import com.launcher.samiboxtv.util.CategoryHelper
 import com.launcher.samiboxtv.util.DefaultLauncherHelper
+import com.launcher.samiboxtv.util.openTvSystemSettings
 
 /**
  * Panel de Ajustes y Configuración estilo Android TV / Google TV.
@@ -85,6 +85,10 @@ fun TvSettingsPanel(
     var selectedAppForCategoryChange by remember { mutableStateOf<AppItem?>(null) }
     var showDefaultLauncherDialog by remember { mutableStateOf(false) }
     val initialFocusRequester = remember { FocusRequester() }
+
+    BackHandler(enabled = uiState.isSettingsOpen) {
+        onEvent(HomeUiEvent.CloseSettings)
+    }
 
     LaunchedEffect(Unit) {
         initialFocusRequester.requestFocus()
@@ -231,12 +235,19 @@ fun TvSettingsPanel(
                                 context = context,
                                 isCheckingUpdates = uiState.isCheckingUpdates,
                                 updateCheckMessage = uiState.updateCheckMessage,
+                                onCloseSettings = { onEvent(HomeUiEvent.CloseSettings) },
                                 onOpenTelemetry = {
                                     onEvent(HomeUiEvent.CloseSettings)
                                     onEvent(HomeUiEvent.OpenSystemLog)
                                 },
                                 onCheckUpdates = { onEvent(HomeUiEvent.CheckUpdates) },
                                 onOpenDefaultLauncherDialog = { showDefaultLauncherDialog = true }
+                            )
+                        }
+                        SettingsSection.DEVELOPER -> {
+                            DeveloperSettingsContent(
+                                uiState = uiState,
+                                onEvent = onEvent
                             )
                         }
                     }
@@ -276,6 +287,53 @@ fun TvSettingsPanel(
             context = context,
             onDismiss = { showDefaultLauncherDialog = false }
         )
+    }
+}
+
+@Composable
+private fun DeveloperSettingsContent(
+    uiState: HomeUiState,
+    onEvent: (HomeUiEvent) -> Unit
+) {
+    val techFont = ShareTechMonoFontFamily
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Tarjeta 1: Interruptor Maestro del Modo Desarrollador
+        SettingsActionItem(
+            title = if (uiState.isDevModeActive) "MODO AVANZADO: [ACTIVADO]" else "MODO AVANZADO: [DESACTIVADO]",
+            subtitle = "Habilita la captura profunda de eventos del sistema y control remoto",
+            isHighlighted = uiState.isDevModeActive,
+            onClick = { onEvent(HomeUiEvent.ToggleDevMode) }
+        )
+
+        if (uiState.isDevModeActive) {
+            // Tarjeta 2: Servidor HTTP de Red
+            SettingsActionItem(
+                title = if (uiState.isLogServerRunning) "SERVIDOR DE RED: ACTIVO" else "INICIAR SERVIDOR DE LOGS EN RED",
+                subtitle = if (uiState.isLogServerRunning) "Entra en tu PC a: ${uiState.logServerUrl}" else "Transmite los logs de la TV por Wi-Fi al navegador de tu PC",
+                isHighlighted = uiState.isLogServerRunning,
+                onClick = { onEvent(HomeUiEvent.ToggleLogServer) }
+            )
+
+            // Tarjeta 3: Overlay de teclas en pantalla
+            SettingsActionItem(
+                title = if (uiState.showKeyDebugToast) "VISOR DE TECLAS OSD: [VISIBLE]" else "VISOR DE TECLAS OSD: [OCULTO]",
+                subtitle = "Muestra una alerta en pantalla cada vez que presionas un botón del control",
+                isHighlighted = uiState.showKeyDebugToast,
+                onClick = { onEvent(HomeUiEvent.ToggleKeyDebugToast) }
+            )
+
+            // Tarjeta 4: Limpiar historial
+            SettingsActionItem(
+                title = "BORRAR HISTORIAL DE LOGS",
+                subtitle = "Vacía el búfer de memoria de eventos registrados",
+                isHighlighted = false,
+                onClick = { onEvent(HomeUiEvent.ClearLogs) }
+            )
+        }
     }
 }
 
@@ -717,6 +775,7 @@ private fun SystemSettingsContent(
     context: Context,
     isCheckingUpdates: Boolean,
     updateCheckMessage: String?,
+    onCloseSettings: () -> Unit,
     onOpenTelemetry: () -> Unit,
     onCheckUpdates: () -> Unit,
     onOpenDefaultLauncherDialog: () -> Unit
@@ -743,10 +802,11 @@ private fun SystemSettingsContent(
             subtitle = "Abrir el panel de configuración de red, pantalla y bluetooth de la TV",
             isHighlighted = false,
             onClick = {
-                val intent = Intent(Settings.ACTION_SETTINGS).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                context.startActivity(intent)
+                // 1. Cerrar el panel lateral de Compose para no bloquear la ventana
+                onCloseSettings()
+
+                // 2. Intent con múltiples alternativas seguras para TV
+                openTvSystemSettings(context)
             }
         )
 

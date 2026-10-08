@@ -1,5 +1,4 @@
-package com.launcher.samiboxtv.core.dispatcher
-
+package com.launcher.samiboxtv.util
 
 import android.content.Context
 import android.content.Intent
