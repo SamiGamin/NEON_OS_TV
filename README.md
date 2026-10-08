@@ -1,4 +1,4 @@
-# 👾 SamiBox TV Launcher
+# 👾 NEONOS TV Launcher
 
 **SamiBox TV** es un launcher de alto rendimiento y código abierto diseñado exclusivamente para **Android TV**, Google TV y TV Boxes genéricas (SoCs Amlogic, Allwinner, Rockchip). Desarrollado al 100% con **Jetpack Compose for TV (`androidx.tv.material3`)** y **Clean Architecture**, combina una estética **Cyberpunk Neon** futurista con herramientas avanzadas de diagnóstico de hardware en tiempo real y reproducción multimedia integrada.
 
