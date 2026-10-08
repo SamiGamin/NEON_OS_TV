@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -132,6 +133,7 @@ fun SystemMonitorLog(
 ) {
     val context = LocalContext.current
     val scannedApps: List<ScannedApp> by remember { mutableStateOf(scanAllApps(context)) }
+    var showOnlyUserApps by remember { mutableStateOf(false) }
     val techFont = ShareTechMonoFontFamily
 
     Dialog(
@@ -378,20 +380,57 @@ fun SystemMonitorLog(
 
                 // 5. Lista de Contenido (Procesos en RAM o Aplicaciones Instaladas)
                 if (activeTab == SystemMonitorTab.RAM_PROCESSES) {
-                    Text(
-                        text = "PROCESOS ACTIVOS EN SEGUNDO PLANO // SELECCIONA PARA DETENER INDIVIDUALMENTE",
-                        color = CyberCyan.copy(alpha = 0.8f),
-                        fontFamily = techFont,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                    val filteredProcesses = if (showOnlyUserApps) {
+                        runningProcesses.filter { !it.isSystemApp }
+                    } else {
+                        runningProcesses
+                    }
+                    val totalMbShown = filteredProcesses.sumOf { it.memoryUsageMb }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "CONSUMO REPORTADO: $totalMbShown MB // ${filteredProcesses.size} PROCESOS EN EJECUCIÓN",
+                            color = CyberCyan.copy(alpha = 0.9f),
+                            fontFamily = techFont,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Button(
+                            onClick = { showOnlyUserApps = !showOnlyUserApps },
+                            colors = ButtonDefaults.colors(
+                                containerColor = if (showOnlyUserApps) Color(0xFF1E2838) else Color(0xFF0F1522),
+                                focusedContainerColor = CyberCyan
+                            ),
+                            border = ButtonDefaults.border(
+                                border = Border(
+                                    border = BorderStroke(1.dp, if (showOnlyUserApps) CyberAmber else Color(0x33486581)),
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                            ),
+                            shape = ButtonDefaults.shape(RoundedCornerShape(4.dp))
+                        ) {
+                            Text(
+                                text = if (showOnlyUserApps) "[ FILTRO: SOLO APPS USUARIO ]" else "[ MOSTRAR: TODOS LOS PROCESOS ]",
+                                fontFamily = techFont,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (showOnlyUserApps) CyberAmber else Color(0xFFA6C5E2)
+                            )
+                        }
+                    }
 
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        if (runningProcesses.isEmpty()) {
+                        if (filteredProcesses.isEmpty()) {
                             item {
                                 Box(
                                     modifier = Modifier
@@ -400,7 +439,7 @@ fun SystemMonitorLog(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "NO SE DETECTARON PROCESOS EXTERNOS ACTIVOS EN MEMORIA",
+                                        text = if (showOnlyUserApps) "NO HAY APLICACIONES DE USUARIO EN SEGUNDO PLANO" else "NO SE DETECTARON PROCESOS ACTIVOS EN MEMORIA",
                                         color = CyberGrey,
                                         fontFamily = techFont,
                                         fontSize = 13.sp
@@ -408,7 +447,7 @@ fun SystemMonitorLog(
                                 }
                             }
                         } else {
-                            items(items = runningProcesses, key = { "${it.packageName}_${it.pid}" }) { proc ->
+                            items(items = filteredProcesses, key = { "${it.packageName}_${it.pid}" }) { proc ->
                                 ProcessLogItem(
                                     process = proc,
                                     techFont = techFont,

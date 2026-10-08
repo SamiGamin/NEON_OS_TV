@@ -17,7 +17,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
+import java.io.BufferedReader
 import java.io.File
+import java.io.InputStreamReader
 
 /**
  * Fuente de datos para consultar el hardware, memoria RAM y métricas del sistema.
@@ -159,79 +161,125 @@ class SystemTelemetryDataSourceImpl(
     }
 
     override fun getRunningProcesses(): List<ProcessInfo> {
-        val am = activityManager ?: return emptyList()
-        val pm = context.packageManager
-        val running = am.runningAppProcesses ?: emptyList()
         val result = mutableListOf<ProcessInfo>()
+        val pm = context.packageManager
+        val myPkg = context.packageName
 
-        val pids = running.map { it.pid }.toIntArray()
-        val memInfos = try {
-            if (pids.isNotEmpty()) am.getProcessMemoryInfo(pids) else emptyArray()
-        } catch (_: Exception) {
-            emptyArray()
-        }
+        // 1. Lectura de procesos reales y memoria física RSS mediante ps nativo de Linux/Android
+        try {
+            val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", "ps -A -o PID,RSS,NAME || ps"))
+            val reader = BufferedReader(InputStreamReader(process.inputStream))
+            var line: String?
 
-        running.forEachIndexed { index, proc ->
-            val pid = proc.pid
-            val pName = proc.processName
-            val primaryPkg = proc.pkgList?.firstOrNull() ?: pName
+            while (reader.readLine().also { line = it } != null) {
+                val trimmed = line?.trim() ?: continue
+                if (trimmed.isEmpty() || trimmed.startsWith("PID") || trimmed.startsWith("USER")) continue
 
-            var appName = pName
-            var isSystem = false
-            var icon: Drawable? = null
+                val parts = trimmed.split(Regex("\\s+"))
+                if (parts.size >= 3) {
+                    val pid = parts[0].toIntOrNull() ?: continue
+                    val rssKb = parts[1].toLongOrNull() ?: continue
+                    val procName = parts[2]
 
-            try {
-                val appInfo = pm.getApplicationInfo(primaryPkg, 0)
-                appName = pm.getApplicationLabel(appInfo).toString()
-                isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                icon = pm.getApplicationIcon(appInfo)
-            } catch (_: Exception) {}
+                    // Descartar hilos del kernel que tienen RSS = 0 o nombres entre corchetes [kworker...]
+                    if (rssKb <= 0 || procName.startsWith("[")) continue
 
-            val memMb = if (index < memInfos.size) {
-                (memInfos[index].totalPss / 1024L).coerceAtLeast(1L)
-            } else {
-                1L
-            }
+                    val memMb = (rssKb / 1024L).coerceAtLeast(1L)
+                    val basePkg = if (procName.contains(":")) procName.substringBefore(":") else procName
 
-            result.add(
-                ProcessInfo(
-                    pid = pid,
-                    processName = pName,
-                    appName = appName,
-                    packageName = primaryPkg,
-                    memoryUsageMb = memMb,
-                    isSystemApp = isSystem,
-                    icon = icon
-                )
-            )
-        }
+                    var appName = procName
+                    var isSystem = true
+                    var icon: Drawable? = null
 
-        // Si la lista de procesos activos no detecta apps debido a restricciones de nivel de API,
-        // complementamos con apps de terceros instaladas
-        if (result.isEmpty()) {
-            try {
-                val installed = pm.getInstalledApplications(0)
-                for (app in installed) {
-                    if ((app.flags and ApplicationInfo.FLAG_SYSTEM) == 0 && app.packageName != context.packageName) {
-                        val appName = pm.getApplicationLabel(app).toString()
-                        val icon = pm.getApplicationIcon(app)
-                        result.add(
-                            ProcessInfo(
-                                pid = 0,
-                                processName = app.processName ?: app.packageName,
-                                appName = appName,
-                                packageName = app.packageName,
-                                memoryUsageMb = 24L,
-                                isSystemApp = false,
-                                icon = icon
-                            )
-                        )
+                    try {
+                        val appInfo = pm.getApplicationInfo(basePkg, 0)
+                        appName = pm.getApplicationLabel(appInfo).toString()
+                        isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                        icon = pm.getApplicationIcon(appInfo)
+                    } catch (_: Exception) {
+                        appName = when (procName) {
+                            "system_server" -> "Android System Server"
+                            "surfaceflinger" -> "Surface Flinger (Gráficos TV)"
+                            "audioserver" -> "Servidor de Audio"
+                            "mediaserver" -> "Servidor Multimedia"
+                            "netd" -> "Servicio de Red (netd)"
+                            "zygote" -> "Zygote (Motor de Apps)"
+                            else -> if (procName.contains(".")) {
+                                procName.substringAfterLast(".").replaceFirstChar { it.uppercase() }
+                            } else {
+                                procName
+                            }
+                        }
                     }
+
+                    result.add(
+                        ProcessInfo(
+                            pid = pid,
+                            processName = procName,
+                            appName = appName,
+                            packageName = basePkg,
+                            memoryUsageMb = memMb,
+                            isSystemApp = isSystem,
+                            icon = icon
+                        )
+                    )
                 }
-            } catch (_: Exception) {}
+            }
+            reader.close()
+            process.waitFor()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
 
-        return result.sortedWith(compareBy({ it.isSystemApp }, { -it.memoryUsageMb }))
+        // 2. Si ps no arrojó resultados (fallback con ActivityManager)
+        if (result.isEmpty()) {
+            val am = activityManager
+            if (am != null) {
+                val running = am.runningAppProcesses ?: emptyList()
+                val pids = running.map { it.pid }.toIntArray()
+                val memInfos = try {
+                    if (pids.isNotEmpty()) am.getProcessMemoryInfo(pids) else emptyArray()
+                } catch (_: Exception) {
+                    emptyArray()
+                }
+
+                running.forEachIndexed { index, proc ->
+                    val pid = proc.pid
+                    val pName = proc.processName
+                    val primaryPkg = proc.pkgList?.firstOrNull() ?: pName
+
+                    var appName = pName
+                    var isSystem = false
+                    var icon: Drawable? = null
+
+                    try {
+                        val appInfo = pm.getApplicationInfo(primaryPkg, 0)
+                        appName = pm.getApplicationLabel(appInfo).toString()
+                        isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                        icon = pm.getApplicationIcon(appInfo)
+                    } catch (_: Exception) {}
+
+                    val memMb = if (index < memInfos.size) {
+                        (memInfos[index].totalPss / 1024L).coerceAtLeast(1L)
+                    } else 1L
+
+                    result.add(
+                        ProcessInfo(
+                            pid = pid,
+                            processName = pName,
+                            appName = appName,
+                            packageName = primaryPkg,
+                            memoryUsageMb = memMb,
+                            isSystemApp = isSystem,
+                            icon = icon
+                        )
+                    )
+                }
+            }
+        }
+
+        // Ordenar: aplicaciones con mayor consumo de memoria primero
+        return result.sortedByDescending { it.memoryUsageMb }
     }
 
     override fun cleanBackgroundProcesses(): CleanRamResult {
@@ -245,30 +293,15 @@ class SystemTelemetryDataSourceImpl(
         val myPkg = context.packageName
         val packagesToKill = mutableSetOf<String>()
 
-        val running = am.runningAppProcesses ?: emptyList()
-        running.forEach { proc ->
-            proc.pkgList?.forEach { pkg ->
-                if (pkg != myPkg) {
-                    try {
-                        val appInfo = pm.getApplicationInfo(pkg, 0)
-                        val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                        if (!isSystem) {
-                            packagesToKill.add(pkg)
-                        }
-                    } catch (_: Exception) {}
-                }
+        // 1. Obtener la lista real de procesos activos
+        val activeProcesses = getRunningProcesses()
+        activeProcesses.forEach { proc ->
+            val pkg = proc.packageName
+            // No matar nuestra propia app ni servicios críticos esenciales del sistema TV
+            if (pkg != myPkg && !isCriticalPackage(pkg)) {
+                packagesToKill.add(pkg)
             }
         }
-
-        // Adicionalmente agregamos aplicaciones de usuario que puedan tener procesos en segundo plano
-        try {
-            val installed = pm.getInstalledApplications(0)
-            for (app in installed) {
-                if ((app.flags and ApplicationInfo.FLAG_SYSTEM) == 0 && app.packageName != myPkg) {
-                    packagesToKill.add(app.packageName)
-                }
-            }
-        } catch (_: Exception) {}
 
         var killedCount = 0
         packagesToKill.forEach { pkg ->
@@ -280,7 +313,7 @@ class SystemTelemetryDataSourceImpl(
             }
         }
 
-        // Forzar recolección de basura
+        // 2. Liberar memoria del runtime
         System.gc()
         Runtime.getRuntime().gc()
 
@@ -295,6 +328,16 @@ class SystemTelemetryDataSourceImpl(
             initialAvailableMb = initialAvailMb,
             finalAvailableMb = finalAvailMb
         )
+    }
+
+    private fun isCriticalPackage(packageName: String): Boolean {
+        return packageName == "android" ||
+                packageName == "com.android.systemui" ||
+                packageName == "com.android.tv.settings" ||
+                packageName == "com.android.bluetooth" ||
+                packageName == "com.android.keychain" ||
+                packageName == "system_server" ||
+                packageName == "surfaceflinger"
     }
 
     override fun killProcess(packageName: String): Boolean {
