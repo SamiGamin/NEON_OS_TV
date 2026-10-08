@@ -66,6 +66,7 @@ import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
 fun TvCyberBannerCard(
     appItem: AppItem,
     cardStyle: AppCardStyle = AppCardStyle.BANNER_16_9,
+    showAppName: Boolean = true,
     isGhostMode: Boolean = false,
     isAnyAppMoving: Boolean = false,
     isEditing: Boolean = false,
@@ -194,22 +195,28 @@ fun TvCyberBannerCard(
                     Image(
                         painter = rememberAsyncImagePainter(model = appItem.iconDrawable),
                         contentDescription = appItem.name,
-                        modifier = Modifier.size(if (cardStyle == AppCardStyle.SQUARE_1_1) 50.dp else 44.dp)
+                        modifier = Modifier.size(
+                            if (!showAppName) 54.dp
+                            else if (cardStyle == AppCardStyle.SQUARE_1_1) 50.dp
+                            else 44.dp
+                        )
                     )
                 }
             }
 
-            // Degradado inferior para legibilidad
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color(0xDD040711)),
-                            startY = 60f
+            // Degradado inferior para legibilidad (solo si se muestra el nombre)
+            if (showAppName) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color(0xDD040711)),
+                                startY = 60f
+                            )
                         )
-                    )
-            )
+                )
+            }
 
             // Indicador flotante cuando está en modo reordenamiento fantasma
             if (isGhostMode) {
@@ -249,20 +256,22 @@ fun TvCyberBannerCard(
                 }
             }
 
-            // Título de la app
-            Text(
-                text = appItem.name.uppercase(),
-                color = if (isGhostMode) CyberMagenta else if (isFocused) CyberCyan else Color.White,
-                fontFamily = ShareTechMonoFontFamily,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
-                    .then(if (isFocused) Modifier.basicMarquee() else Modifier)
-            )
+            // Título de la app (configurable por el usuario)
+            if (showAppName) {
+                Text(
+                    text = appItem.name.uppercase(),
+                    color = if (isGhostMode) CyberMagenta else if (isFocused) CyberCyan else Color.White,
+                    fontFamily = ShareTechMonoFontFamily,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                        .then(if (isFocused) Modifier.basicMarquee() else Modifier)
+                )
+            }
         }
     }
 }

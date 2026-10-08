@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,8 +31,12 @@ import com.launcher.samiboxtv.presentation.components.AppContextSideDrawer
 import com.launcher.samiboxtv.presentation.components.AssignCategoryDialog
 import com.launcher.samiboxtv.presentation.components.UpdateDialog
 import com.launcher.samiboxtv.presentation.components.cards.AddAppCyberCard
+import com.launcher.samiboxtv.presentation.components.cards.MediaHubCard
 import com.launcher.samiboxtv.presentation.components.cards.TvCyberBannerCard
 import com.launcher.samiboxtv.presentation.components.hud.CyberHudHeader
+import com.launcher.samiboxtv.presentation.media.CyberMediaPlayer
+import com.launcher.samiboxtv.presentation.media.MediaExplorerScreen
+import com.launcher.samiboxtv.presentation.overlay.SystemInfoOverlay
 import com.launcher.samiboxtv.presentation.overlay.SystemMonitorLog
 import com.launcher.samiboxtv.presentation.settings.TvSettingsPanel
 import com.launcher.samiboxtv.presentation.theme.CyberCyan
@@ -126,6 +131,30 @@ fun HomeScreen(
             onDismiss = { viewModel.onEvent(HomeUiEvent.DismissUpdateDialog) }
         )
     }
+
+    if (uiState.isMediaHubOpen) {
+        MediaExplorerScreen(
+            drives = uiState.storageDrives,
+            selectedDrive = uiState.selectedDrive,
+            currentFilter = uiState.mediaFilter,
+            files = uiState.mediaFilesList,
+            isLoading = uiState.isLoadingMedia,
+            onSelectDrive = { viewModel.onEvent(HomeUiEvent.SelectStorageDrive(it)) },
+            onFilterChange = { viewModel.onEvent(HomeUiEvent.FilterMediaType(it)) },
+            onSelectFile = { viewModel.onEvent(HomeUiEvent.PlayMedia(it)) },
+            onRefresh = { viewModel.onEvent(HomeUiEvent.RefreshMedia) },
+            onBack = { viewModel.onEvent(HomeUiEvent.CloseMediaHub) }
+        )
+    }
+
+    uiState.currentPlayingMedia?.let { mediaFile ->
+        CyberMediaPlayer(
+            mediaFile = mediaFile,
+            onClose = { viewModel.onEvent(HomeUiEvent.CloseMediaPlayer) },
+            onPlayNext = { viewModel.onEvent(HomeUiEvent.PlayNextMedia) },
+            onPlayPrevious = { viewModel.onEvent(HomeUiEvent.PlayPreviousMedia) }
+        )
+    }
 }
 
 /**
@@ -185,15 +214,7 @@ fun HomeScreenContent(
                     apps = categoryApps,
                     uiState = uiState,
                     onEvent = onEvent,
-                    trailingContent = if (isLast) {
-                        {
-                            AddAppCyberCard(
-                                cardStyle = uiState.cardStyle,
-                                onClick = { onEvent(HomeUiEvent.OpenAddDialog) },
-                                modifier = Modifier.width(cardWidth)
-                            )
-                        }
-                    } else null
+                    showSystemActions = isLast
                 )
             }
         }
@@ -208,22 +229,22 @@ fun HomeScreenContent(
                         apps = nonFavoriteApps,
                         uiState = uiState,
                         onEvent = onEvent,
-                        trailingContent = {
-                            AddAppCyberCard(
-                                cardStyle = uiState.cardStyle,
-                                onClick = { onEvent(HomeUiEvent.OpenAddDialog) },
-                                modifier = Modifier.width(cardWidth)
-                            )
-                        }
+                        showSystemActions = true
                     )
                 }
             } else if (favoriteApps.isEmpty()) {
                 item(key = "section_manage_empty") {
-                    Column(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 48.dp)
+                            .padding(horizontal = 48.dp),
+                        horizontalArrangement = Arrangement.spacedBy(18.dp)
                     ) {
+                        MediaHubCard(
+                            cardStyle = uiState.cardStyle,
+                            onClick = { onEvent(HomeUiEvent.OpenMediaHub) },
+                            modifier = Modifier.width(cardWidth)
+                        )
                         AddAppCyberCard(
                             cardStyle = uiState.cardStyle,
                             onClick = { onEvent(HomeUiEvent.OpenAddDialog) },
@@ -245,7 +266,7 @@ private fun CategoryAppRow(
     apps: List<AppItem>,
     uiState: HomeUiState,
     onEvent: (HomeUiEvent) -> Unit,
-    trailingContent: (@Composable () -> Unit)? = null
+    showSystemActions: Boolean = false
 ) {
     val cardWidth = uiState.cardStyle.widthDp.dp
 
@@ -262,6 +283,7 @@ private fun CategoryAppRow(
                 TvCyberBannerCard(
                     appItem = app,
                     cardStyle = uiState.cardStyle,
+                    showAppName = uiState.showAppNames,
                     isGhostMode = isMovingThisApp,
                     isAnyAppMoving = uiState.movingAppPackageName != null,
                     isEditing = isMovingThisApp,
@@ -283,9 +305,21 @@ private fun CategoryAppRow(
                 )
             }
 
-            trailingContent?.let { content ->
-                item(key = "trailing_action") {
-                    content()
+            if (showSystemActions) {
+                item(key = "action_media_hub") {
+                    MediaHubCard(
+                        cardStyle = uiState.cardStyle,
+                        onClick = { onEvent(HomeUiEvent.OpenMediaHub) },
+                        modifier = Modifier.width(cardWidth)
+                    )
+                }
+
+                item(key = "action_add_app") {
+                    AddAppCyberCard(
+                        cardStyle = uiState.cardStyle,
+                        onClick = { onEvent(HomeUiEvent.OpenAddDialog) },
+                        modifier = Modifier.width(cardWidth)
+                    )
                 }
             }
         }

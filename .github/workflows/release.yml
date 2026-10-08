@@ -43,11 +43,9 @@ jobs:
           echo "Detected App Version: $VERSION"
           echo "Target Release Tag: $TAG"
 
-      # --- NUEVO PASO DE CONTROL ---
       - name: Check If Tag Already Exists
         id: check_tag
         run: |
-          # Revisa si el tag ya existe en GitHub
           if git ls-remote --tags origin "refs/tags/${{ env.TAG }}" | grep -q "${{ env.TAG }}"; then
             echo "::notice::La versión ${{ env.TAG }} ya existe en GitHub. Se omitirá la compilación y publicación."
             echo "is_new=false" >> $GITHUB_OUTPUT
@@ -93,16 +91,26 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease --stacktrace
 
-      - name: Locate Output APK
+      - name: Locate Output APK & Prepare Latest Copy
         if: steps.check_tag.outputs.is_new == 'true' || github.event_name == 'workflow_dispatch'
         id: find_apk
         run: |
-          APK_PATH=$(find app/build/outputs/apk/release/ -name "SamiBoxTV-*.apk" | head -n 1)
+          # 1. Encuentra el APK firmado generado por Gradle
+          APK_PATH=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
           if [ -z "$APK_PATH" ]; then
-            APK_PATH=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
+            echo "::error::No se encontró ningún APK generado en release."
+            exit 1
           fi
-          echo "APK encontrado para publicar: $APK_PATH"
+
+          # 2. Crea una copia idéntica con el nombre permanente NEONOS_TV-latest.apk
+          DIR=$(dirname "$APK_PATH")
+          LATEST_PATH="$DIR/NEONOS_TV-latest.apk"
+          cp "$APK_PATH" "$LATEST_PATH"
+
+          echo "APK con versión detectado: $APK_PATH"
+          echo "Copia para enlace universal: $LATEST_PATH"
           echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+          echo "latest_path=$LATEST_PATH" >> $GITHUB_OUTPUT
 
       - name: Publish GitHub Release
         if: steps.check_tag.outputs.is_new == 'true' || github.event_name == 'workflow_dispatch'
@@ -110,7 +118,9 @@ jobs:
         with:
           tag_name: ${{ env.TAG }}
           name: "SamiBox TV Release ${{ env.TAG }}"
-          files: ${{ steps.find_apk.outputs.apk_path }}
+          files: |
+            ${{ steps.find_apk.outputs.apk_path }}
+            ${{ steps.find_apk.outputs.latest_path }}
           draft: false
           prerelease: false
           generate_release_notes: true

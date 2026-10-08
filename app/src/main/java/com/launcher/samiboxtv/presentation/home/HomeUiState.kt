@@ -3,8 +3,11 @@ package com.launcher.samiboxtv.presentation.home
 import androidx.compose.runtime.Immutable
 import com.launcher.samiboxtv.core.base.UiState
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.domain.model.MediaFile
+import com.launcher.samiboxtv.domain.model.MediaType
 import com.launcher.samiboxtv.domain.model.NetworkStatus
 import com.launcher.samiboxtv.domain.model.ProcessInfo
+import com.launcher.samiboxtv.domain.model.StorageDrive
 import com.launcher.samiboxtv.domain.model.SystemMonitorTab
 import com.launcher.samiboxtv.domain.model.SystemTelemetry
 import com.launcher.samiboxtv.domain.model.UpdateInfo
@@ -39,6 +42,15 @@ data class HomeUiState(
     val cardStyle: com.launcher.samiboxtv.domain.model.AppCardStyle = com.launcher.samiboxtv.domain.model.AppCardStyle.BANNER_16_9,
     val categories: List<String> = listOf("STREAMING", "GAMING", "APPS"),
     val appCategoryMap: Map<String, String> = emptyMap(),
+    val showAppNames: Boolean = true,
+    val isHudOverlayVisible: Boolean = false,
+    val isMediaHubOpen: Boolean = false,
+    val storageDrives: List<StorageDrive> = emptyList(),
+    val selectedDrive: StorageDrive? = null,
+    val mediaFilter: MediaType? = null,
+    val mediaFilesList: List<MediaFile> = emptyList(),
+    val isLoadingMedia: Boolean = false,
+    val currentPlayingMedia: MediaFile? = null,
     val errorMessage: String? = null
 ) : UiState {
     // Compatibilidad para reordenamiento u otros consumidores

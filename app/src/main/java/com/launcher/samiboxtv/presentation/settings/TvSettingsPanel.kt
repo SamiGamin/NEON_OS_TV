@@ -223,7 +223,9 @@ fun TvSettingsPanel(
                         SettingsSection.APP_STYLE -> {
                             AppStyleSettingsContent(
                                 currentStyle = uiState.cardStyle,
-                                onSelectStyle = { onEvent(HomeUiEvent.ChangeCardStyle(it)) }
+                                showAppNames = uiState.showAppNames,
+                                onSelectStyle = { onEvent(HomeUiEvent.ChangeCardStyle(it)) },
+                                onToggleShowAppNames = { onEvent(HomeUiEvent.ToggleShowAppNames) }
                             )
                         }
                         SettingsSection.SYSTEM -> {
@@ -231,9 +233,14 @@ fun TvSettingsPanel(
                                 context = context,
                                 isCheckingUpdates = uiState.isCheckingUpdates,
                                 updateCheckMessage = uiState.updateCheckMessage,
+                                isHudOverlayVisible = uiState.isHudOverlayVisible,
                                 onOpenTelemetry = {
                                     onEvent(HomeUiEvent.CloseSettings)
                                     onEvent(HomeUiEvent.OpenSystemLog)
+                                },
+                                onToggleHudOverlay = {
+                                    onEvent(HomeUiEvent.ToggleHudOverlay)
+                                    onEvent(HomeUiEvent.CloseSettings)
                                 },
                                 onCheckUpdates = { onEvent(HomeUiEvent.CheckUpdates) },
                                 onOpenDefaultLauncherDialog = { showDefaultLauncherDialog = true }
@@ -626,12 +633,36 @@ private fun CategoriesSettingsContent(
 @Composable
 private fun AppStyleSettingsContent(
     currentStyle: AppCardStyle,
-    onSelectStyle: (AppCardStyle) -> Unit
+    showAppNames: Boolean,
+    onSelectStyle: (AppCardStyle) -> Unit,
+    onToggleShowAppNames: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Toggle: Mostrar u ocultar nombres de aplicaciones
+        SettingsActionItem(
+            title = "MOSTRAR NOMBRES DE LAS APLICACIONES",
+            subtitle = if (showAppNames) {
+                "[✓ VISIBLE] Muestra el nombre/título de cada app en su tarjeta"
+            } else {
+                "[○ SOLO ICONOS] Modo minimalista: oculta los nombres y muestra solo el icono"
+            },
+            isHighlighted = showAppNames,
+            onClick = onToggleShowAppNames
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = "FORMATO Y TAMAÑO DE LAS TARJETAS:",
+            color = CyberCyan,
+            fontSize = 11.sp,
+            fontFamily = ShareTechMonoFontFamily,
+            fontWeight = FontWeight.Bold
+        )
+
         AppCardStyle.entries.forEach { style ->
             val isSelected = currentStyle == style
             var isFocused by remember { mutableStateOf(false) }
@@ -693,7 +724,9 @@ private fun SystemSettingsContent(
     context: Context,
     isCheckingUpdates: Boolean,
     updateCheckMessage: String?,
+    isHudOverlayVisible: Boolean,
     onOpenTelemetry: () -> Unit,
+    onToggleHudOverlay: () -> Unit,
     onCheckUpdates: () -> Unit,
     onOpenDefaultLauncherDialog: () -> Unit
 ) {
@@ -703,6 +736,13 @@ private fun SystemSettingsContent(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        SettingsActionItem(
+            title = "📊 HUD OVERLAY (FPS & RENDIMIENTO)",
+            subtitle = if (isHudOverlayVisible) "[✓ ACTIVO] Ocultar contador de FPS y telemetría flotante en pantalla" else "Mostrar contador de FPS y telemetría en tiempo real sobre la pantalla",
+            isHighlighted = isHudOverlayVisible,
+            onClick = onToggleHudOverlay
+        )
+
         SettingsActionItem(
             title = "⌂ ESTABLECER COMO LAUNCHER PREDETERMINADO",
             subtitle = if (isAggressiveActive) {

@@ -147,4 +147,8 @@ dependencies {
 
     // 2. Coil (Para extraer y dibujar los iconos de las apps súper rápido)
     implementation(libs.coil.compose)
+
+    // media3
+    implementation("androidx.media3:media3-exoplayer:1.11.1")
+    implementation("androidx.media3:media3-ui:1.11.1")
 }

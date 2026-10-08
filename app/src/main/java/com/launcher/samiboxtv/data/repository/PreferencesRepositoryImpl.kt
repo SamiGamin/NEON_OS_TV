@@ -76,4 +76,12 @@ class PreferencesRepositoryImpl(
     override suspend fun setAppCategory(packageName: String, categoryName: String) = withContext(dispatcherProvider.io) {
         preferencesDataSource.setAppCategory(packageName, categoryName)
     }
+
+    override suspend fun getShowAppNames(): Boolean = withContext(dispatcherProvider.io) {
+        preferencesDataSource.getShowAppNames()
+    }
+
+    override suspend fun setShowAppNames(show: Boolean) = withContext(dispatcherProvider.io) {
+        preferencesDataSource.setShowAppNames(show)
+    }
 }

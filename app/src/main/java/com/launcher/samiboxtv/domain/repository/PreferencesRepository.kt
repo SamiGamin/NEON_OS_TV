@@ -20,4 +20,6 @@ interface PreferencesRepository {
     suspend fun removeCustomCategory(categoryName: String): Boolean
     suspend fun getAppCategoryMap(): Map<String, String>
     suspend fun setAppCategory(packageName: String, categoryName: String)
+    suspend fun getShowAppNames(): Boolean
+    suspend fun setShowAppNames(show: Boolean)
 }

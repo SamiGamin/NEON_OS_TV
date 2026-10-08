@@ -2,6 +2,9 @@ package com.launcher.samiboxtv.presentation.home
 
 import com.launcher.samiboxtv.core.base.UiEvent
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.domain.model.MediaFile
+import com.launcher.samiboxtv.domain.model.MediaType
+import com.launcher.samiboxtv.domain.model.StorageDrive
 import com.launcher.samiboxtv.domain.model.SystemMonitorTab
 
 /**
@@ -43,4 +46,16 @@ sealed interface HomeUiEvent : UiEvent {
     data class CreateCategory(val name: String) : HomeUiEvent
     data class RemoveCategory(val name: String) : HomeUiEvent
     data class AssignCategory(val packageName: String, val categoryName: String) : HomeUiEvent
+
+    data object ToggleShowAppNames : HomeUiEvent
+    data object ToggleHudOverlay : HomeUiEvent
+    data object OpenMediaHub : HomeUiEvent
+    data object CloseMediaHub : HomeUiEvent
+    data class SelectStorageDrive(val drive: StorageDrive) : HomeUiEvent
+    data class FilterMediaType(val type: MediaType?) : HomeUiEvent
+    data object RefreshMedia : HomeUiEvent
+    data class PlayMedia(val file: MediaFile) : HomeUiEvent
+    data object CloseMediaPlayer : HomeUiEvent
+    data object PlayNextMedia : HomeUiEvent
+    data object PlayPreviousMedia : HomeUiEvent
 }

@@ -66,6 +66,10 @@ interface AppContainer {
     val getLauncherSettingsUseCase: com.launcher.samiboxtv.domain.usecase.GetLauncherSettingsUseCase
     val saveCardStyleUseCase: com.launcher.samiboxtv.domain.usecase.SaveCardStyleUseCase
     val manageCategoriesUseCase: com.launcher.samiboxtv.domain.usecase.ManageCategoriesUseCase
+    val saveShowAppNamesUseCase: com.launcher.samiboxtv.domain.usecase.SaveShowAppNamesUseCase
+    val mediaStorageRepository: com.launcher.samiboxtv.domain.repository.MediaStorageRepository
+    val getStorageDrivesUseCase: com.launcher.samiboxtv.domain.usecase.GetStorageDrivesUseCase
+    val getMediaFilesUseCase: com.launcher.samiboxtv.domain.usecase.GetMediaFilesUseCase
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -198,5 +202,24 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val manageCategoriesUseCase: com.launcher.samiboxtv.domain.usecase.ManageCategoriesUseCase by lazy {
         com.launcher.samiboxtv.domain.usecase.ManageCategoriesUseCase(preferencesRepository = preferencesRepository)
+    }
+
+    override val saveShowAppNamesUseCase: com.launcher.samiboxtv.domain.usecase.SaveShowAppNamesUseCase by lazy {
+        com.launcher.samiboxtv.domain.usecase.SaveShowAppNamesUseCase(preferencesRepository = preferencesRepository)
+    }
+
+    override val mediaStorageRepository: com.launcher.samiboxtv.domain.repository.MediaStorageRepository by lazy {
+        com.launcher.samiboxtv.data.repository.MediaStorageRepositoryImpl(
+            context = context,
+            dispatcherProvider = dispatcherProvider
+        )
+    }
+
+    override val getStorageDrivesUseCase: com.launcher.samiboxtv.domain.usecase.GetStorageDrivesUseCase by lazy {
+        com.launcher.samiboxtv.domain.usecase.GetStorageDrivesUseCase(repository = mediaStorageRepository)
+    }
+
+    override val getMediaFilesUseCase: com.launcher.samiboxtv.domain.usecase.GetMediaFilesUseCase by lazy {
+        com.launcher.samiboxtv.domain.usecase.GetMediaFilesUseCase(repository = mediaStorageRepository)
     }
 }

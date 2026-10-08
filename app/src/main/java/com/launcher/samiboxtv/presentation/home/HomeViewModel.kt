@@ -12,6 +12,11 @@ import com.launcher.samiboxtv.domain.usecase.ClearProcessCacheUseCase
 import com.launcher.samiboxtv.domain.usecase.GetInstalledAppsUseCase
 import com.launcher.samiboxtv.domain.usecase.GetLauncherSettingsUseCase
 import com.launcher.samiboxtv.domain.usecase.GetRunningProcessesUseCase
+import com.launcher.samiboxtv.domain.model.MediaFile
+import com.launcher.samiboxtv.domain.model.MediaType
+import com.launcher.samiboxtv.domain.model.StorageDrive
+import com.launcher.samiboxtv.domain.usecase.GetMediaFilesUseCase
+import com.launcher.samiboxtv.domain.usecase.GetStorageDrivesUseCase
 import com.launcher.samiboxtv.domain.usecase.HideAppUseCase
 import com.launcher.samiboxtv.domain.usecase.KillProcessUseCase
 import com.launcher.samiboxtv.domain.usecase.LaunchAppUseCase
@@ -20,6 +25,7 @@ import com.launcher.samiboxtv.domain.usecase.MoveAppUseCase
 import com.launcher.samiboxtv.domain.usecase.ObserveNetworkStatusUseCase
 import com.launcher.samiboxtv.domain.usecase.ObserveSystemTelemetryUseCase
 import com.launcher.samiboxtv.domain.usecase.SaveCardStyleUseCase
+import com.launcher.samiboxtv.domain.usecase.SaveShowAppNamesUseCase
 import com.launcher.samiboxtv.domain.usecase.SetHiddenPackagesUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleAppVisibilityUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleFavoriteAppUseCase
@@ -58,6 +64,9 @@ class HomeViewModel(
     private val getLauncherSettingsUseCase: GetLauncherSettingsUseCase,
     private val saveCardStyleUseCase: SaveCardStyleUseCase,
     private val manageCategoriesUseCase: ManageCategoriesUseCase,
+    private val saveShowAppNamesUseCase: SaveShowAppNamesUseCase,
+    private val getStorageDrivesUseCase: GetStorageDrivesUseCase,
+    private val getMediaFilesUseCase: GetMediaFilesUseCase,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
 
@@ -173,6 +182,17 @@ class HomeViewModel(
             is HomeUiEvent.CreateCategory -> createCategory(event.name)
             is HomeUiEvent.RemoveCategory -> removeCategory(event.name)
             is HomeUiEvent.AssignCategory -> assignCategory(event.packageName, event.categoryName)
+            HomeUiEvent.ToggleShowAppNames -> toggleShowAppNames()
+            HomeUiEvent.ToggleHudOverlay -> _uiState.update { it.copy(isHudOverlayVisible = !it.isHudOverlayVisible) }
+            HomeUiEvent.OpenMediaHub -> openMediaHub()
+            HomeUiEvent.CloseMediaHub -> closeMediaHub()
+            is HomeUiEvent.SelectStorageDrive -> selectDrive(event.drive)
+            is HomeUiEvent.FilterMediaType -> filterMediaType(event.type)
+            HomeUiEvent.RefreshMedia -> refreshMedia()
+            is HomeUiEvent.PlayMedia -> _uiState.update { it.copy(currentPlayingMedia = event.file) }
+            HomeUiEvent.CloseMediaPlayer -> _uiState.update { it.copy(currentPlayingMedia = null) }
+            HomeUiEvent.PlayNextMedia -> playNextMedia()
+            HomeUiEvent.PlayPreviousMedia -> playPreviousMedia()
         }
     }
 
@@ -185,8 +205,19 @@ class HomeViewModel(
                 it.copy(
                     cardStyle = settings.cardStyle,
                     categories = settings.categories,
-                    appCategoryMap = settings.appCategoryMap
+                    appCategoryMap = settings.appCategoryMap,
+                    showAppNames = settings.showAppNames
                 )
+            }
+        }
+    }
+
+    private fun toggleShowAppNames() {
+        val newValue = !_uiState.value.showAppNames
+        _uiState.update { it.copy(showAppNames = newValue) }
+        viewModelScope.launch(dispatcherProvider.main) {
+            withContext(dispatcherProvider.io) {
+                saveShowAppNamesUseCase(newValue)
             }
         }
     }
@@ -488,6 +519,85 @@ class HomeViewModel(
                 setHiddenPackagesUseCase(allPackages)
             }
             loadApps()
+        }
+    }
+
+    private fun openMediaHub() {
+        viewModelScope.launch(dispatcherProvider.main) {
+            _uiState.update { it.copy(isMediaHubOpen = true, isLoadingMedia = true) }
+            val drives = withContext(dispatcherProvider.io) {
+                getStorageDrivesUseCase()
+            }
+            val initialDrive = drives.firstOrNull()
+            _uiState.update {
+                it.copy(
+                    storageDrives = drives,
+                    selectedDrive = initialDrive,
+                    isLoadingMedia = initialDrive != null
+                )
+            }
+            if (initialDrive != null) {
+                loadMediaFiles(initialDrive, _uiState.value.mediaFilter)
+            } else {
+                _uiState.update { it.copy(isLoadingMedia = false, mediaFilesList = emptyList()) }
+            }
+        }
+    }
+
+    private fun closeMediaHub() {
+        _uiState.update {
+            it.copy(
+                isMediaHubOpen = false,
+                currentPlayingMedia = null,
+                mediaFilesList = emptyList(),
+                isLoadingMedia = false
+            )
+        }
+    }
+
+    private fun selectDrive(drive: StorageDrive) {
+        _uiState.update { it.copy(selectedDrive = drive) }
+        loadMediaFiles(drive, _uiState.value.mediaFilter)
+    }
+
+    private fun filterMediaType(type: MediaType?) {
+        _uiState.update { it.copy(mediaFilter = type) }
+        _uiState.value.selectedDrive?.let { drive ->
+            loadMediaFiles(drive, type)
+        }
+    }
+
+    private fun refreshMedia() {
+        _uiState.value.selectedDrive?.let { drive ->
+            loadMediaFiles(drive, _uiState.value.mediaFilter)
+        }
+    }
+
+    private fun loadMediaFiles(drive: StorageDrive, filter: MediaType?) {
+        viewModelScope.launch(dispatcherProvider.main) {
+            _uiState.update { it.copy(isLoadingMedia = true) }
+            val files = withContext(dispatcherProvider.io) {
+                getMediaFilesUseCase(drive, filter)
+            }
+            _uiState.update { it.copy(isLoadingMedia = false, mediaFilesList = files) }
+        }
+    }
+
+    private fun playNextMedia() {
+        val current = _uiState.value.currentPlayingMedia ?: return
+        val list = _uiState.value.mediaFilesList
+        val index = list.indexOfFirst { it.path == current.path }
+        if (index != -1 && index < list.lastIndex) {
+            _uiState.update { it.copy(currentPlayingMedia = list[index + 1]) }
+        }
+    }
+
+    private fun playPreviousMedia() {
+        val current = _uiState.value.currentPlayingMedia ?: return
+        val list = _uiState.value.mediaFilesList
+        val index = list.indexOfFirst { it.path == current.path }
+        if (index > 0) {
+            _uiState.update { it.copy(currentPlayingMedia = list[index - 1]) }
         }
     }
 }

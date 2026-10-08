@@ -33,6 +33,9 @@ class ViewModelFactory(
                 getLauncherSettingsUseCase = appContainer.getLauncherSettingsUseCase,
                 saveCardStyleUseCase = appContainer.saveCardStyleUseCase,
                 manageCategoriesUseCase = appContainer.manageCategoriesUseCase,
+                saveShowAppNamesUseCase = appContainer.saveShowAppNamesUseCase,
+                getStorageDrivesUseCase = appContainer.getStorageDrivesUseCase,
+                getMediaFilesUseCase = appContainer.getMediaFilesUseCase,
                 dispatcherProvider = appContainer.dispatcherProvider
             ) as T
         }

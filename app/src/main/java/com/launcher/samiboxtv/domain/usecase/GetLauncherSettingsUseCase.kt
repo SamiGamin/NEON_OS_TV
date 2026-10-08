@@ -6,7 +6,8 @@ import com.launcher.samiboxtv.domain.repository.PreferencesRepository
 data class LauncherSettingsData(
     val cardStyle: AppCardStyle,
     val categories: List<String>,
-    val appCategoryMap: Map<String, String>
+    val appCategoryMap: Map<String, String>,
+    val showAppNames: Boolean = true
 )
 
 class GetLauncherSettingsUseCase(
@@ -16,7 +17,8 @@ class GetLauncherSettingsUseCase(
         return LauncherSettingsData(
             cardStyle = preferencesRepository.getCardStyle(),
             categories = preferencesRepository.getCustomCategories(),
-            appCategoryMap = preferencesRepository.getAppCategoryMap()
+            appCategoryMap = preferencesRepository.getAppCategoryMap(),
+            showAppNames = preferencesRepository.getShowAppNames()
         )
     }
 }

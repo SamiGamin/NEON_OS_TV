@@ -23,6 +23,8 @@ interface PreferencesDataSource {
     fun removeCustomCategory(categoryName: String): Boolean
     fun getAppCategoryMap(): Map<String, String>
     fun setAppCategory(packageName: String, categoryName: String)
+    fun getShowAppNames(): Boolean
+    fun setShowAppNames(show: Boolean)
 }
 
 class PreferencesDataSourceImpl(
@@ -165,6 +167,14 @@ class PreferencesDataSourceImpl(
         prefs.edit().putString(KEY_APP_CATEGORIES, json.toString()).apply()
     }
 
+    override fun getShowAppNames(): Boolean {
+        return prefs.getBoolean(KEY_SHOW_APP_NAMES, true)
+    }
+
+    override fun setShowAppNames(show: Boolean) {
+        prefs.edit().putBoolean(KEY_SHOW_APP_NAMES, show).apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "samibox_prefs"
         private const val KEY_HIDDEN_APPS = "hidden_apps"
@@ -173,5 +183,6 @@ class PreferencesDataSourceImpl(
         private const val KEY_CARD_STYLE = "card_style"
         private const val KEY_CUSTOM_CATEGORIES = "custom_categories"
         private const val KEY_APP_CATEGORIES = "app_categories_map"
+        private const val KEY_SHOW_APP_NAMES = "show_app_names"
     }
 }
