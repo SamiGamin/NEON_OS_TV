@@ -77,4 +77,5 @@ sealed interface HomeUiEvent : UiEvent {
     data class FilterIptvCategory(val category: String) : HomeUiEvent
     data class ToggleIptvFavorite(val channel: IptvChannel) : HomeUiEvent
     data object ToggleCurrentIptvFavorite : HomeUiEvent
+    data object ToggleIptvOsd : HomeUiEvent
 }

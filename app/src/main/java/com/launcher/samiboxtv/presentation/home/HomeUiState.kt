@@ -70,7 +70,8 @@ data class HomeUiState(
     val currentIptvChannel: IptvChannel? = null,
     val isIptvChannelListOpen: Boolean = false,
     val selectedIptvCategory: String = "TODOS",
-    val favoriteIptvChannelUrls: Set<String> = emptySet()
+    val favoriteIptvChannelUrls: Set<String> = emptySet(),
+    val isIptvOsdVisible: Boolean = true
 ) : UiState {
     // Compatibilidad para reordenamiento u otros consumidores
     val visibleApps: List<AppItem> get() = allApps

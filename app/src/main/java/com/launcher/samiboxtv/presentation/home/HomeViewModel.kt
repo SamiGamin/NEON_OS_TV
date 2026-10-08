@@ -330,7 +330,8 @@ class HomeViewModel(
                     _uiState.update {
                         it.copy(
                             currentIptvIndex = nextIndex,
-                            currentIptvChannel = channels[nextIndex]
+                            currentIptvChannel = channels[nextIndex],
+                            isIptvOsdVisible = true
                         )
                     }
                 }
@@ -343,7 +344,8 @@ class HomeViewModel(
                     _uiState.update {
                         it.copy(
                             currentIptvIndex = prevIndex,
-                            currentIptvChannel = channels[prevIndex]
+                            currentIptvChannel = channels[prevIndex],
+                            isIptvOsdVisible = true
                         )
                     }
                 }
@@ -356,7 +358,8 @@ class HomeViewModel(
                         it.copy(
                             currentIptvIndex = event.index,
                             currentIptvChannel = channels[event.index],
-                            isIptvChannelListOpen = false
+                            isIptvChannelListOpen = false,
+                            isIptvOsdVisible = true
                         )
                     }
                 }
@@ -377,7 +380,16 @@ class HomeViewModel(
             is HomeUiEvent.ToggleIptvFavorite -> toggleIptvFavorite(event.channel)
 
             HomeUiEvent.ToggleCurrentIptvFavorite -> {
-                _uiState.value.currentIptvChannel?.let { toggleIptvFavorite(it) }
+                _uiState.value.currentIptvChannel?.let {
+                    toggleIptvFavorite(it)
+                    _uiState.update { s -> s.copy(isIptvOsdVisible = true) }
+                }
+            }
+
+            HomeUiEvent.ToggleIptvOsd -> {
+                _uiState.update {
+                    it.copy(isIptvOsdVisible = !it.isIptvOsdVisible)
+                }
             }
         }
     }

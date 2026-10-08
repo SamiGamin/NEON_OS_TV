@@ -19,6 +19,7 @@ import com.launcher.samiboxtv.presentation.home.HomeUiEvent
 import com.launcher.samiboxtv.presentation.home.HomeViewModel
 import com.launcher.samiboxtv.presentation.theme.SamiBoxTVTheme
 import com.launcher.samiboxtv.util.DevLogManager
+import com.launcher.samiboxtv.util.TvRemoteKeyCodes
 
 class MainActivity : ComponentActivity() {
 
@@ -29,7 +30,6 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
             SamiBoxTVTheme {
                 Surface(
@@ -64,18 +64,58 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, logMsg, Toast.LENGTH_SHORT).show()
             }
 
-            // 2. Teclas específicas no estándar (MENU / AJUSTES)
-            when (event.keyCode) {
-                KeyEvent.KEYCODE_SETTINGS -> {
+            // 2. Teclas físicas del control remoto y accesos directos
+            val code = event.keyCode
+            val scan = event.scanCode
+
+            when {
+                code == KeyEvent.KEYCODE_SETTINGS || code == TvRemoteKeyCodes.KEY_EXTRA_MENU || scan == TvRemoteKeyCodes.KEY_EXTRA_MENU -> {
                     viewModel.onEvent(HomeUiEvent.OpenSettings)
                     return true
                 }
-                KeyEvent.KEYCODE_MENU -> {
+                code == KeyEvent.KEYCODE_MENU -> {
                     if (!viewModel.uiState.value.isIptvPlayerOpen) {
                         viewModel.onEvent(HomeUiEvent.OpenSettings)
                         return true
                     }
                     // Si el reproductor IPTV está abierto, dejamos que KEYCODE_MENU pase a Compose
+                }
+                code == TvRemoteKeyCodes.KEY_CH_UP || scan == TvRemoteKeyCodes.KEY_CH_UP -> {
+                    if (viewModel.uiState.value.isIptvPlayerOpen) {
+                        viewModel.onEvent(HomeUiEvent.NextChannel)
+                    } else if (viewModel.uiState.value.iptvChannels.isNotEmpty()) {
+                        viewModel.onEvent(HomeUiEvent.OpenLiveTv)
+                    }
+                    return true
+                }
+                code == TvRemoteKeyCodes.KEY_CH_DOWN || scan == TvRemoteKeyCodes.KEY_CH_DOWN -> {
+                    if (viewModel.uiState.value.isIptvPlayerOpen) {
+                        viewModel.onEvent(HomeUiEvent.PreviousChannel)
+                    } else if (viewModel.uiState.value.iptvChannels.isNotEmpty()) {
+                        viewModel.onEvent(HomeUiEvent.OpenLiveTv)
+                    }
+                    return true
+                }
+                code == TvRemoteKeyCodes.KEY_EPG_GUIDE || scan == TvRemoteKeyCodes.KEY_EPG_GUIDE -> {
+                    if (!viewModel.uiState.value.isIptvPlayerOpen && viewModel.uiState.value.iptvChannels.isNotEmpty()) {
+                        viewModel.onEvent(HomeUiEvent.OpenLiveTv)
+                    }
+                    viewModel.onEvent(HomeUiEvent.ToggleChannelList)
+                    return true
+                }
+                code == TvRemoteKeyCodes.KEY_INFO || scan == TvRemoteKeyCodes.KEY_INFO -> {
+                    viewModel.onEvent(HomeUiEvent.ToggleIptvOsd)
+                    return true
+                }
+                code == TvRemoteKeyCodes.KEY_FAV_TOGGLE || scan == TvRemoteKeyCodes.KEY_FAV_TOGGLE -> {
+                    viewModel.onEvent(HomeUiEvent.ToggleCurrentIptvFavorite)
+                    return true
+                }
+                code == TvRemoteKeyCodes.KEY_LIVE_TV || scan == TvRemoteKeyCodes.KEY_LIVE_TV -> {
+                    if (viewModel.uiState.value.iptvChannels.isNotEmpty()) {
+                        viewModel.onEvent(HomeUiEvent.OpenLiveTv)
+                    }
+                    return true
                 }
             }
         }

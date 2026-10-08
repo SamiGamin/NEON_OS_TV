@@ -19,7 +19,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Necesario para leer el historial de commits y tags previos
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -95,14 +95,12 @@ jobs:
         if: steps.check_tag.outputs.is_new == 'true' || github.event_name == 'workflow_dispatch'
         id: find_apk
         run: |
-          # 1. Encuentra el APK firmado generado por Gradle
           APK_PATH=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
           if [ -z "$APK_PATH" ]; then
             echo "::error::No se encontró ningún APK generado en release."
             exit 1
           fi
 
-          # 2. Crea una copia idéntica con el nombre permanente NEONOS_TV-latest.apk
           DIR=$(dirname "$APK_PATH")
           LATEST_PATH="$DIR/NEONOS_TV-latest.apk"
           cp "$APK_PATH" "$LATEST_PATH"
@@ -112,17 +110,72 @@ jobs:
           echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
           echo "latest_path=$LATEST_PATH" >> $GITHUB_OUTPUT
 
+      # -------------------------------------------------------------
+      # GENERACIÓN DE NOTAS CON GEMINI 3.8 FLASH
+      # -------------------------------------------------------------
+      - name: Generate AI Release Notes with Gemini
+        if: steps.check_tag.outputs.is_new == 'true' || github.event_name == 'workflow_dispatch'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            COMMITS=$(git log "$PREV_TAG..HEAD" --pretty=format:"- %s" --no-merges)
+          else
+            COMMITS=$(git log -n 10 --pretty=format:"- %s" --no-merges)
+          fi
+
+          if [ -z "$COMMITS" ]; then
+            COMMITS="Optimizaciones de rendimiento y corrección de errores generales."
+          fi
+
+          NOTES=""
+
+          if [ -n "$GEMINI_API_KEY" ]; then
+            echo "Solicitando changelog inteligente a Gemini 3.8 Flash..."
+
+            PROMPT="Eres el encargado de publicar actualizaciones para 'NEOS OS TV' (launcher Cyberpunk para Android TV). A partir de la siguiente lista de commits técnicos, redacta un registro de cambios (changelog) en español para los usuarios del televisor. Formato exigido:
+            - Un encabezado: '### 🚀 Novedades de la versión ${{ env.TAG }}'
+            - Máximo 4 a 6 viñetas claras y comprensibles ordenadas por novedades, mejoras y correcciones.
+            - Lenguaje directo sin introducciones ni despedidas de cortesía.
+
+            Commits del push:
+            $COMMITS"
+
+            PAYLOAD=$(jq -n --arg prompt "$PROMPT" '{contents: [{parts: [{text: $prompt}]}]}')
+
+            RESPONSE=$(curl -s -X POST \
+              "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent" \
+              -H "Content-Type: application/json" \
+              -H "X-goog-api-key: $GEMINI_API_KEY" \
+              -d "$PAYLOAD")
+
+            NOTES=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
+          fi
+
+          if [ -z "$NOTES" ] || [ "$NOTES" = "null" ]; then
+            echo "Generando notas con fallback directo de Git..."
+            NOTES="### 🚀 Novedades de la versión ${{ env.TAG }}
+
+            $COMMITS"
+          fi
+
+          echo -e "$NOTES" > release_notes.md
+          echo "--- Vista previa de las notas generadas ---"
+          cat release_notes.md
+
       - name: Publish GitHub Release
         if: steps.check_tag.outputs.is_new == 'true' || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           name: "SamiBox TV Release ${{ env.TAG }}"
+          body_path: release_notes.md
           files: |
             ${{ steps.find_apk.outputs.apk_path }}
             ${{ steps.find_apk.outputs.latest_path }}
           draft: false
           prerelease: false
-          generate_release_notes: true
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

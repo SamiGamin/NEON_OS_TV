@@ -185,6 +185,11 @@ fun IptvPlayerScreen(
         }
     }
 
+    // Sincronizar HUD OSD con el estado global (KEY_INFO, zapping o teclas remotas)
+    LaunchedEffect(uiState.isIptvOsdVisible) {
+        showOsd = uiState.isIptvOsdVisible
+    }
+
     // Auto-ocultado del HUD tras 4 segundos
     LaunchedEffect(uiState.currentIptvChannel, showOsd) {
         if (showOsd) {
