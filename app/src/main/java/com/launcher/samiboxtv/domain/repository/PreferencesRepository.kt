@@ -24,4 +24,6 @@ interface PreferencesRepository {
     suspend fun setShowAppNames(show: Boolean)
     suspend fun getFavoriteIptvChannels(): Set<String>
     suspend fun saveFavoriteIptvChannels(channels: Set<String>)
+    suspend fun getAppLayoutMode(): com.launcher.samiboxtv.presentation.theme.AppLayoutMode
+    suspend fun setAppLayoutMode(mode: com.launcher.samiboxtv.presentation.theme.AppLayoutMode)
 }

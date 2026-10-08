@@ -32,6 +32,7 @@ class ViewModelFactory(
                 clearProcessCacheUseCase = appContainer.clearProcessCacheUseCase,
                 getLauncherSettingsUseCase = appContainer.getLauncherSettingsUseCase,
                 saveCardStyleUseCase = appContainer.saveCardStyleUseCase,
+                saveAppLayoutModeUseCase = appContainer.saveAppLayoutModeUseCase,
                 manageCategoriesUseCase = appContainer.manageCategoriesUseCase,
                 saveShowAppNamesUseCase = appContainer.saveShowAppNamesUseCase,
                 getStorageDrivesUseCase = appContainer.getStorageDrivesUseCase,

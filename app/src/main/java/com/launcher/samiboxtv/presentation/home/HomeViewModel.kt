@@ -29,7 +29,9 @@ import com.launcher.samiboxtv.domain.usecase.ManageCategoriesUseCase
 import com.launcher.samiboxtv.domain.usecase.MoveAppUseCase
 import com.launcher.samiboxtv.domain.usecase.ObserveNetworkStatusUseCase
 import com.launcher.samiboxtv.domain.usecase.ObserveSystemTelemetryUseCase
+import com.launcher.samiboxtv.domain.usecase.SaveAppLayoutModeUseCase
 import com.launcher.samiboxtv.domain.usecase.SaveCardStyleUseCase
+import com.launcher.samiboxtv.presentation.theme.AppLayoutMode
 import com.launcher.samiboxtv.domain.usecase.SaveShowAppNamesUseCase
 import com.launcher.samiboxtv.domain.usecase.SetHiddenPackagesUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleAppVisibilityUseCase
@@ -69,6 +71,7 @@ class HomeViewModel(
     private val clearProcessCacheUseCase: ClearProcessCacheUseCase,
     private val getLauncherSettingsUseCase: GetLauncherSettingsUseCase,
     private val saveCardStyleUseCase: SaveCardStyleUseCase,
+    private val saveAppLayoutModeUseCase: SaveAppLayoutModeUseCase,
     private val manageCategoriesUseCase: ManageCategoriesUseCase,
     private val saveShowAppNamesUseCase: SaveShowAppNamesUseCase,
     private val getStorageDrivesUseCase: GetStorageDrivesUseCase,
@@ -211,6 +214,7 @@ class HomeViewModel(
             HomeUiEvent.CloseSettings -> _uiState.update { it.copy(isSettingsOpen = false) }
             is HomeUiEvent.SelectSettingsSection -> _uiState.update { it.copy(activeSettingsSection = event.section) }
             is HomeUiEvent.ChangeCardStyle -> changeCardStyle(event.style)
+            is HomeUiEvent.SetAppLayoutMode -> changeAppLayoutMode(event.mode)
             is HomeUiEvent.CreateCategory -> createCategory(event.name)
             is HomeUiEvent.RemoveCategory -> removeCategory(event.name)
             is HomeUiEvent.AssignCategory -> assignCategory(event.packageName, event.categoryName)
@@ -465,10 +469,20 @@ class HomeViewModel(
             _uiState.update {
                 it.copy(
                     cardStyle = settings.cardStyle,
+                    appLayoutMode = settings.appLayoutMode,
                     categories = settings.categories,
                     appCategoryMap = settings.appCategoryMap,
                     showAppNames = settings.showAppNames
                 )
+            }
+        }
+    }
+
+    private fun changeAppLayoutMode(mode: AppLayoutMode) {
+        viewModelScope.launch(dispatcherProvider.main) {
+            _uiState.update { it.copy(appLayoutMode = mode) }
+            withContext(dispatcherProvider.io) {
+                saveAppLayoutModeUseCase(mode)
             }
         }
     }

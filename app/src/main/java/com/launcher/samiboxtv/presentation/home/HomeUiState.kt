@@ -42,6 +42,7 @@ data class HomeUiState(
     val isSettingsOpen: Boolean = false,
     val activeSettingsSection: com.launcher.samiboxtv.domain.model.SettingsSection = com.launcher.samiboxtv.domain.model.SettingsSection.FAVORITES,
     val cardStyle: com.launcher.samiboxtv.domain.model.AppCardStyle = com.launcher.samiboxtv.domain.model.AppCardStyle.BANNER_16_9,
+    val appLayoutMode: com.launcher.samiboxtv.presentation.theme.AppLayoutMode = com.launcher.samiboxtv.presentation.theme.AppLayoutMode.COMPACT_HIGH_DENSITY,
     val categories: List<String> = listOf("STREAMING", "GAMING", "APPS"),
     val appCategoryMap: Map<String, String> = emptyMap(),
     val showAppNames: Boolean = true,

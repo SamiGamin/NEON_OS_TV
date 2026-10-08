@@ -3,6 +3,7 @@ package com.launcher.samiboxtv.data.repository
 import com.launcher.samiboxtv.core.dispatcher.DispatcherProvider
 import com.launcher.samiboxtv.data.datasource.PreferencesDataSource
 import com.launcher.samiboxtv.domain.repository.PreferencesRepository
+import com.launcher.samiboxtv.presentation.theme.AppLayoutMode
 import kotlinx.coroutines.withContext
 
 /**
@@ -91,5 +92,13 @@ class PreferencesRepositoryImpl(
 
     override suspend fun saveFavoriteIptvChannels(channels: Set<String>) = withContext(dispatcherProvider.io) {
         preferencesDataSource.saveFavoriteIptvChannels(channels)
+    }
+
+    override suspend fun getAppLayoutMode(): AppLayoutMode = withContext(dispatcherProvider.io) {
+        AppLayoutMode.fromName(preferencesDataSource.getAppLayoutMode())
+    }
+
+    override suspend fun setAppLayoutMode(mode: AppLayoutMode) = withContext(dispatcherProvider.io) {
+        preferencesDataSource.setAppLayoutMode(mode.name)
     }
 }

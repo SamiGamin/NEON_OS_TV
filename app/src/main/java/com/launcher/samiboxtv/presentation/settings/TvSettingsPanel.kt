@@ -60,6 +60,7 @@ import coil.compose.AsyncImage
 import com.launcher.samiboxtv.R
 import com.launcher.samiboxtv.domain.model.AppCardStyle
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.presentation.theme.AppLayoutMode
 import com.launcher.samiboxtv.domain.model.SettingsSection
 import com.launcher.samiboxtv.domain.model.VirtualApps
 import com.launcher.samiboxtv.presentation.components.AssignCategoryDialog
@@ -235,8 +236,10 @@ fun TvSettingsPanel(
                         }
                         SettingsSection.APP_STYLE -> {
                             AppStyleSettingsContent(
+                                currentLayoutMode = uiState.appLayoutMode,
                                 currentStyle = uiState.cardStyle,
                                 showAppNames = uiState.showAppNames,
+                                onSelectLayoutMode = { onEvent(HomeUiEvent.SetAppLayoutMode(it)) },
                                 onSelectStyle = { onEvent(HomeUiEvent.ChangeCardStyle(it)) },
                                 onToggleShowAppNames = { onEvent(HomeUiEvent.ToggleShowAppNames) }
                             )
@@ -1177,39 +1180,29 @@ private fun CategoriesSettingsContent(
 
 @Composable
 private fun AppStyleSettingsContent(
+    currentLayoutMode: AppLayoutMode,
     currentStyle: AppCardStyle,
     showAppNames: Boolean,
+    onSelectLayoutMode: (AppLayoutMode) -> Unit,
     onSelectStyle: (AppCardStyle) -> Unit,
     onToggleShowAppNames: () -> Unit
 ) {
-    Column(
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Toggle: Mostrar u ocultar nombres de aplicaciones
-        SettingsActionItem(
-            title = "MOSTRAR NOMBRES DE LAS APLICACIONES",
-            subtitle = if (showAppNames) {
-                "[✓ VISIBLE] Muestra el nombre/título de cada app en su tarjeta"
-            } else {
-                "[○ SOLO ICONOS] Modo minimalista: oculta los nombres y muestra solo el icono"
-            },
-            isHighlighted = showAppNames,
-            onClick = onToggleShowAppNames
-        )
+        item {
+            Text(
+                text = "MODO DE DISEÑO Y DENSIDAD RESPONSIVA (ZERO PARTIAL CARDS):",
+                color = CyberCyan,
+                fontSize = 11.sp,
+                fontFamily = ShareTechMonoFontFamily,
+                fontWeight = FontWeight.Bold
+            )
+        }
 
-        Spacer(modifier = Modifier.height(2.dp))
-
-        Text(
-            text = "FORMATO Y TAMAÑO DE LAS TARJETAS:",
-            color = CyberCyan,
-            fontSize = 11.sp,
-            fontFamily = ShareTechMonoFontFamily,
-            fontWeight = FontWeight.Bold
-        )
-
-        AppCardStyle.entries.forEach { style ->
-            val isSelected = currentStyle == style
+        items(AppLayoutMode.entries) { mode ->
+            val isSelected = currentLayoutMode == mode
             var isFocused by remember { mutableStateOf(false) }
             val shape = RoundedCornerShape(10.dp)
 
@@ -1226,8 +1219,8 @@ private fun AppStyleSettingsContent(
                     .background(if (isFocused) Color(0xFF14203B) else Color(0xFF0C1425))
                     .border(width = if (isFocused || isSelected) 2.dp else 1.dp, color = borderColor, shape = shape)
                     .onFocusChanged { isFocused = it.isFocused }
-                    .tvClickable { onSelectStyle(style) }
-                    .padding(16.dp)
+                    .tvClickable { onSelectLayoutMode(mode) }
+                    .padding(14.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1236,15 +1229,15 @@ private fun AppStyleSettingsContent(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = style.title,
+                            text = mode.title,
                             color = if (isFocused) CyberCyan else Color.White,
                             fontSize = 13.sp,
                             fontFamily = ShareTechMonoFontFamily,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(3.dp))
                         Text(
-                            text = style.description,
+                            text = mode.description,
                             color = Color(0xFFA6C5E2),
                             fontSize = 10.sp,
                             fontFamily = ShareTechMonoFontFamily
@@ -1252,7 +1245,7 @@ private fun AppStyleSettingsContent(
                     }
 
                     Text(
-                        text = if (isSelected) "● ACTIVO" else "○ SELECCIONAR",
+                        text = if (isSelected) "● ACTIVO" else "○ ELEGIR",
                         color = if (isSelected) CyberAmber else CyberGrey,
                         fontSize = 11.sp,
                         fontFamily = ShareTechMonoFontFamily,
@@ -1260,6 +1253,21 @@ private fun AppStyleSettingsContent(
                     )
                 }
             }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(6.dp))
+            // Toggle: Mostrar u ocultar nombres de aplicaciones
+            SettingsActionItem(
+                title = "MOSTRAR NOMBRES DE LAS APLICACIONES",
+                subtitle = if (showAppNames) {
+                    "[✓ VISIBLE] Muestra el nombre/título de cada app en su tarjeta"
+                } else {
+                    "[○ SOLO ICONOS] Modo minimalista: oculta los nombres y muestra solo el icono"
+                },
+                isHighlighted = showAppNames,
+                onClick = onToggleShowAppNames
+            )
         }
     }
 }

@@ -27,6 +27,8 @@ interface PreferencesDataSource {
     fun setShowAppNames(show: Boolean)
     fun getFavoriteIptvChannels(): Set<String>
     fun saveFavoriteIptvChannels(channels: Set<String>)
+    fun getAppLayoutMode(): String
+    fun setAppLayoutMode(mode: String)
 }
 
 class PreferencesDataSourceImpl(
@@ -185,6 +187,14 @@ class PreferencesDataSourceImpl(
         prefs.edit().putStringSet(KEY_IPTV_FAVORITE_CHANNELS, channels).apply()
     }
 
+    override fun getAppLayoutMode(): String {
+        return prefs.getString(KEY_APP_LAYOUT_MODE, "COMPACT_HIGH_DENSITY") ?: "COMPACT_HIGH_DENSITY"
+    }
+
+    override fun setAppLayoutMode(mode: String) {
+        prefs.edit().putString(KEY_APP_LAYOUT_MODE, mode).apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "samibox_prefs"
         private const val KEY_HIDDEN_APPS = "hidden_apps"
@@ -195,5 +205,6 @@ class PreferencesDataSourceImpl(
         private const val KEY_APP_CATEGORIES = "app_categories_map"
         private const val KEY_SHOW_APP_NAMES = "show_app_names"
         private const val KEY_IPTV_FAVORITE_CHANNELS = "iptv_favorite_channels"
+        private const val KEY_APP_LAYOUT_MODE = "app_layout_mode"
     }
 }

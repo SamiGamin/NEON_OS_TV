@@ -4,16 +4,13 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,31 +18,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.Text
 import com.launcher.samiboxtv.domain.model.AppItem
-import com.launcher.samiboxtv.domain.model.SettingsSection
-import com.launcher.samiboxtv.domain.model.VirtualApps
 import com.launcher.samiboxtv.presentation.components.AddAppDialog
 import com.launcher.samiboxtv.presentation.components.AppContextSideDrawer
 import com.launcher.samiboxtv.presentation.components.AssignCategoryDialog
+import com.launcher.samiboxtv.presentation.components.CyberAppCarousel
+import com.launcher.samiboxtv.presentation.components.CyberHeaderHud
+import com.launcher.samiboxtv.presentation.components.CyberModernGrid
 import com.launcher.samiboxtv.presentation.components.UpdateDialog
 import com.launcher.samiboxtv.presentation.components.cards.AddAppCyberCard
-import com.launcher.samiboxtv.presentation.components.cards.IptvCard
-import com.launcher.samiboxtv.presentation.components.cards.MediaHubCard
-import com.launcher.samiboxtv.presentation.components.cards.TvCyberBannerCard
-import com.launcher.samiboxtv.presentation.components.hud.CyberHudHeader
 import com.launcher.samiboxtv.presentation.iptv.IptvPlayerScreen
 import com.launcher.samiboxtv.presentation.media.CyberMediaPlayer
 import com.launcher.samiboxtv.presentation.media.MediaExplorerScreen
-import com.launcher.samiboxtv.presentation.overlay.SystemInfoOverlay
 import com.launcher.samiboxtv.presentation.overlay.SystemMonitorLog
 import com.launcher.samiboxtv.presentation.settings.TvSettingsPanel
-import com.launcher.samiboxtv.presentation.theme.CyberCyan
-import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
+import com.launcher.samiboxtv.presentation.theme.AppLayoutMode
+import com.launcher.samiboxtv.presentation.theme.rememberTvLayoutDimensions
 import com.launcher.samiboxtv.util.CategoryHelper
 
 /**
@@ -59,6 +49,7 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var appToMoveCategory by remember { mutableStateOf<AppItem?>(null) }
+
     // 1. Prioridad Máxima: Si estás reorganizando tarjetas (modo fantasma)
     BackHandler(enabled = uiState.movingAppPackageName != null) {
         viewModel.onEvent(HomeUiEvent.ConfirmReorder)
@@ -85,10 +76,8 @@ fun HomeScreen(
     }
 
     // 6. Base del Launcher: Bloquea la salida en la pantalla principal
-    // (Al estar siempre activo con enabled = true cuando todo lo demás está cerrado,
-    // evita que la Activity del TV se cierre y deje la pantalla en negro).
     BackHandler(enabled = !uiState.isIptvPlayerOpen && uiState.currentPlayingMedia == null) {
-        // Intencionalmente vacío: un Launcher nunca debe salir al pulsar Atrás
+        // Un Launcher nunca debe salir al pulsar Atrás
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -201,7 +190,8 @@ fun HomeScreen(
 }
 
 /**
- * HomeScreenContent: Ensambla el feed vertical del Launcher.
+ * HomeScreenContent: Ensambla el feed vertical del Launcher con diseño adaptativo,
+ * anclaje magnético Snap Fling y estética Cyberpunk Neón.
  */
 @Composable
 fun HomeScreenContent(
@@ -209,7 +199,7 @@ fun HomeScreenContent(
     onEvent: (HomeUiEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val cardWidth = uiState.cardStyle.widthDp.dp
+    val dimensions = rememberTvLayoutDimensions(layoutMode = uiState.appLayoutMode)
 
     LazyColumn(
         modifier = modifier
@@ -218,206 +208,129 @@ fun HomeScreenContent(
         contentPadding = PaddingValues(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // 1. ZONA SUPERIOR HUD
+        // 1. ZONA SUPERIOR HUD MILITAR (Reloj militar HH:mm:ss + Perfil de pantalla + Nodos)
         item(key = "header_hud") {
-            CyberHudHeader(
-                networkStatus = uiState.networkStatus,
+            CyberHeaderHud(
+                layoutMode = uiState.appLayoutMode,
+                appCount = uiState.allApps.size,
                 onOpenSettings = { onEvent(HomeUiEvent.OpenSettings) }
             )
         }
 
-        // 2. SECCIÓN FAVORITOS
-        val favoriteApps = uiState.allApps.filter { it.isFavorite }
-        if (favoriteApps.isNotEmpty()) {
-            item(key = "section_favorites") {
-                CategoryAppRow(
-                    title = "★ FAVORITOS & DESTACADOS",
-                    apps = favoriteApps,
-                    uiState = uiState,
-                    onEvent = onEvent
-                )
+        if (uiState.appLayoutMode == AppLayoutMode.MODERN_GRID) {
+            // ==============================================================
+            // MODO CUADRÍCULA MODERNA (3 columnas x 2 filas = 6 en pantalla)
+            // ==============================================================
+            val favoriteApps = uiState.allApps.filter { it.isFavorite }
+            if (favoriteApps.isNotEmpty()) {
+                item(key = "grid_section_favorites") {
+                    CyberModernGrid(
+                        title = "★ FAVORITOS & DESTACADOS",
+                        apps = favoriteApps,
+                        dimensions = dimensions,
+                        movingAppPackageName = uiState.movingAppPackageName,
+                        onLaunchApp = { onEvent(HomeUiEvent.LaunchApp(it)) },
+                        onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
+                        onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
+                        onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) }
+                    )
+                }
             }
-        }
 
-        // 3. SECCIONES DINÁMICAS POR CATEGORÍA
-        val nonFavoriteApps = uiState.allApps.filter { !it.isFavorite }
-        val activeCategoriesWithApps = uiState.categories.mapNotNull { categoryName ->
-            val apps = nonFavoriteApps.filter { app ->
-                val assigned = uiState.appCategoryMap[app.packageName] ?: app.category.ifBlank { "APPS" }
-                assigned.equals(categoryName, ignoreCase = true)
-            }
-            if (apps.isNotEmpty()) categoryName to apps else null
-        }
-
-        activeCategoriesWithApps.forEachIndexed { index, (categoryName, categoryApps) ->
-            val isLast = index == activeCategoriesWithApps.lastIndex
-            item(key = "section_cat_$categoryName") {
-                CategoryAppRow(
-                    title = "${CategoryHelper.getCategoryIcon(categoryName)} $categoryName",
-                    apps = categoryApps,
-                    uiState = uiState,
-                    onEvent = onEvent,
-                    showSystemActions = isLast
-                )
-            }
-        }
-
-        // Garantía absoluta contra pantalla en blanco al instalar
-        if (activeCategoriesWithApps.isEmpty()) {
-            if (favoriteApps.isEmpty() && nonFavoriteApps.isNotEmpty()) {
-                // Fallback de rescate: muestra todas las apps no favoritas agrupadas en APPS
-                item(key = "section_fallback_all") {
-                    CategoryAppRow(
-                        title = "${CategoryHelper.getCategoryIcon("APPS")} TODAS LAS APLICACIONES",
+            val nonFavoriteApps = uiState.allApps.filter { !it.isFavorite }
+            if (nonFavoriteApps.isNotEmpty()) {
+                item(key = "grid_section_all") {
+                    CyberModernGrid(
+                        title = if (favoriteApps.isEmpty()) "TODAS LAS APLICACIONES" else "OTRAS APLICACIONES",
                         apps = nonFavoriteApps,
-                        uiState = uiState,
-                        onEvent = onEvent,
-                        showSystemActions = true
+                        dimensions = dimensions,
+                        movingAppPackageName = uiState.movingAppPackageName,
+                        onLaunchApp = { onEvent(HomeUiEvent.LaunchApp(it)) },
+                        onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
+                        onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
+                        onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) }
                     )
                 }
-            } else if (favoriteApps.isEmpty()) {
-                item(key = "section_manage_empty") {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 48.dp),
-                        horizontalArrangement = Arrangement.spacedBy(18.dp)
-                    ) {
-                        AddAppCyberCard(
-                            cardStyle = uiState.cardStyle,
-                            onClick = { onEvent(HomeUiEvent.OpenAddDialog) },
-                            modifier = Modifier.width(cardWidth)
+            }
+        } else {
+            // ==============================================================
+            // MODOS HORIZONTALES (COMPACT_HIGH_DENSITY, PANORAMIC_16_9, COMPACT_STANDARD, DUAL_PRIORITY)
+            // ==============================================================
+
+            // 2. SECCIÓN FAVORITOS
+            val favoriteApps = uiState.allApps.filter { it.isFavorite }
+            if (favoriteApps.isNotEmpty()) {
+                item(key = "section_favorites") {
+                    CyberAppCarousel(
+                        title = "★ FAVORITOS & DESTACADOS",
+                        apps = favoriteApps,
+                        dimensions = dimensions,
+                        movingAppPackageName = uiState.movingAppPackageName,
+                        onLaunchApp = { onEvent(HomeUiEvent.LaunchApp(it)) },
+                        onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
+                        onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
+                        onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) }
+                    )
+                }
+            }
+
+            // 3. SECCIONES DINÁMICAS POR CATEGORÍA
+            val nonFavoriteApps = uiState.allApps.filter { !it.isFavorite }
+            val activeCategoriesWithApps = uiState.categories.mapNotNull { categoryName ->
+                val apps = nonFavoriteApps.filter { app ->
+                    val assigned = uiState.appCategoryMap[app.packageName] ?: app.category.ifBlank { "APPS" }
+                    assigned.equals(categoryName, ignoreCase = true)
+                }
+                if (apps.isNotEmpty()) categoryName to apps else null
+            }
+
+            activeCategoriesWithApps.forEach { (categoryName, categoryApps) ->
+                item(key = "section_cat_$categoryName") {
+                    CyberAppCarousel(
+                        title = "${CategoryHelper.getCategoryIcon(categoryName)} $categoryName",
+                        apps = categoryApps,
+                        dimensions = dimensions,
+                        movingAppPackageName = uiState.movingAppPackageName,
+                        onLaunchApp = { onEvent(HomeUiEvent.LaunchApp(it)) },
+                        onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
+                        onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
+                        onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) }
+                    )
+                }
+            }
+
+            // Garantía absoluta contra pantalla en blanco al instalar
+            if (activeCategoriesWithApps.isEmpty()) {
+                if (favoriteApps.isEmpty() && nonFavoriteApps.isNotEmpty()) {
+                    item(key = "section_fallback_all") {
+                        CyberAppCarousel(
+                            title = "${CategoryHelper.getCategoryIcon("APPS")} TODAS LAS APLICACIONES",
+                            apps = nonFavoriteApps,
+                            dimensions = dimensions,
+                            movingAppPackageName = uiState.movingAppPackageName,
+                            onLaunchApp = { onEvent(HomeUiEvent.LaunchApp(it)) },
+                            onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
+                            onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
+                            onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) }
                         )
+                    }
+                } else if (favoriteApps.isEmpty()) {
+                    item(key = "section_manage_empty") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = dimensions.horizontalPadding),
+                            horizontalArrangement = Arrangement.spacedBy(dimensions.spacing)
+                        ) {
+                            AddAppCyberCard(
+                                cardStyle = uiState.cardStyle,
+                                onClick = { onEvent(HomeUiEvent.OpenAddDialog) },
+                                modifier = Modifier.width(dimensions.cardWidth)
+                            )
+                        }
                     }
                 }
             }
         }
     }
-}
-
-/**
- * Fila horizontal reutilizable para cualquier categoría o sección de apps.
- */
-@Composable
-private fun CategoryAppRow(
-    title: String,
-    apps: List<AppItem>,
-    uiState: HomeUiState,
-    onEvent: (HomeUiEvent) -> Unit,
-    showSystemActions: Boolean = false
-) {
-    val cardWidth = uiState.cardStyle.widthDp.dp
-
-    Column {
-        SectionTitle(title = title)
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 48.dp),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(items = apps, key = { it.packageName }) { app ->
-                val isMovingThisApp = uiState.movingAppPackageName == app.packageName
-
-                when (app.packageName) {
-                    VirtualApps.PKG_IPTV -> {
-                        IptvCard(
-                            cardStyle = uiState.cardStyle,
-                            channelCount = uiState.iptvChannels.size,
-                            isLoading = uiState.isIptvLoading,
-                            isGhostMode = isMovingThisApp,
-                            isAnyAppMoving = uiState.movingAppPackageName != null,
-                            onClick = {
-                                if (isMovingThisApp) {
-                                    onEvent(HomeUiEvent.ConfirmReorder)
-                                } else {
-                                    onEvent(HomeUiEvent.LaunchApp(app))
-                                }
-                            },
-                            onLongClick = { onEvent(HomeUiEvent.OpenContextMenu(app)) },
-                            onMoveDirection = { direction ->
-                                onEvent(HomeUiEvent.MoveApp(app.packageName, direction))
-                            },
-                            onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
-                            modifier = Modifier
-                                .width(cardWidth)
-                                .animateItem()
-                        )
-                    }
-                    VirtualApps.PKG_MEDIA_HUB -> {
-                        MediaHubCard(
-                            cardStyle = uiState.cardStyle,
-                            isGhostMode = isMovingThisApp,
-                            isAnyAppMoving = uiState.movingAppPackageName != null,
-                            onClick = {
-                                if (isMovingThisApp) {
-                                    onEvent(HomeUiEvent.ConfirmReorder)
-                                } else {
-                                    onEvent(HomeUiEvent.LaunchApp(app))
-                                }
-                            },
-                            onLongClick = { onEvent(HomeUiEvent.OpenContextMenu(app)) },
-                            onMoveDirection = { direction ->
-                                onEvent(HomeUiEvent.MoveApp(app.packageName, direction))
-                            },
-                            onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
-                            modifier = Modifier
-                                .width(cardWidth)
-                                .animateItem()
-                        )
-                    }
-                    else -> {
-                        TvCyberBannerCard(
-                            appItem = app,
-                            cardStyle = uiState.cardStyle,
-                            showAppName = uiState.showAppNames,
-                            isGhostMode = isMovingThisApp,
-                            isAnyAppMoving = uiState.movingAppPackageName != null,
-                            isEditing = isMovingThisApp,
-                            onClick = {
-                                if (isMovingThisApp) {
-                                    onEvent(HomeUiEvent.ConfirmReorder)
-                                } else {
-                                    onEvent(HomeUiEvent.LaunchApp(app))
-                                }
-                            },
-                            onLongClick = { onEvent(HomeUiEvent.OpenContextMenu(app)) },
-                            onMoveDirection = { direction ->
-                                onEvent(HomeUiEvent.MoveApp(app.packageName, direction))
-                            },
-                            onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
-                            modifier = Modifier
-                                .width(cardWidth)
-                                .animateItem()
-                        )
-                    }
-                }
-            }
-
-            if (showSystemActions) {
-                item(key = "action_add_app") {
-                    AddAppCyberCard(
-                        cardStyle = uiState.cardStyle,
-                        onClick = { onEvent(HomeUiEvent.OpenAddDialog) },
-                        modifier = Modifier.width(cardWidth)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun SectionTitle(
-    title: String,
-    modifier: Modifier = Modifier
-) {
-    Text(
-        text = title,
-        color = CyberCyan.copy(alpha = 0.85f),
-        fontFamily = ShareTechMonoFontFamily,
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = 2.sp,
-        modifier = modifier.padding(start = 48.dp, bottom = 8.dp)
-    )
 }

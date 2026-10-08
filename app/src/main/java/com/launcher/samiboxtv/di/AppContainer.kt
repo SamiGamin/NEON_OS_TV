@@ -65,6 +65,7 @@ interface AppContainer {
     val clearProcessCacheUseCase: ClearProcessCacheUseCase
     val getLauncherSettingsUseCase: com.launcher.samiboxtv.domain.usecase.GetLauncherSettingsUseCase
     val saveCardStyleUseCase: com.launcher.samiboxtv.domain.usecase.SaveCardStyleUseCase
+    val saveAppLayoutModeUseCase: com.launcher.samiboxtv.domain.usecase.SaveAppLayoutModeUseCase
     val manageCategoriesUseCase: com.launcher.samiboxtv.domain.usecase.ManageCategoriesUseCase
     val saveShowAppNamesUseCase: com.launcher.samiboxtv.domain.usecase.SaveShowAppNamesUseCase
     val mediaStorageRepository: com.launcher.samiboxtv.domain.repository.MediaStorageRepository
@@ -198,6 +199,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val saveCardStyleUseCase: com.launcher.samiboxtv.domain.usecase.SaveCardStyleUseCase by lazy {
         com.launcher.samiboxtv.domain.usecase.SaveCardStyleUseCase(preferencesRepository = preferencesRepository)
+    }
+
+    override val saveAppLayoutModeUseCase: com.launcher.samiboxtv.domain.usecase.SaveAppLayoutModeUseCase by lazy {
+        com.launcher.samiboxtv.domain.usecase.SaveAppLayoutModeUseCase(preferencesRepository = preferencesRepository)
     }
 
     override val manageCategoriesUseCase: com.launcher.samiboxtv.domain.usecase.ManageCategoriesUseCase by lazy {
