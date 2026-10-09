@@ -15,8 +15,8 @@ android {
         applicationId = "com.launcher.samiboxtv"
         minSdk = 26
         targetSdk = 36
-        versionCode = 18
-        versionName = "1.1.2"
+        versionCode = 19
+        versionName = "1.1.3"
 
         val properties = Properties()
         val localPropertiesFile = project.rootProject.file("local.properties")
