@@ -102,7 +102,7 @@ jobs:
           fi
 
           DIR=$(dirname "$APK_PATH")
-          LATEST_PATH="$DIR/NEONOS_TV-latest.apk"
+          LATEST_PATH="$DIR/NEON_OS_TV-latest.apk"
           cp "$APK_PATH" "$LATEST_PATH"
 
           echo "APK con versión detectado: $APK_PATH"
@@ -169,7 +169,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
-          name: "SamiBox TV Release ${{ env.TAG }}"
+          name: "NEON OS TV Release ${{ env.TAG }}"
           body_path: release_notes.md
           files: |
             ${{ steps.find_apk.outputs.apk_path }}
