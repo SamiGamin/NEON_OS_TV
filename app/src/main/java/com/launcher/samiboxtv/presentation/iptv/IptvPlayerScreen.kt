@@ -44,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,6 +87,7 @@ import com.launcher.samiboxtv.presentation.theme.CyberMagenta
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
 import com.launcher.samiboxtv.util.TvRemoteKeyCodes
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -95,7 +97,6 @@ fun IptvPlayerScreen(
 ) {
     val context = LocalContext.current
 
-    // Obtener la Activity anfitriona para controlar el bloqueo de pantalla del sistema
     val activity = remember(context) {
         var ctx = context
         while (ctx is ContextWrapper) {
@@ -108,7 +109,6 @@ fun IptvPlayerScreen(
     val playerFocusRequester = remember { FocusRequester() }
     val drawerListState = rememberLazyListState()
 
-    // Instancia única y local de ExoPlayer
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             playWhenReady = true
@@ -121,7 +121,6 @@ fun IptvPlayerScreen(
     var favoriteFeedbackText by remember { mutableStateOf<String?>(null) }
     var previousFavoriteUrls by remember { mutableStateOf(uiState.favoriteIptvChannelUrls) }
 
-    // Notificación en pantalla al cambiar el estado de favorito del canal actual
     LaunchedEffect(uiState.favoriteIptvChannelUrls) {
         val currentChannel = uiState.currentIptvChannel
         if (currentChannel != null && previousFavoriteUrls != uiState.favoriteIptvChannelUrls) {
@@ -137,7 +136,6 @@ fun IptvPlayerScreen(
         previousFavoriteUrls = uiState.favoriteIptvChannelUrls
     }
 
-    // Ciclo de vida y gestión anti-suspensión (Screensaver Lock)
     DisposableEffect(exoPlayer, activity) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -148,7 +146,6 @@ fun IptvPlayerScreen(
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                // Si el canal está reproduciendo video activamente, bloquear el protector de pantalla
                 if (isPlaying) {
                     activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 } else {
@@ -159,14 +156,12 @@ fun IptvPlayerScreen(
             override fun onPlayerError(error: PlaybackException) {
                 isBuffering = false
                 errorMessage = "Señal no disponible (${error.errorCodeName})"
-                // Si la señal cayó, permitir suspensión
                 activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
         }
         exoPlayer.addListener(listener)
 
         onDispose {
-            // AL SALIR DEL REPRODUCTOR: Limpiar la bandera inmediatamente para que el TV suspenda normalmente en el launcher
             activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             exoPlayer.removeListener(listener)
             exoPlayer.stop()
@@ -174,7 +169,6 @@ fun IptvPlayerScreen(
         }
     }
 
-    // Pausar reproducción cuando la actividad o pantalla pasa a segundo plano
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, exoPlayer) {
         val observer = LifecycleEventObserver { _, event ->
@@ -189,7 +183,6 @@ fun IptvPlayerScreen(
         }
     }
 
-    // Sintonización sin recrear la superficie ni el reproductor
     LaunchedEffect(uiState.currentIptvChannel?.streamUrl) {
         val streamUrl = uiState.currentIptvChannel?.streamUrl
         if (!streamUrl.isNullOrBlank()) {
@@ -204,12 +197,10 @@ fun IptvPlayerScreen(
         }
     }
 
-    // Sincronizar HUD OSD con el estado global (KEY_INFO, zapping o teclas remotas)
     LaunchedEffect(uiState.isIptvOsdVisible) {
         showOsd = uiState.isIptvOsdVisible
     }
 
-    // Auto-ocultado del HUD tras 4 segundos
     LaunchedEffect(uiState.currentIptvChannel, showOsd) {
         if (showOsd) {
             delay(4000)
@@ -217,7 +208,6 @@ fun IptvPlayerScreen(
         }
     }
 
-    // Control del botón Atrás (Back)
     BackHandler(enabled = true) {
         if (uiState.isIptvChannelListOpen) {
             onEvent(HomeUiEvent.ToggleChannelList)
@@ -228,7 +218,6 @@ fun IptvPlayerScreen(
         }
     }
 
-    // Devolver el foco al reproductor principal cuando se cierra la guía lateral
     LaunchedEffect(uiState.isIptvChannelListOpen) {
         if (!uiState.isIptvChannelListOpen) {
             delay(50)
@@ -252,26 +241,26 @@ fun IptvPlayerScreen(
                 if (!uiState.isIptvChannelListOpen) {
                     when {
                         keyCode == KeyEvent.KEYCODE_CHANNEL_UP ||
-                        keyCode == KeyEvent.KEYCODE_DPAD_UP -> {
+                                keyCode == KeyEvent.KEYCODE_DPAD_UP -> {
                             showOsd = true
                             onEvent(HomeUiEvent.NextChannel)
                             true
                         }
                         keyCode == KeyEvent.KEYCODE_CHANNEL_DOWN ||
-                        keyCode == KeyEvent.KEYCODE_DPAD_DOWN -> {
+                                keyCode == KeyEvent.KEYCODE_DPAD_DOWN -> {
                             showOsd = true
                             onEvent(HomeUiEvent.PreviousChannel)
                             true
                         }
                         keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
-                        keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
-                        keyCode == KeyEvent.KEYCODE_ENTER ||
-                        keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                                keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                                keyCode == KeyEvent.KEYCODE_ENTER ||
+                                keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER -> {
                             onEvent(HomeUiEvent.ToggleChannelList)
                             true
                         }
                         TvRemoteKeyCodes.isFavoriteKey(keyCode, scanCode) ||
-                        keyCode == KeyEvent.KEYCODE_MENU -> {
+                                keyCode == KeyEvent.KEYCODE_MENU -> {
                             onEvent(HomeUiEvent.ToggleCurrentIptvFavorite)
                             showOsd = true
                             true
@@ -293,13 +282,12 @@ fun IptvPlayerScreen(
                 }
             }
     ) {
-        // 1. Vista de video ExoPlayer en pantalla completa con keepScreenOn = true
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     player = exoPlayer
                     useController = false
-                    keepScreenOn = true // Mantiene encendido el panel a nivel de Vista
+                    keepScreenOn = true
                     isFocusable = false
                     isFocusableInTouchMode = false
                     descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
@@ -314,7 +302,6 @@ fun IptvPlayerScreen(
                 .focusable(false)
         )
 
-        // 2. Indicador sutil de Buffering en la esquina superior derecha
         if (isBuffering && !showOsd) {
             Box(
                 modifier = Modifier
@@ -334,7 +321,6 @@ fun IptvPlayerScreen(
             }
         }
 
-        // 3. Alerta HUD superior para Favoritos
         AnimatedVisibility(
             visible = favoriteFeedbackText != null,
             enter = fadeIn() + slideInVertically { -it },
@@ -358,7 +344,6 @@ fun IptvPlayerScreen(
             }
         }
 
-        // 4. Error en pantalla si la señal falló
         if (errorMessage != null && !isBuffering) {
             Box(
                 modifier = Modifier
@@ -394,7 +379,6 @@ fun IptvPlayerScreen(
             }
         }
 
-        // 5. OSD HUD Inferior Cyberpunk (Auto-ocultado)
         AnimatedVisibility(
             visible = showOsd && !uiState.isIptvChannelListOpen,
             enter = slideInVertically { it } + fadeIn(),
@@ -503,7 +487,6 @@ fun IptvPlayerScreen(
             }
         }
 
-        // 6. Guía lateral de Canales (Channel Drawer)
         AnimatedVisibility(
             visible = uiState.isIptvChannelListOpen,
             enter = slideInHorizontally { -it } + fadeIn(),
@@ -527,6 +510,10 @@ private fun ChannelGuideDrawer(
     onEvent: (HomeUiEvent) -> Unit,
     onClose: () -> Unit
 ) {
+    BackHandler(enabled = true) {
+        onClose()
+    }
+
     var expandedCategory by remember {
         mutableStateOf(uiState.currentIptvChannel?.groupTitle?.trim()?.uppercase())
     }
@@ -554,15 +541,9 @@ private fun ChannelGuideDrawer(
         list
     }
 
-    val closeButtonFocusRequester = remember { FocusRequester() }
-    var isCloseFocused by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        delay(100)
-        try {
-            closeButtonFocusRequester.requestFocus()
-        } catch (_: Exception) {}
-    }
+    val activeChannelFocusRequester = remember { FocusRequester() }
+    val categoryFocusRequesters = remember { mutableMapOf<String, FocusRequester>() }
+    var categoryToFocusOnCollapse by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(uiState.currentIptvChannel) {
         val currentCat = uiState.currentIptvChannel?.groupTitle?.trim()?.uppercase()
@@ -571,9 +552,10 @@ private fun ChannelGuideDrawer(
         }
     }
 
+    // Scroll y foco inicial en el canal que se está reproduciendo al abrir la guía
     LaunchedEffect(expandedCategory) {
-        if (expandedCategory != null) {
-            var itemIdx = 0
+        if (expandedCategory != null && categoryToFocusOnCollapse == null) {
+            var currentItemIndex = 0
             for ((catName, channels) in groupedCategories) {
                 if (catName.equals(expandedCategory, ignoreCase = true)) {
                     val currentChannel = uiState.currentIptvChannel
@@ -581,19 +563,57 @@ private fun ChannelGuideDrawer(
                         channels.indexOfFirst { it.id == currentChannel.id }
                     } else -1
 
-                    val target = if (chIdx >= 0) {
-                        (itemIdx + 1 + chIdx - 2).coerceAtLeast(0)
+                    val targetScroll = if (chIdx >= 0) {
+                        (currentItemIndex + 1 + chIdx - 2).coerceAtLeast(0)
                     } else {
-                        itemIdx.coerceAtLeast(0)
+                        currentItemIndex.coerceAtLeast(0)
                     }
-                    delay(50)
+
                     try {
-                        lazyListState.scrollToItem(target)
+                        lazyListState.scrollToItem(targetScroll)
                     } catch (_: Exception) {}
+
+                    delay(120.milliseconds)
+                    try {
+                        activeChannelFocusRequester.requestFocus()
+                    } catch (_: Exception) {
+                        delay(100.milliseconds)
+                        try {
+                            activeChannelFocusRequester.requestFocus()
+                        } catch (_: Exception) {
+                            categoryFocusRequesters[catName]?.requestFocus()
+                        }
+                    }
                     break
                 }
-                itemIdx += 1
+                currentItemIndex += 1
             }
+        }
+    }
+
+    // Restauración infalible de foco al colapsar categoría con flecha izquierda ◄
+    LaunchedEffect(expandedCategory, categoryToFocusOnCollapse) {
+        val catToFocus = categoryToFocusOnCollapse
+        if (expandedCategory == null && catToFocus != null) {
+            val targetHeaderIndex = groupedCategories.indexOfFirst {
+                it.first.equals(catToFocus, ignoreCase = true)
+            }
+            if (targetHeaderIndex >= 0) {
+                try {
+                    lazyListState.scrollToItem(targetHeaderIndex)
+                } catch (_: Exception) {}
+
+                delay(50.milliseconds)
+                try {
+                    categoryFocusRequesters[catToFocus]?.requestFocus()
+                } catch (_: Exception) {
+                    delay(60.milliseconds)
+                    try {
+                        categoryFocusRequesters[catToFocus]?.requestFocus()
+                    } catch (_: Exception) {}
+                }
+            }
+            categoryToFocusOnCollapse = null
         }
     }
 
@@ -604,72 +624,32 @@ private fun ChannelGuideDrawer(
             .background(Color(0xF5060A14))
             .border(width = 1.5.dp, color = CyberCyan.copy(alpha = 0.5f))
             .onKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    onClose()
-                    true
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    val keyCode = keyEvent.key.nativeKeyCode
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || keyCode == KeyEvent.KEYCODE_BACK) {
+                        onClose()
+                        true
+                    } else false
                 } else false
             }
             .padding(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "GUÍA DE CANALES",
-                        color = CyberCyan,
-                        fontSize = 16.sp,
-                        fontFamily = ShareTechMonoFontFamily,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "${uiState.iptvChannels.size} disponibles // OK sintonizar // FAV/MENU fav",
-                        color = CyberGrey,
-                        fontSize = 10.sp,
-                        fontFamily = ShareTechMonoFontFamily
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .focusRequester(closeButtonFocusRequester)
-                        .onFocusChanged { isCloseFocused = it.isFocused }
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isCloseFocused) CyberCyan else Color(0xFF131D33))
-                        .border(
-                            1.dp,
-                            if (isCloseFocused) CyberAmber else CyberCyan.copy(alpha = 0.3f),
-                            RoundedCornerShape(6.dp)
-                        )
-                        .onKeyEvent { keyEvent ->
-                            if (keyEvent.type == KeyEventType.KeyDown) {
-                                when (keyEvent.key.nativeKeyCode) {
-                                    KeyEvent.KEYCODE_DPAD_RIGHT,
-                                    KeyEvent.KEYCODE_DPAD_CENTER,
-                                    KeyEvent.KEYCODE_ENTER,
-                                    KeyEvent.KEYCODE_NUMPAD_ENTER -> {
-                                        onClose()
-                                        true
-                                    }
-                                    else -> false
-                                }
-                            } else false
-                        }
-                        .focusable()
-                        .clickable { onClose() }
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = "◀ CERRAR",
-                        color = if (isCloseFocused) Color.Black else CyberCyan,
-                        fontSize = 10.sp,
-                        fontFamily = ShareTechMonoFontFamily,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "GUÍA DE CANALES",
+                    color = CyberCyan,
+                    fontSize = 16.sp,
+                    fontFamily = ShareTechMonoFontFamily,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "${uiState.iptvChannels.size} disponibles // [► / ATRÁS] Cerrar guía",
+                    color = CyberGrey,
+                    fontSize = 10.sp,
+                    fontFamily = ShareTechMonoFontFamily
+                )
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -684,6 +664,7 @@ private fun ChannelGuideDrawer(
                 groupedCategories.forEach { (categoryName, channels) ->
                     val isExpanded = expandedCategory.equals(categoryName, ignoreCase = true)
                     val isSpecial = categoryName == "★ FAVORITOS"
+                    val catRequester = categoryFocusRequesters.getOrPut(categoryName) { FocusRequester() }
 
                     item(key = "cat_$categoryName") {
                         CategoryHeaderItem(
@@ -691,8 +672,20 @@ private fun ChannelGuideDrawer(
                             channelCount = channels.size,
                             isExpanded = isExpanded,
                             isSpecial = isSpecial,
+                            modifier = Modifier.focusRequester(catRequester),
                             onToggleExpand = {
-                                expandedCategory = if (isExpanded) null else categoryName
+                                if (isExpanded) {
+                                    categoryToFocusOnCollapse = categoryName
+                                    expandedCategory = null
+                                } else {
+                                    expandedCategory = categoryName
+                                }
+                            },
+                            onCollapseCategory = {
+                                if (isExpanded) {
+                                    categoryToFocusOnCollapse = categoryName
+                                    expandedCategory = null
+                                }
                             },
                             onCloseDrawer = onClose
                         )
@@ -717,6 +710,7 @@ private fun ChannelGuideDrawer(
                                     displayNumber = if (originalIndex != -1) originalIndex + 1 else 1,
                                     isCurrent = isCurrent,
                                     isFavorite = isFavorite,
+                                    modifier = if (isCurrent) Modifier.focusRequester(activeChannelFocusRequester) else Modifier,
                                     onClick = {
                                         if (originalIndex != -1) {
                                             onEvent(HomeUiEvent.SelectChannel(originalIndex))
@@ -726,7 +720,11 @@ private fun ChannelGuideDrawer(
                                     onToggleFavorite = {
                                         onEvent(HomeUiEvent.ToggleIptvFavorite(channel))
                                     },
-                                    onCloseDrawer = onClose
+                                    onCloseDrawer = onClose,
+                                    onCollapseCategory = {
+                                        categoryToFocusOnCollapse = categoryName
+                                        expandedCategory = null
+                                    }
                                 )
                             }
                         }
@@ -743,14 +741,16 @@ private fun CategoryHeaderItem(
     channelCount: Int,
     isExpanded: Boolean,
     isSpecial: Boolean = false,
+    modifier: Modifier = Modifier,
     onToggleExpand: () -> Unit,
+    onCollapseCategory: () -> Unit,
     onCloseDrawer: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
     val accentColor = if (isSpecial) CyberAmber else CyberCyan
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(
@@ -774,9 +774,16 @@ private fun CategoryHeaderItem(
             .onKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown) {
                     when (keyEvent.key.nativeKeyCode) {
+                        KeyEvent.KEYCODE_BACK,
                         KeyEvent.KEYCODE_DPAD_RIGHT -> {
                             onCloseDrawer()
                             true
+                        }
+                        KeyEvent.KEYCODE_DPAD_LEFT -> {
+                            if (isExpanded) {
+                                onCollapseCategory()
+                                true
+                            } else false
                         }
                         KeyEvent.KEYCODE_DPAD_CENTER,
                         KeyEvent.KEYCODE_ENTER,
@@ -788,8 +795,10 @@ private fun CategoryHeaderItem(
                     }
                 } else false
             }
-            .focusable()
-            .clickable { onToggleExpand() }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onToggleExpand() }
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Row(
@@ -873,12 +882,14 @@ private fun ChannelDrawerItem(
     isFavorite: Boolean,
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit,
-    onCloseDrawer: () -> Unit
+    onCloseDrawer: () -> Unit,
+    onCollapseCategory: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(
@@ -904,18 +915,23 @@ private fun ChannelDrawerItem(
                     val keyCode = keyEvent.key.nativeKeyCode
                     val scanCode = keyEvent.nativeKeyEvent.scanCode
                     when {
-                        keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                        keyCode == KeyEvent.KEYCODE_BACK ||
+                                keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> {
                             onCloseDrawer()
                             true
                         }
+                        keyCode == KeyEvent.KEYCODE_DPAD_LEFT -> {
+                            onCollapseCategory()
+                            true
+                        }
                         TvRemoteKeyCodes.isFavoriteKey(keyCode, scanCode) ||
-                        keyCode == KeyEvent.KEYCODE_MENU -> {
+                                keyCode == KeyEvent.KEYCODE_MENU -> {
                             onToggleFavorite()
                             true
                         }
                         keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
-                        keyCode == KeyEvent.KEYCODE_ENTER ||
-                        keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                                keyCode == KeyEvent.KEYCODE_ENTER ||
+                                keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER -> {
                             if (keyEvent.nativeKeyEvent.isLongPress) {
                                 onToggleFavorite()
                                 true
@@ -928,8 +944,9 @@ private fun ChannelDrawerItem(
                     }
                 } else false
             }
-            .focusable()
             .combinedClickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
                 onClick = onClick,
                 onLongClick = onToggleFavorite
             )

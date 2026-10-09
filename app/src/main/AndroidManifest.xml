@@ -42,6 +42,7 @@
         android:supportsRtl="true"
         android:banner="@drawable/banner"
         android:theme="@style/Theme.SamiBoxTV"
+        android:usesCleartextTraffic="true"
         android:enableOnBackInvokedCallback="true">
         <provider
             android:name="androidx.core.content.FileProvider"

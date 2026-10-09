@@ -127,7 +127,7 @@ private fun CyberMilitaryClock(modifier: Modifier = Modifier) {
 
     LaunchedEffect(Unit) {
         val timeFormat = SimpleDateFormat("h:mm:ss a", Locale.getDefault())
-        val dateFormat = SimpleDateFormat("d.mm.yyyy : EEE", Locale("es", "ES"))
+        val dateFormat = SimpleDateFormat("d.MM.yyyy : EEE", Locale("es", "ES"))
         val dateHolder = Date()
 
         while (true) {
