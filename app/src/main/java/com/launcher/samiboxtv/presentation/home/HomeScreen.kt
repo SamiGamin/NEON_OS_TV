@@ -1,6 +1,9 @@
 package com.launcher.samiboxtv.presentation.home
 
+import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,15 +15,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.tv.material3.Text
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.domain.model.VirtualApps
 import com.launcher.samiboxtv.presentation.components.AddAppDialog
 import com.launcher.samiboxtv.presentation.components.AppContextSideDrawer
 import com.launcher.samiboxtv.presentation.components.AssignCategoryDialog
@@ -35,8 +53,53 @@ import com.launcher.samiboxtv.presentation.media.MediaExplorerScreen
 import com.launcher.samiboxtv.presentation.overlay.SystemMonitorLog
 import com.launcher.samiboxtv.presentation.settings.TvSettingsPanel
 import com.launcher.samiboxtv.presentation.theme.AppLayoutMode
+import com.launcher.samiboxtv.presentation.theme.CyberCyan
+import com.launcher.samiboxtv.presentation.theme.CyberDarkBg
+import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
 import com.launcher.samiboxtv.presentation.theme.rememberTvLayoutDimensions
 import com.launcher.samiboxtv.util.CategoryHelper
+import kotlinx.coroutines.delay
+
+private fun getDrawableResId(context: Context, vararg names: String): Int {
+    val res = context.resources
+    val pkg = context.packageName
+    for (name in names) {
+        val id = res.getIdentifier(name, "drawable", pkg)
+        if (id != 0) return id
+    }
+    return 0
+}
+
+private val ManageAppsVirtualApp = AppItem(
+    packageName = VirtualApps.PKG_MANAGE_APPS,
+    name = "+ GESTIONAR APPS",
+    category = "CONFIG",
+    isSystemApp = true
+)
+
+private fun resolveAppBackdropModel(context: Context, app: AppItem?): Any? {
+    if (app == null) return null
+    if (app.packageName == VirtualApps.PKG_MANAGE_APPS ||
+        app.name.contains("GESTIONAR", ignoreCase = true)
+    ) {
+        val bannerRes = getDrawableResId(context, "baner_app", "banner_app", "bamer_app")
+        if (bannerRes != 0) return bannerRes
+    }
+    if (app.packageName == VirtualApps.PKG_IPTV ||
+        app.packageName.contains("iptv", ignoreCase = true) ||
+        app.name.contains("IPTV", ignoreCase = true)
+    ) {
+        val bannerRes = getDrawableResId(context, "banner_live_tv", "banner_iptv")
+        if (bannerRes != 0) return bannerRes
+    }
+    if (app.packageName == VirtualApps.PKG_MEDIA_HUB ||
+        app.name.contains("MEDIA HUB", ignoreCase = true)
+    ) {
+        val bannerRes = getDrawableResId(context, "banner_media")
+        if (bannerRes != 0) return bannerRes
+    }
+    return app.bannerDrawable ?: app.iconDrawable
+}
 
 /**
  * HomeScreen: Director de orquesta principal del Launcher.
@@ -49,6 +112,32 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var appToMoveCategory by remember { mutableStateOf<AppItem?>(null) }
+    val initialFocusRequester = remember { FocusRequester() }
+
+    // Solicitar foco automático en el primer elemento de la pantalla principal
+    LaunchedEffect(
+        uiState.isSettingsOpen,
+        uiState.isIptvPlayerOpen,
+        uiState.currentPlayingMedia,
+        uiState.isMediaHubOpen,
+        uiState.isSystemLogOpen,
+        uiState.selectedAppForMenu,
+        uiState.isAddDialogOpen
+    ) {
+        if (!uiState.isSettingsOpen &&
+            !uiState.isIptvPlayerOpen &&
+            uiState.currentPlayingMedia == null &&
+            !uiState.isMediaHubOpen &&
+            !uiState.isSystemLogOpen &&
+            uiState.selectedAppForMenu == null &&
+            !uiState.isAddDialogOpen
+        ) {
+            delay(150)
+            try {
+                initialFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
 
     // 1. Prioridad Máxima: Si estás reorganizando tarjetas (modo fantasma)
     BackHandler(enabled = uiState.movingAppPackageName != null) {
@@ -80,10 +169,11 @@ fun HomeScreen(
         // Un Launcher nunca debe salir al pulsar Atrás
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize().background(CyberDarkBg)) {
         HomeScreenContent(
             uiState = uiState,
             onEvent = viewModel::onEvent,
+            initialFocusRequester = initialFocusRequester,
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -197,22 +287,95 @@ fun HomeScreen(
 fun HomeScreenContent(
     uiState: HomeUiState,
     onEvent: (HomeUiEvent) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    initialFocusRequester: FocusRequester? = null
 ) {
+    val context = LocalContext.current
     val dimensions = rememberTvLayoutDimensions(layoutMode = uiState.appLayoutMode)
 
-    LazyColumn(
+    var focusedApp by remember { mutableStateOf<AppItem?>(null) }
+    var activeBackdropApp by remember { mutableStateOf<AppItem?>(null) }
+
+    LaunchedEffect(focusedApp) {
+        delay(180)
+        activeBackdropApp = focusedApp
+    }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF060913)),
-        contentPadding = PaddingValues(bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+            .background(CyberDarkBg)
     ) {
+        // Capa 0: Fondo ambiental dinámico con Crossfade y debounce
+        Crossfade(
+            targetState = activeBackdropApp,
+            animationSpec = tween(durationMillis = 350),
+            label = "ambientBackdrop"
+        ) { app ->
+            val backdropModel = remember(app?.packageName) {
+                resolveAppBackdropModel(context, app)
+            }
+            if (backdropModel != null) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(backdropModel)
+                            .crossfade(false)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    // Máscara degradada oscura para preservar contraste de las tarjetas
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        CyberDarkBg.copy(alpha = 0.40f),
+                                        CyberDarkBg.copy(alpha = 0.75f),
+                                        CyberDarkBg.copy(alpha = 0.95f),
+                                        CyberDarkBg
+                                    )
+                                )
+                            )
+                    )
+                }
+            }
+        }
+
+        // Capa 1: Título central holográfico
+        val holographicTitle = (activeBackdropApp?.name ?: "NEONOS TV").uppercase()
+        Text(
+            text = holographicTitle,
+            color = CyberCyan.copy(alpha = 0.50f),
+            fontSize = 18.sp,
+            fontFamily = ShareTechMonoFontFamily,
+            fontStyle = FontStyle.Italic,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 3.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 24.dp)
+        )
+
+        // Capa 2: UI normal del launcher
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
         // 1. ZONA SUPERIOR HUD MILITAR (Reloj militar HH:mm:ss + Perfil de pantalla + Nodos)
         item(key = "header_hud") {
             CyberHeaderHud(
                 layoutMode = uiState.appLayoutMode,
                 appCount = uiState.allApps.size,
+                networkStatus = uiState.networkStatus,
                 onOpenSettings = { onEvent(HomeUiEvent.OpenSettings) }
             )
         }
@@ -222,34 +385,83 @@ fun HomeScreenContent(
             // MODO CUADRÍCULA MODERNA (3 columnas x 2 filas = 6 en pantalla)
             // ==============================================================
             val favoriteApps = uiState.allApps.filter { it.isFavorite }
+            val nonFavoriteApps = uiState.allApps.filter { !it.isFavorite }
+
             if (favoriteApps.isNotEmpty()) {
                 item(key = "grid_section_favorites") {
                     CyberModernGrid(
                         title = "★ FAVORITOS & DESTACADOS",
                         apps = favoriteApps,
                         dimensions = dimensions,
+                        initialFocusRequester = initialFocusRequester,
                         movingAppPackageName = uiState.movingAppPackageName,
+                        showAppName = uiState.showAppNames,
                         onLaunchApp = { onEvent(HomeUiEvent.LaunchApp(it)) },
                         onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
                         onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
-                        onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) }
+                        onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
+                        onAppFocus = { focusedApp = it },
+                        trailingCard = if (nonFavoriteApps.isEmpty()) {
+                            {
+                                AddAppCyberCard(
+                                    width = dimensions.cardWidth,
+                                    height = dimensions.cardHeight,
+                                    cardStyle = uiState.cardStyle,
+                                    showAppName = uiState.showAppNames,
+                                    onFocus = { focusedApp = ManageAppsVirtualApp },
+                                    onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
+                                )
+                            }
+                        } else null
                     )
                 }
             }
 
-            val nonFavoriteApps = uiState.allApps.filter { !it.isFavorite }
             if (nonFavoriteApps.isNotEmpty()) {
                 item(key = "grid_section_all") {
                     CyberModernGrid(
                         title = if (favoriteApps.isEmpty()) "TODAS LAS APLICACIONES" else "OTRAS APLICACIONES",
                         apps = nonFavoriteApps,
                         dimensions = dimensions,
+                        initialFocusRequester = if (favoriteApps.isEmpty()) initialFocusRequester else null,
                         movingAppPackageName = uiState.movingAppPackageName,
+                        showAppName = uiState.showAppNames,
                         onLaunchApp = { onEvent(HomeUiEvent.LaunchApp(it)) },
                         onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
                         onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
-                        onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) }
+                        onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
+                        onAppFocus = { focusedApp = it },
+                        trailingCard = {
+                            AddAppCyberCard(
+                                width = dimensions.cardWidth,
+                                height = dimensions.cardHeight,
+                                cardStyle = uiState.cardStyle,
+                                showAppName = uiState.showAppNames,
+                                onFocus = { focusedApp = ManageAppsVirtualApp },
+                                onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
+                            )
+                        }
                     )
+                }
+            }
+
+            if (favoriteApps.isEmpty() && nonFavoriteApps.isEmpty()) {
+                item(key = "grid_manage_empty") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = dimensions.horizontalPadding),
+                        horizontalArrangement = Arrangement.spacedBy(dimensions.spacing)
+                    ) {
+                        AddAppCyberCard(
+                            width = dimensions.cardWidth,
+                            height = dimensions.cardHeight,
+                            cardStyle = uiState.cardStyle,
+                            showAppName = uiState.showAppNames,
+                            onFocus = { focusedApp = ManageAppsVirtualApp },
+                            onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
+                        )
+                    }
                 }
             }
         } else {
@@ -259,22 +471,6 @@ fun HomeScreenContent(
 
             // 2. SECCIÓN FAVORITOS
             val favoriteApps = uiState.allApps.filter { it.isFavorite }
-            if (favoriteApps.isNotEmpty()) {
-                item(key = "section_favorites") {
-                    CyberAppCarousel(
-                        title = "★ FAVORITOS & DESTACADOS",
-                        apps = favoriteApps,
-                        dimensions = dimensions,
-                        movingAppPackageName = uiState.movingAppPackageName,
-                        onLaunchApp = { onEvent(HomeUiEvent.LaunchApp(it)) },
-                        onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
-                        onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
-                        onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) }
-                    )
-                }
-            }
-
-            // 3. SECCIONES DINÁMICAS POR CATEGORÍA
             val nonFavoriteApps = uiState.allApps.filter { !it.isFavorite }
             val activeCategoriesWithApps = uiState.categories.mapNotNull { categoryName ->
                 val apps = nonFavoriteApps.filter { app ->
@@ -284,17 +480,64 @@ fun HomeScreenContent(
                 if (apps.isNotEmpty()) categoryName to apps else null
             }
 
-            activeCategoriesWithApps.forEach { (categoryName, categoryApps) ->
+            if (favoriteApps.isNotEmpty()) {
+                item(key = "section_favorites") {
+                    CyberAppCarousel(
+                        title = "★ FAVORITOS & DESTACADOS",
+                        apps = favoriteApps,
+                        dimensions = dimensions,
+                        initialFocusRequester = initialFocusRequester,
+                        movingAppPackageName = uiState.movingAppPackageName,
+                        showAppName = uiState.showAppNames,
+                        onLaunchApp = { onEvent(HomeUiEvent.LaunchApp(it)) },
+                        onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
+                        onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
+                        onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
+                        onAppFocus = { focusedApp = it },
+                        trailingCard = if (activeCategoriesWithApps.isEmpty() && nonFavoriteApps.isEmpty()) {
+                            {
+                                AddAppCyberCard(
+                                    width = dimensions.cardWidth,
+                                    height = dimensions.cardHeight,
+                                    cardStyle = uiState.cardStyle,
+                                    showAppName = uiState.showAppNames,
+                                    onFocus = { focusedApp = ManageAppsVirtualApp },
+                                    onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
+                                )
+                            }
+                        } else null
+                    )
+                }
+            }
+
+            // 3. SECCIONES DINÁMICAS POR CATEGORÍA
+            activeCategoriesWithApps.forEachIndexed { index, (categoryName, categoryApps) ->
+                val isLastCategory = index == activeCategoriesWithApps.lastIndex
                 item(key = "section_cat_$categoryName") {
                     CyberAppCarousel(
                         title = "${CategoryHelper.getCategoryIcon(categoryName)} $categoryName",
                         apps = categoryApps,
                         dimensions = dimensions,
+                        initialFocusRequester = if (favoriteApps.isEmpty() && index == 0) initialFocusRequester else null,
                         movingAppPackageName = uiState.movingAppPackageName,
+                        showAppName = uiState.showAppNames,
                         onLaunchApp = { onEvent(HomeUiEvent.LaunchApp(it)) },
                         onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
                         onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
-                        onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) }
+                        onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
+                        onAppFocus = { focusedApp = it },
+                        trailingCard = if (isLastCategory) {
+                            {
+                                AddAppCyberCard(
+                                    width = dimensions.cardWidth,
+                                    height = dimensions.cardHeight,
+                                    cardStyle = uiState.cardStyle,
+                                    showAppName = uiState.showAppNames,
+                                    onFocus = { focusedApp = ManageAppsVirtualApp },
+                                    onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
+                                )
+                            }
+                        } else null
                     )
                 }
             }
@@ -307,11 +550,24 @@ fun HomeScreenContent(
                             title = "${CategoryHelper.getCategoryIcon("APPS")} TODAS LAS APLICACIONES",
                             apps = nonFavoriteApps,
                             dimensions = dimensions,
+                            initialFocusRequester = initialFocusRequester,
                             movingAppPackageName = uiState.movingAppPackageName,
+                            showAppName = uiState.showAppNames,
                             onLaunchApp = { onEvent(HomeUiEvent.LaunchApp(it)) },
                             onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
                             onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
-                            onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) }
+                            onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
+                            onAppFocus = { focusedApp = it },
+                            trailingCard = {
+                                AddAppCyberCard(
+                                    width = dimensions.cardWidth,
+                                    height = dimensions.cardHeight,
+                                    cardStyle = uiState.cardStyle,
+                                    showAppName = uiState.showAppNames,
+                                    onFocus = { focusedApp = ManageAppsVirtualApp },
+                                    onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
+                                )
+                            }
                         )
                     }
                 } else if (favoriteApps.isEmpty()) {
@@ -323,9 +579,12 @@ fun HomeScreenContent(
                             horizontalArrangement = Arrangement.spacedBy(dimensions.spacing)
                         ) {
                             AddAppCyberCard(
+                                width = dimensions.cardWidth,
+                                height = dimensions.cardHeight,
                                 cardStyle = uiState.cardStyle,
-                                onClick = { onEvent(HomeUiEvent.OpenAddDialog) },
-                                modifier = Modifier.width(dimensions.cardWidth)
+                                showAppName = uiState.showAppNames,
+                                onFocus = { focusedApp = ManageAppsVirtualApp },
+                                onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
                             )
                         }
                     }
@@ -333,4 +592,5 @@ fun HomeScreenContent(
             }
         }
     }
+}
 }

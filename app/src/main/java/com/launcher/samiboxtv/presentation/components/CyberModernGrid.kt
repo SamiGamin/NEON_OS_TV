@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,10 +36,14 @@ fun CyberModernGrid(
     onLaunchApp: (AppItem) -> Unit,
     onOpenContextMenu: (AppItem) -> Unit,
     modifier: Modifier = Modifier,
+    initialFocusRequester: FocusRequester? = null,
     title: String? = null,
     movingAppPackageName: String? = null,
+    showAppName: Boolean = true,
     onMoveDirection: (Int) -> Unit = {},
-    onConfirmMove: () -> Unit = {}
+    onConfirmMove: () -> Unit = {},
+    onAppFocus: (AppItem) -> Unit = {},
+    trailingCard: (@Composable () -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
     val snapFlingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
@@ -68,26 +73,42 @@ fun CyberModernGrid(
             itemsIndexed(
                 items = columns,
                 key = { index, pair -> pair.firstOrNull()?.packageName ?: index.toString() }
-            ) { _, columnApps ->
+            ) { colIndex, columnApps ->
                 Column(
                     verticalArrangement = Arrangement.spacedBy(dimensions.spacing),
-                    modifier = Modifier.width(dimensions.cardWidth)
+                    modifier = Modifier
+                        .width(dimensions.cardWidth)
+                        .animateItem()
                 ) {
-                    columnApps.forEach { app ->
+                    columnApps.forEachIndexed { rowIndex, app ->
                         val isMoving = movingAppPackageName == app.packageName
                         CyberAppCard(
                             app = app,
                             width = dimensions.cardWidth,
                             height = dimensions.cardHeight,
+                            focusRequester = if (colIndex == 0 && rowIndex == 0) initialFocusRequester else null,
                             isGhostMode = isMoving,
                             isEditing = isMoving,
+                            showAppName = showAppName,
                             onClick = {
                                 if (isMoving) onConfirmMove() else onLaunchApp(app)
                             },
                             onLongClick = { onOpenContextMenu(app) },
+                            onFocus = { onAppFocus(app) },
                             onMoveDirection = onMoveDirection,
                             onConfirmMove = onConfirmMove
                         )
+                    }
+                }
+            }
+
+            trailingCard?.let { card ->
+                item(key = "trailing_action_column") {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(dimensions.spacing),
+                        modifier = Modifier.width(dimensions.cardWidth)
+                    ) {
+                        card()
                     }
                 }
             }

@@ -46,14 +46,17 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Text
 import coil.compose.rememberAsyncImagePainter
-import kotlinx.coroutines.delay
-import com.launcher.samiboxtv.util.AppActionsHelper
+import androidx.compose.ui.res.painterResource
+import com.launcher.samiboxtv.R
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.domain.model.VirtualApps
 import com.launcher.samiboxtv.presentation.theme.CyberAmber
 import com.launcher.samiboxtv.presentation.theme.CyberCyan
 import com.launcher.samiboxtv.presentation.theme.CyberGrey
 import com.launcher.samiboxtv.presentation.theme.CyberMagenta
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
+import com.launcher.samiboxtv.util.AppActionsHelper
+import kotlinx.coroutines.delay
 
 
 @Composable
@@ -122,8 +125,13 @@ fun AppContextSideDrawer(
                                 .fillMaxWidth()
                                 .padding(bottom = 14.dp)
                         ) {
+                            val iconPainter = when (appItem.packageName) {
+                                VirtualApps.PKG_IPTV -> painterResource(id = R.drawable.ic_cyber_iptv)
+                                VirtualApps.PKG_MEDIA_HUB -> painterResource(id = R.drawable.ic_cyber_media_hub)
+                                else -> rememberAsyncImagePainter(model = appItem.iconDrawable ?: appItem.bannerDrawable)
+                            }
                             Image(
-                                painter = rememberAsyncImagePainter(model = appItem.iconDrawable),
+                                painter = iconPainter,
                                 contentDescription = appItem.name,
                                 modifier = Modifier.size(46.dp)
                             )

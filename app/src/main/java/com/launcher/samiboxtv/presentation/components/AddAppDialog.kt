@@ -44,7 +44,9 @@ import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.rememberAsyncImagePainter
+import com.launcher.samiboxtv.R
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.domain.model.VirtualApps
 import com.launcher.samiboxtv.presentation.theme.CyberAmber
 import com.launcher.samiboxtv.presentation.theme.CyberCard
 import com.launcher.samiboxtv.presentation.theme.CyberCyan
@@ -199,8 +201,13 @@ private fun AppVisibilityToggleCard(
                 .padding(12.dp)
                 .fillMaxWidth()
         ) {
+            val iconModel = when (appItem.packageName) {
+                VirtualApps.PKG_IPTV -> R.drawable.ic_cyber_iptv
+                VirtualApps.PKG_MEDIA_HUB -> R.drawable.ic_cyber_media_hub
+                else -> appItem.iconDrawable ?: appItem.bannerDrawable
+            }
             Image(
-                painter = rememberAsyncImagePainter(appItem.iconDrawable ?: appItem.bannerDrawable),
+                painter = rememberAsyncImagePainter(iconModel),
                 contentDescription = appItem.name,
                 modifier = Modifier
                     .size(48.dp)

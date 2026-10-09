@@ -26,9 +26,9 @@ fun NetworkIndicator(
     modifier: Modifier = Modifier
 ) {
     val (iconRes, label, color) = when (networkStatus.type) {
-        NetworkType.ETHERNET -> Triple(R.drawable.ic_ethernet, "ETHERNET (LAN)", CyberCyan)
-        NetworkType.WIFI -> Triple(R.drawable.ic_wifi, "WI-FI (ONLINE)", CyberCyan)
-        NetworkType.CELLULAR -> Triple(R.drawable.ic_wifi, "MÓVIL (ONLINE)", CyberCyan)
+        NetworkType.ETHERNET -> Triple(R.drawable.ic_network_ethernet, "ETHERNET (LAN)", CyberCyan)
+        NetworkType.WIFI -> Triple(R.drawable.ic_network_wifi, "WI-FI (ONLINE)", CyberCyan)
+        NetworkType.CELLULAR -> Triple(R.drawable.ic_network_wifi, "MÓVIL (ONLINE)", CyberCyan)
         NetworkType.DISCONNECTED, NetworkType.UNKNOWN -> Triple(
             R.drawable.ic_network_disconnected,
             "DESCONECTADO",

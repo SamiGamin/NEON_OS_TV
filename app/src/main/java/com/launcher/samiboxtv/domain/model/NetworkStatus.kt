@@ -2,9 +2,6 @@ package com.launcher.samiboxtv.domain.model
 
 import androidx.compose.runtime.Immutable
 
-/**
- * Representa los diferentes tipos de interfaz de conexión de red soportados por Android TV.
- */
 enum class NetworkType {
     ETHERNET,
     WIFI,
@@ -13,18 +10,29 @@ enum class NetworkType {
     UNKNOWN
 }
 
-/**
- * Estado inmutable de la conexión de red del dispositivo.
- *
- * @property isConnected Indica si hay conexión de red activa a internet.
- * @property type Tipo de interfaz de red activa (ETHERNET, WIFI, etc.).
- * @property ipAddress Dirección IP local del dispositivo (IPv4), si está disponible.
- * @property ssid Nombre de la red Wi-Fi si aplica y está disponible.
- */
 @Immutable
 data class NetworkStatus(
     val isConnected: Boolean = false,
+    val hasInternetAccess: Boolean = false,
     val type: NetworkType = NetworkType.DISCONNECTED,
     val ipAddress: String? = null,
-    val ssid: String? = null
-)
+    val ssid: String? = null,
+    val linkSpeedMbps: Int? = null,
+    val wifiFrequencyGhz: String? = null,
+    val signalLevel: Int = 0
+) {
+    val hudDisplayString: String
+        get() = when {
+            !isConnected -> "SYS // OFFLINE"
+            !hasInternetAccess -> "${type.name} // NO_ROUTE"
+            type == NetworkType.ETHERNET -> {
+                val speed = linkSpeedMbps?.let { " [${it}M]" } ?: ""
+                "ETH$speed // ${ipAddress ?: "0.0.0.0"}"
+            }
+            type == NetworkType.WIFI -> {
+                val band = wifiFrequencyGhz?.let { " $it" } ?: ""
+                "WIFI$band // ${ipAddress ?: "0.0.0.0"}"
+            }
+            else -> "${type.name} // ${ipAddress ?: "ONLINE"}"
+        }
+}

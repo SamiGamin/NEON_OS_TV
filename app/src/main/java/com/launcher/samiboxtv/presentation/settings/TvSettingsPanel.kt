@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -55,11 +56,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.launcher.samiboxtv.R
 import com.launcher.samiboxtv.domain.model.AppCardStyle
 import com.launcher.samiboxtv.domain.model.AppItem
+import com.launcher.samiboxtv.presentation.components.CyberQrCard
 import com.launcher.samiboxtv.presentation.theme.AppLayoutMode
 import com.launcher.samiboxtv.domain.model.SettingsSection
 import com.launcher.samiboxtv.domain.model.VirtualApps
@@ -93,6 +96,7 @@ fun TvSettingsPanel(
     var showAddCategoryDialog by remember { mutableStateOf(false) }
     var selectedAppForCategoryChange by remember { mutableStateOf<AppItem?>(null) }
     var showDefaultLauncherDialog by remember { mutableStateOf(false) }
+    var showQrDialog by remember { mutableStateOf(false) }
     val activeSectionFocusRequester = remember { FocusRequester() }
 
     BackHandler(enabled = uiState.isSettingsOpen) {
@@ -173,15 +177,19 @@ fun TvSettingsPanel(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    SettingsSection.entries.forEach { section ->
-                        val isSelected = uiState.activeSettingsSection == section
-                        SettingsMenuTabItem(
-                            section = section,
-                            isSelected = isSelected,
-                            onSelect = { onEvent(HomeUiEvent.SelectSettingsSection(section)) },
-                            modifier = if (isSelected) Modifier.focusRequester(activeSectionFocusRequester) else Modifier
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(items = SettingsSection.entries, key = { it.name }) { section ->
+                            val isSelected = uiState.activeSettingsSection == section
+                            SettingsMenuTabItem(
+                                section = section,
+                                isSelected = isSelected,
+                                onSelect = { onEvent(HomeUiEvent.SelectSettingsSection(section)) },
+                                modifier = if (isSelected) Modifier.focusRequester(activeSectionFocusRequester) else Modifier
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
@@ -248,7 +256,8 @@ fun TvSettingsPanel(
                             IptvSettingsContent(
                                 uiState = uiState,
                                 context = context,
-                                onEvent = onEvent
+                                onEvent = onEvent,
+                                onOpenQrDialog = { showQrDialog = true }
                             )
                         }
                         SettingsSection.SYSTEM -> {
@@ -262,7 +271,11 @@ fun TvSettingsPanel(
                                     onEvent(HomeUiEvent.OpenSystemLog)
                                 },
                                 onCheckUpdates = { onEvent(HomeUiEvent.CheckUpdates) },
-                                onOpenDefaultLauncherDialog = { showDefaultLauncherDialog = true }
+                                onOpenDefaultLauncherDialog = { showDefaultLauncherDialog = true },
+                                onOpenAppVisibilityManager = {
+                                    onEvent(HomeUiEvent.CloseSettings)
+                                    onEvent(HomeUiEvent.OpenAddDialog)
+                                }
                             )
                         }
                         SettingsSection.DEVELOPER -> {
@@ -273,6 +286,42 @@ fun TvSettingsPanel(
                         }
                     }
                 }
+            }
+        }
+
+        // Overlay Cyberpunk para Código QR (sin Dialog flotante para evitar parpadeos)
+        if (showQrDialog) {
+            val serverUrl = if (uiState.logServerUrl.isNotBlank()) {
+                uiState.logServerUrl
+            } else {
+                "http://${DevLogManager.getLocalIpAddress()}:${DevLogManager.SERVER_PORT}"
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(100f)
+                    .background(Color.Black.copy(alpha = 0.85f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {},
+                contentAlignment = Alignment.Center
+            ) {
+                val closeBtnFocusRequester = remember { FocusRequester() }
+                LaunchedEffect(Unit) {
+                    delay(100)
+                    try {
+                        closeBtnFocusRequester.requestFocus()
+                    } catch (_: Exception) {}
+                }
+
+                BackHandler { showQrDialog = false }
+
+                CyberQrCard(
+                    serverUrl = serverUrl,
+                    closeFocusRequester = closeBtnFocusRequester,
+                    onClose = { showQrDialog = false }
+                )
             }
         }
     }
@@ -315,13 +364,13 @@ fun TvSettingsPanel(
 private fun IptvSettingsContent(
     uiState: HomeUiState,
     context: Context,
-    onEvent: (HomeUiEvent) -> Unit
+    onEvent: (HomeUiEvent) -> Unit,
+    onOpenQrDialog: () -> Unit
 ) {
     var showUrlDialog by remember { mutableStateOf(false) }
     var showFileDialog by remember { mutableStateOf(false) }
-    var showQrDialog by remember { mutableStateOf(false) }
 
-    Column(
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -339,62 +388,74 @@ private fun IptvSettingsContent(
             "$sourceLabel • $countLabel"
         }
 
-        SettingsActionItem(
-            title = "ESTADO DE LA LISTA IPTV",
-            subtitle = subtitle,
-            isHighlighted = uiState.iptvChannels.isNotEmpty(),
-            enabled = false,
-            onClick = {}
-        )
+        item(key = "iptv_status") {
+            SettingsActionItem(
+                title = "ESTADO DE LA LISTA IPTV",
+                subtitle = subtitle,
+                isHighlighted = uiState.iptvChannels.isNotEmpty(),
+                enabled = false,
+                onClick = {}
+            )
+        }
 
-        // Botón Cargar por Código QR desde el Celular
-        SettingsActionItem(
-            title = "📲 CARGAR LISTA ESCANEANDO CÓDIGO QR",
-            subtitle = "Abre la cámara de tu celular, escanea la pantalla y pega el link con un toque",
-            isHighlighted = true,
-            onClick = {
-                // Aseguramos que el servidor web esté activo
-                if (!uiState.isLogServerRunning) {
-                    onEvent(HomeUiEvent.ToggleLogServer)
+        item(key = "iptv_qr") {
+            // Botón Cargar por Código QR desde el Celular
+            SettingsActionItem(
+                title = "📲 CARGAR LISTA ESCANEANDO CÓDIGO QR",
+                subtitle = "Abre la cámara de tu celular, escanea la pantalla y pega el link con un toque",
+                isHighlighted = true,
+                onClick = {
+                    // Aseguramos que el servidor web esté activo
+                    if (!uiState.isLogServerRunning) {
+                        onEvent(HomeUiEvent.ToggleLogServer)
+                    }
+                    onOpenQrDialog()
                 }
-                showQrDialog = true
-            }
-        )
+            )
+        }
 
-        // Botón Cargar Lista de Ejemplo
-        SettingsActionItem(
-            title = "⚡ CARGAR LISTA DE EJEMPLO",
-            subtitle = "${VirtualApps.DEFAULT_IPTV_URL} • Canales predeterminados de demostración",
-            isHighlighted = isDefaultList && uiState.iptvChannels.isNotEmpty(),
-            onClick = {
-                onEvent(HomeUiEvent.LoadIptvFromUrl(VirtualApps.DEFAULT_IPTV_URL))
-            }
-        )
+        item(key = "iptv_sample") {
+            // Botón Cargar Lista de Ejemplo
+            SettingsActionItem(
+                title = "⚡ CARGAR LISTA DE EJEMPLO",
+                subtitle = "${VirtualApps.DEFAULT_IPTV_URL} • Canales predeterminados de demostración",
+                isHighlighted = isDefaultList && uiState.iptvChannels.isNotEmpty(),
+                onClick = {
+                    onEvent(HomeUiEvent.LoadIptvFromUrl(VirtualApps.DEFAULT_IPTV_URL))
+                }
+            )
+        }
 
-        // Botón Cambiar / Cargar por URL
-        SettingsActionItem(
-            title = "🔗 CAMBIAR ENLACE URL PERSONALIZADO",
-            subtitle = if (uiState.currentIptvUrl.isNotBlank()) "URL actual: ${uiState.currentIptvUrl}" else "Pega o escribe tu enlace M3U personalizado",
-            isHighlighted = false,
-            onClick = { showUrlDialog = true }
-        )
+        item(key = "iptv_url") {
+            // Botón Cambiar / Cargar por URL
+            SettingsActionItem(
+                title = "🔗 CAMBIAR ENLACE URL PERSONALIZADO",
+                subtitle = if (uiState.currentIptvUrl.isNotBlank()) "URL actual: ${uiState.currentIptvUrl}" else "Pega o escribe tu enlace M3U personalizado",
+                isHighlighted = false,
+                onClick = { showUrlDialog = true }
+            )
+        }
 
-        // Botón Cargar por Archivo / USB
-        SettingsActionItem(
-            title = "📁 BUSCAR EN MEMORIA INTERNA O DISCO USB",
-            subtitle = "Detecta y carga automáticamente archivos .m3u o .m3u8 en la TV",
-            isHighlighted = false,
-            onClick = { showFileDialog = true }
-        )
+        item(key = "iptv_file") {
+            // Botón Cargar por Archivo / USB
+            SettingsActionItem(
+                title = "📁 BUSCAR EN MEMORIA INTERNA O DISCO USB",
+                subtitle = "Detecta y carga automáticamente archivos .m3u o .m3u8 en la TV",
+                isHighlighted = false,
+                onClick = { showFileDialog = true }
+            )
+        }
 
         // Botón Limpiar Lista
         if (uiState.iptvChannels.isNotEmpty()) {
-            SettingsActionItem(
-                title = "✕ ELIMINAR LISTA ACTUAL",
-                subtitle = "Borra los canales cargados de la memoria",
-                isHighlighted = false,
-                onClick = { onEvent(HomeUiEvent.ClearIptvList) }
-            )
+            item(key = "iptv_clear") {
+                SettingsActionItem(
+                    title = "✕ ELIMINAR LISTA ACTUAL",
+                    subtitle = "Borra los canales cargados de la memoria",
+                    isHighlighted = false,
+                    onClick = { onEvent(HomeUiEvent.ClearIptvList) }
+                )
+            }
         }
     }
 
@@ -417,18 +478,6 @@ private fun IptvSettingsContent(
                 onEvent(HomeUiEvent.LoadIptvFromFile(file))
                 showFileDialog = false
             }
-        )
-    }
-
-    if (showQrDialog) {
-        val serverUrl = if (uiState.logServerUrl.isNotBlank()) {
-            uiState.logServerUrl
-        } else {
-            "http://${DevLogManager.getLocalIpAddress()}:${DevLogManager.SERVER_PORT}"
-        }
-        IptvQrDialog(
-            serverUrl = serverUrl,
-            onDismiss = { showQrDialog = false }
         )
     }
 }
@@ -680,156 +729,56 @@ private fun IptvUrlInputDialog(
     }
 }
 
-@Composable
-private fun IptvQrDialog(
-    serverUrl: String,
-    onDismiss: () -> Unit
-) {
-    val qrBitmap = remember(serverUrl) {
-        QrCodeGenerator.generateQr(serverUrl, sizePx = 400)
-    }
-    var closeFocused by remember { mutableStateOf(false) }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Box(
-            modifier = Modifier
-                .width(460.dp)
-                .background(Color(0xFF090E1B), RoundedCornerShape(14.dp))
-                .border(1.5.dp, CyberCyan, RoundedCornerShape(14.dp))
-                .padding(24.dp)
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "📲 ESCANEA CON TU CELULAR",
-                    color = CyberCyan,
-                    fontFamily = ShareTechMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Apunta con la cámara de tu teléfono para abrir el asistente web y enviar la lista sin escribir con el control remoto.",
-                    color = Color.White.copy(alpha = 0.8f),
-                    fontSize = 11.sp,
-                    fontFamily = ShareTechMonoFontFamily,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Código QR enmarcado
-                Box(
-                    modifier = Modifier
-                        .size(190.dp)
-                        .background(Color.White, RoundedCornerShape(10.dp))
-                        .padding(8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (qrBitmap != null) {
-                        Image(
-                            bitmap = qrBitmap,
-                            contentDescription = "Código QR de configuración",
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Text(
-                            text = "Error generando QR",
-                            color = Color.Black,
-                            fontSize = 11.sp,
-                            fontFamily = ShareTechMonoFontFamily
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = serverUrl,
-                    color = CyberAmber,
-                    fontSize = 12.sp,
-                    fontFamily = ShareTechMonoFontFamily,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Tu celular y esta TV deben estar en la misma red Wi-Fi",
-                    color = Color.Gray,
-                    fontSize = 10.sp,
-                    fontFamily = ShareTechMonoFontFamily
-                )
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (closeFocused) CyberCyan else Color(0xFF131D33))
-                        .border(1.dp, if (closeFocused) CyberAmber else CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                        .onFocusChanged { closeFocused = it.isFocused }
-                        .tvClickable { onDismiss() }
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "LISTO / CERRAR",
-                        color = if (closeFocused) Color.Black else CyberCyan,
-                        fontSize = 11.sp,
-                        fontFamily = ShareTechMonoFontFamily,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-    }
-}
-
 
 @Composable
 private fun DeveloperSettingsContent(
     uiState: HomeUiState,
     onEvent: (HomeUiEvent) -> Unit
 ) {
-    val techFont = ShareTechMonoFontFamily
-
-    Column(
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Tarjeta 1: Interruptor Maestro del Modo Desarrollador
-        SettingsActionItem(
-            title = if (uiState.isDevModeActive) "MODO AVANZADO: [ACTIVADO]" else "MODO AVANZADO: [DESACTIVADO]",
-            subtitle = "Habilita la captura profunda de eventos del sistema y control remoto",
-            isHighlighted = uiState.isDevModeActive,
-            onClick = { onEvent(HomeUiEvent.ToggleDevMode) }
-        )
+        item(key = "dev_master") {
+            // Tarjeta 1: Interruptor Maestro del Modo Desarrollador
+            SettingsActionItem(
+                title = if (uiState.isDevModeActive) "MODO AVANZADO: [ACTIVADO]" else "MODO AVANZADO: [DESACTIVADO]",
+                subtitle = "Habilita la captura profunda de eventos del sistema y control remoto",
+                isHighlighted = uiState.isDevModeActive,
+                onClick = { onEvent(HomeUiEvent.ToggleDevMode) }
+            )
+        }
 
         if (uiState.isDevModeActive) {
-            // Tarjeta 2: Servidor HTTP de Red
-            SettingsActionItem(
-                title = if (uiState.isLogServerRunning) "SERVIDOR DE RED: ACTIVO" else "INICIAR SERVIDOR DE LOGS EN RED",
-                subtitle = if (uiState.isLogServerRunning) "Entra en tu PC a: ${uiState.logServerUrl}" else "Transmite los logs de la TV por Wi-Fi al navegador de tu PC",
-                isHighlighted = uiState.isLogServerRunning,
-                onClick = { onEvent(HomeUiEvent.ToggleLogServer) }
-            )
+            item(key = "dev_server") {
+                // Tarjeta 2: Servidor HTTP de Red
+                SettingsActionItem(
+                    title = if (uiState.isLogServerRunning) "SERVIDOR DE RED: ACTIVO" else "INICIAR SERVIDOR DE LOGS EN RED",
+                    subtitle = if (uiState.isLogServerRunning) "Entra en tu PC a: ${uiState.logServerUrl}" else "Transmite los logs de la TV por Wi-Fi al navegador de tu PC",
+                    isHighlighted = uiState.isLogServerRunning,
+                    onClick = { onEvent(HomeUiEvent.ToggleLogServer) }
+                )
+            }
 
-            // Tarjeta 3: Overlay de teclas en pantalla
-            SettingsActionItem(
-                title = if (uiState.showKeyDebugToast) "VISOR DE TECLAS OSD: [VISIBLE]" else "VISOR DE TECLAS OSD: [OCULTO]",
-                subtitle = "Muestra una alerta en pantalla cada vez que presionas un botón del control",
-                isHighlighted = uiState.showKeyDebugToast,
-                onClick = { onEvent(HomeUiEvent.ToggleKeyDebugToast) }
-            )
+            item(key = "dev_overlay") {
+                // Tarjeta 3: Overlay de teclas en pantalla
+                SettingsActionItem(
+                    title = if (uiState.showKeyDebugToast) "VISOR DE TECLAS OSD: [VISIBLE]" else "VISOR DE TECLAS OSD: [OCULTO]",
+                    subtitle = "Muestra una alerta en pantalla cada vez que presionas un botón del control",
+                    isHighlighted = uiState.showKeyDebugToast,
+                    onClick = { onEvent(HomeUiEvent.ToggleKeyDebugToast) }
+                )
+            }
 
-            // Tarjeta 4: Limpiar historial
-            SettingsActionItem(
-                title = "BORRAR HISTORIAL DE LOGS",
-                subtitle = "Vacía el búfer de memoria de eventos registrados",
-                isHighlighted = false,
-                onClick = { onEvent(HomeUiEvent.ClearLogs) }
-            )
+            item(key = "dev_clear_logs") {
+                // Tarjeta 4: Limpiar historial
+                SettingsActionItem(
+                    title = "BORRAR HISTORIAL DE LOGS",
+                    subtitle = "Vacía el búfer de memoria de eventos registrados",
+                    isHighlighted = false,
+                    onClick = { onEvent(HomeUiEvent.ClearLogs) }
+                )
+            }
         }
     }
 }
@@ -867,8 +816,10 @@ private fun SettingsMenuTabItem(
                     onSelect()
                 }
             }
-            .focusable()
-            .clickable { onSelect() }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onSelect() }
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
         Row(
@@ -933,8 +884,13 @@ private fun FavoritesSettingsContent(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.weight(1f)
                     ) {
+                        val iconModel = when (app.packageName) {
+                            VirtualApps.PKG_IPTV -> R.drawable.ic_cyber_iptv
+                            VirtualApps.PKG_MEDIA_HUB -> R.drawable.ic_cyber_media_hub
+                            else -> app.iconDrawable ?: app.bannerDrawable
+                        }
                         AsyncImage(
-                            model = app.iconDrawable,
+                            model = iconModel,
                             contentDescription = app.name,
                             modifier = Modifier.size(32.dp)
                         )
@@ -994,7 +950,7 @@ private fun CategoriesSettingsContent(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        item {
+        item(key = "cat_create_btn") {
             // Botón para crear nueva categoría
             SettingsActionItem(
                 title = "+ CREAR NUEVA FILA / CATEGORÍA",
@@ -1004,7 +960,7 @@ private fun CategoriesSettingsContent(
             )
         }
 
-        item {
+        item(key = "cat_header_active") {
             Text(
                 text = "FILAS ACTIVAS EN LA PANTALLA PRINCIPAL:",
                 color = CyberCyan,
@@ -1015,7 +971,7 @@ private fun CategoriesSettingsContent(
             )
         }
 
-        items(items = categories) { categoryName ->
+        items(items = categories, key = { "cat_group_$it" }) { categoryName ->
             var isFocused by remember { mutableStateOf(false) }
             val isDefault = categoryName in listOf("STREAMING", "GAMING", "APPS")
             val shape = RoundedCornerShape(8.dp)
@@ -1095,7 +1051,7 @@ private fun CategoriesSettingsContent(
             }
         }
 
-        item {
+        item(key = "cat_header_assign") {
             Text(
                 text = "ASIGNAR APPS A CATEGORÍAS (PULSA PARA CAMBIAR):",
                 color = CyberCyan,
@@ -1106,7 +1062,7 @@ private fun CategoriesSettingsContent(
             )
         }
 
-        items(items = allApps, key = { it.packageName }) { app ->
+        items(items = allApps, key = { "cat_app_${it.packageName}" }) { app ->
             val assignedCat = appCategoryMap[app.packageName] ?: app.category.ifBlank { "APPS" }
             val isFav = app.isFavorite
             var isFocused by remember { mutableStateOf(false) }
@@ -1141,8 +1097,13 @@ private fun CategoriesSettingsContent(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.weight(1f)
                     ) {
+                        val iconModel = when (app.packageName) {
+                            VirtualApps.PKG_IPTV -> R.drawable.ic_cyber_iptv
+                            VirtualApps.PKG_MEDIA_HUB -> R.drawable.ic_cyber_media_hub
+                            else -> app.iconDrawable ?: app.bannerDrawable
+                        }
                         AsyncImage(
-                            model = app.iconDrawable,
+                            model = iconModel,
                             contentDescription = app.name,
                             modifier = Modifier.size(28.dp)
                         )
@@ -1191,7 +1152,7 @@ private fun AppStyleSettingsContent(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        item {
+        item(key = "style_header_density") {
             Text(
                 text = "MODO DE DISEÑO Y DENSIDAD RESPONSIVA (ZERO PARTIAL CARDS):",
                 color = CyberCyan,
@@ -1201,7 +1162,7 @@ private fun AppStyleSettingsContent(
             )
         }
 
-        items(AppLayoutMode.entries) { mode ->
+        items(items = AppLayoutMode.entries, key = { "style_mode_${it.name}" }) { mode ->
             val isSelected = currentLayoutMode == mode
             var isFocused by remember { mutableStateOf(false) }
             val shape = RoundedCornerShape(10.dp)
@@ -1255,7 +1216,7 @@ private fun AppStyleSettingsContent(
             }
         }
 
-        item {
+        item(key = "style_toggle_names") {
             Spacer(modifier = Modifier.height(6.dp))
             // Toggle: Mostrar u ocultar nombres de aplicaciones
             SettingsActionItem(
@@ -1280,56 +1241,74 @@ private fun SystemSettingsContent(
     onCloseSettings: () -> Unit,
     onOpenTelemetry: () -> Unit,
     onCheckUpdates: () -> Unit,
-    onOpenDefaultLauncherDialog: () -> Unit
+    onOpenDefaultLauncherDialog: () -> Unit,
+    onOpenAppVisibilityManager: () -> Unit
 ) {
     val isAggressiveActive = remember { DefaultLauncherHelper.isAccessibilityServiceEnabled(context) }
 
-    Column(
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        SettingsActionItem(
-            title = "⌂ ESTABLECER COMO LAUNCHER PREDETERMINADO",
-            subtitle = if (isAggressiveActive) {
-                "[✓ ANCLAJE AGRESIVO ACTIVO] Clic para ver opciones del botón Home"
-            } else {
-                "Forzar selector de Android o activar anclaje agresivo para TV Box"
-            },
-            isHighlighted = isAggressiveActive,
-            onClick = onOpenDefaultLauncherDialog
-        )
+        item(key = "sys_app_visibility") {
+            SettingsActionItem(
+                title = "⊘ GESTOR DE VISIBILIDAD DE APPS (MOSTRAR / OCULTAR)",
+                subtitle = "Configurar qué aplicaciones instaladas se muestran u ocultan en el Launcher",
+                isHighlighted = false,
+                onClick = onOpenAppVisibilityManager
+            )
+        }
 
-        SettingsActionItem(
-            title = "⚙ AJUSTES GENERALES DEL SISTEMA ANDROID",
-            subtitle = "Abrir el panel de configuración de red, pantalla y bluetooth de la TV",
-            isHighlighted = false,
-            onClick = {
-                // 1. Cerrar el panel lateral de Compose para no bloquear la ventana
-                onCloseSettings()
+        item(key = "sys_default_launcher") {
+            SettingsActionItem(
+                title = "⌂ ESTABLECER COMO LAUNCHER PREDETERMINADO",
+                subtitle = if (isAggressiveActive) {
+                    "[✓ ANCLAJE AGRESIVO ACTIVO] Clic para ver opciones del botón Home"
+                } else {
+                    "Forzar selector de Android o activar anclaje agresivo para TV Box"
+                },
+                isHighlighted = isAggressiveActive,
+                onClick = onOpenDefaultLauncherDialog
+            )
+        }
 
-                // 2. Intent con múltiples alternativas seguras para TV
-                openTvSystemSettings(context)
-            }
-        )
+        item(key = "sys_android_settings") {
+            SettingsActionItem(
+                title = "⚙ AJUSTES GENERALES DEL SISTEMA ANDROID",
+                subtitle = "Abrir el panel de configuración de red, pantalla y bluetooth de la TV",
+                isHighlighted = false,
+                onClick = {
+                    // 1. Cerrar el panel lateral de Compose para no bloquear la ventana
+                    onCloseSettings()
 
-        SettingsActionItem(
-            title = "⚡ TELEMETRÍA Y LIMPIADOR DE RAM",
-            subtitle = "Inspeccionar procesos de hardware y forzar liberación de memoria física",
-            isHighlighted = false,
-            onClick = onOpenTelemetry
-        )
+                    // 2. Intent con múltiples alternativas seguras para TV
+                    openTvSystemSettings(context)
+                }
+            )
+        }
 
-        SettingsActionItem(
-            title = if (isCheckingUpdates) "⬆ BUSCANDO ACTUALIZACIONES..." else "⬆ BUSCAR ACTUALIZACIONES DE SAMIBOX TV",
-            subtitle = when {
-                isCheckingUpdates -> "> Conectando con GitHub Releases y comprobando versión..."
-                !updateCheckMessage.isNullOrBlank() -> updateCheckMessage
-                else -> "Verificar si hay una nueva versión disponible en GitHub Releases"
-            },
-            isHighlighted = isCheckingUpdates,
-            enabled = !isCheckingUpdates,
-            onClick = onCheckUpdates
-        )
+        item(key = "sys_telemetry") {
+            SettingsActionItem(
+                title = "⚡ TELEMETRÍA Y LIMPIADOR DE RAM",
+                subtitle = "Inspeccionar procesos de hardware y forzar liberación de memoria física",
+                isHighlighted = false,
+                onClick = onOpenTelemetry
+            )
+        }
+
+        item(key = "sys_updates") {
+            SettingsActionItem(
+                title = if (isCheckingUpdates) "⬆ BUSCANDO ACTUALIZACIONES..." else "⬆ BUSCAR ACTUALIZACIONES DE SAMIBOX TV",
+                subtitle = when {
+                    isCheckingUpdates -> "> Conectando con GitHub Releases y comprobando versión..."
+                    !updateCheckMessage.isNullOrBlank() -> updateCheckMessage
+                    else -> "Verificar si hay una nueva versión disponible en GitHub Releases"
+                },
+                isHighlighted = isCheckingUpdates,
+                enabled = !isCheckingUpdates,
+                onClick = onCheckUpdates
+            )
+        }
     }
 }
 
@@ -1824,17 +1803,13 @@ private fun AddCategoryDialog(
 
 /**
  * Modificador para garantizar soporte completo de D-Pad Center y ENTER en Android TV.
+ * Usa exclusivamente clickable de Compose (que gestiona internamente el foco y el evento de clic)
+ * evitando duplicación de focusable o consumo prematuro de eventos de teclado.
  */
-private fun Modifier.tvClickable(onClick: () -> Unit): Modifier = this
-    .onKeyEvent { keyEvent ->
-        if (keyEvent.type == KeyEventType.KeyDown &&
-            (keyEvent.key.nativeKeyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
-             keyEvent.key.nativeKeyCode == android.view.KeyEvent.KEYCODE_ENTER ||
-             keyEvent.key.nativeKeyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER)
-        ) {
-            onClick()
-            true
-        } else false
-    }
-    .focusable()
-    .clickable { onClick() }
+private fun Modifier.tvClickable(onClick: () -> Unit): Modifier = composed {
+    clickable(
+        interactionSource = remember { MutableInteractionSource() },
+        indication = null,
+        onClick = onClick
+    )
+}

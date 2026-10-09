@@ -1,12 +1,6 @@
 package com.launcher.samiboxtv.presentation.components
 
 import android.view.KeyEvent
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,8 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,11 +35,14 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
+import com.launcher.samiboxtv.BuildConfig
 import com.launcher.samiboxtv.R
+import com.launcher.samiboxtv.domain.model.NetworkStatus
 import com.launcher.samiboxtv.presentation.theme.AppLayoutMode
 import com.launcher.samiboxtv.presentation.theme.CyberAmber
 import com.launcher.samiboxtv.presentation.theme.CyberCyan
@@ -57,18 +52,13 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 
-/**
- * Cabecera HUD futurista Cyberpunk para NEONOS TV.
- * Contiene:
- * - Izquierda: Título de plataforma y perfil de pantalla con conteo de nodos.
- * - Derecha: Reloj militar digital HH:mm:ss aislado en corrutina, fecha cibernética,
- *   estado SYS_ONLINE y acceso directo a Ajustes.
- */
 @Composable
 fun CyberHeaderHud(
     layoutMode: AppLayoutMode,
     appCount: Int,
+    networkStatus: NetworkStatus,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -86,7 +76,7 @@ fun CyberHeaderHud(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "NEONOS // SAMIBOX TV",
+                    text = stringResource(R.string.header_app_title),
                     color = CyberCyan,
                     fontSize = 19.sp,
                     fontFamily = ShareTechMonoFontFamily,
@@ -102,7 +92,7 @@ fun CyberHeaderHud(
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "V1.0",
+                        text = stringResource(R.string.header_app_version, BuildConfig.VERSION_NAME),
                         color = CyberCyan,
                         fontSize = 9.sp,
                         fontFamily = ShareTechMonoFontFamily,
@@ -113,54 +103,31 @@ fun CyberHeaderHud(
 
             Spacer(modifier = Modifier.height(3.dp))
 
-            // Badge de perfil dinámico
-            Text(
-                text = "PROFILE: ${layoutMode.name} // NODES: $appCount",
-                color = CyberAmber.copy(alpha = 0.9f),
-                fontSize = 10.sp,
-                fontFamily = ShareTechMonoFontFamily,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 1.sp
-            )
+            CyberNetworkBadge(status = networkStatus)
+
         }
 
-        // LADO DERECHO: Reloj HH:mm:ss, fecha, indicador de estado y botón de ajustes
+        // LADO DERECHO: Reloj HH:mm:ss, fecha, telemetría de red y botón de ajustes
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Reloj militar y estado en tiempo real (aislado en su propio composable)
+            // Reloj digital militar
             CyberMilitaryClock()
-
             // Botón enfocado para Ajustes
             CyberSettingsButton(onClick = onOpenSettings)
         }
     }
 }
 
-/**
- * Reloj digital militar (HH:mm:ss) con aislamiento estricto de recomposiciones.
- * Se actualiza cada segundo sin recomponer el feed de aplicaciones.
- */
 @Composable
 private fun CyberMilitaryClock(modifier: Modifier = Modifier) {
     var timeString by remember { mutableStateOf("") }
     var dateString by remember { mutableStateOf("") }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "pulseTransition")
-    val dotAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseAlpha"
-    )
-
     LaunchedEffect(Unit) {
-        val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.US)
-        val dateFormat = SimpleDateFormat("yyyy.MM.dd // EEE", Locale.US)
+        val timeFormat = SimpleDateFormat("H:mm:ss", Locale.getDefault())
+        val dateFormat = SimpleDateFormat("dd.mm.yyyy : EEE", Locale("es", "ES"))
         val dateHolder = Date()
 
         while (true) {
@@ -170,7 +137,7 @@ private fun CyberMilitaryClock(modifier: Modifier = Modifier) {
             dateString = dateFormat.format(dateHolder).uppercase()
 
             val millisToNextSecond = 1000L - (now % 1000L)
-            delay(millisToNextSecond.coerceAtLeast(100L))
+            delay(millisToNextSecond.coerceAtLeast(100L).milliseconds)
         }
     }
 
@@ -178,44 +145,14 @@ private fun CyberMilitaryClock(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.End,
         modifier = modifier
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = if (timeString.isEmpty()) "--:--:--" else timeString,
-                color = CyberCyan,
-                fontSize = 24.sp,
-                fontFamily = ShareTechMonoFontFamily,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            )
-
-            // Indicador SYS_ONLINE con pulso luminoso
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFF091423))
-                    .border(0.5.dp, CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(CyberCyan.copy(alpha = dotAlpha))
-                )
-                Text(
-                    text = "SYS_ONLINE",
-                    color = CyberCyan,
-                    fontSize = 8.sp,
-                    fontFamily = ShareTechMonoFontFamily,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+        Text(
+            text = timeString.ifEmpty { "--:--:--" },
+            color = CyberCyan,
+            fontSize = 24.sp,
+            fontFamily = ShareTechMonoFontFamily,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
 
         Spacer(modifier = Modifier.height(2.dp))
 
@@ -255,7 +192,7 @@ private fun CyberSettingsButton(
                 indication = null
             ) { onClick() }
             .onKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyDown &&
+                if (keyEvent.type == KeyEventType.KeyUp &&
                     (keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
                             keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_ENTER ||
                             keyEvent.key.nativeKeyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)

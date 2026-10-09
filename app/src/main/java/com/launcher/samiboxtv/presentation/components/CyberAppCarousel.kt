@@ -7,10 +7,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,10 +33,14 @@ fun CyberAppCarousel(
     onLaunchApp: (AppItem) -> Unit,
     onOpenContextMenu: (AppItem) -> Unit,
     modifier: Modifier = Modifier,
+    initialFocusRequester: FocusRequester? = null,
     title: String? = null,
     movingAppPackageName: String? = null,
+    showAppName: Boolean = true,
     onMoveDirection: (Int) -> Unit = {},
-    onConfirmMove: () -> Unit = {}
+    onConfirmMove: () -> Unit = {},
+    onAppFocus: (AppItem) -> Unit = {},
+    trailingCard: (@Composable () -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
     val snapFlingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
@@ -60,24 +65,34 @@ fun CyberAppCarousel(
             horizontalArrangement = Arrangement.spacedBy(dimensions.spacing),
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(
+            itemsIndexed(
                 items = apps,
-                key = { it.packageName }
-            ) { app ->
+                key = { _, it -> it.packageName }
+            ) { index, app ->
                 val isMoving = movingAppPackageName == app.packageName
                 CyberAppCard(
                     app = app,
                     width = dimensions.cardWidth,
                     height = dimensions.cardHeight,
+                    focusRequester = if (index == 0) initialFocusRequester else null,
                     isGhostMode = isMoving,
                     isEditing = isMoving,
+                    showAppName = showAppName,
+                    modifier = Modifier.animateItem(),
                     onClick = {
                         if (isMoving) onConfirmMove() else onLaunchApp(app)
                     },
                     onLongClick = { onOpenContextMenu(app) },
+                    onFocus = { onAppFocus(app) },
                     onMoveDirection = onMoveDirection,
                     onConfirmMove = onConfirmMove
                 )
+            }
+
+            trailingCard?.let { card ->
+                item(key = "trailing_action_card") {
+                    card()
+                }
             }
         }
     }
