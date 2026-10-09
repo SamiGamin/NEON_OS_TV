@@ -84,6 +84,7 @@ import com.launcher.samiboxtv.presentation.theme.CyberCyan
 import com.launcher.samiboxtv.presentation.theme.CyberGrey
 import com.launcher.samiboxtv.presentation.theme.CyberMagenta
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
+import com.launcher.samiboxtv.util.TvRemoteKeyCodes
 import kotlinx.coroutines.delay
 
 @OptIn(UnstableApi::class)
@@ -246,35 +247,36 @@ fun IptvPlayerScreen(
             .onKeyEvent { keyEvent ->
                 if (keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
                 val keyCode = keyEvent.key.nativeKeyCode
+                val scanCode = keyEvent.nativeKeyEvent.scanCode
 
                 if (!uiState.isIptvChannelListOpen) {
-                    when (keyCode) {
-                        KeyEvent.KEYCODE_CHANNEL_UP,
-                        KeyEvent.KEYCODE_DPAD_UP -> {
+                    when {
+                        keyCode == KeyEvent.KEYCODE_CHANNEL_UP ||
+                        keyCode == KeyEvent.KEYCODE_DPAD_UP -> {
                             showOsd = true
                             onEvent(HomeUiEvent.NextChannel)
                             true
                         }
-                        KeyEvent.KEYCODE_CHANNEL_DOWN,
-                        KeyEvent.KEYCODE_DPAD_DOWN -> {
+                        keyCode == KeyEvent.KEYCODE_CHANNEL_DOWN ||
+                        keyCode == KeyEvent.KEYCODE_DPAD_DOWN -> {
                             showOsd = true
                             onEvent(HomeUiEvent.PreviousChannel)
                             true
                         }
-                        KeyEvent.KEYCODE_DPAD_LEFT,
-                        KeyEvent.KEYCODE_DPAD_CENTER,
-                        KeyEvent.KEYCODE_ENTER,
-                        KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                        keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
+                        keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                        keyCode == KeyEvent.KEYCODE_ENTER ||
+                        keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER -> {
                             onEvent(HomeUiEvent.ToggleChannelList)
                             true
                         }
-                        KeyEvent.KEYCODE_PROG_YELLOW,
-                        KeyEvent.KEYCODE_MENU -> {
+                        TvRemoteKeyCodes.isFavoriteKey(keyCode, scanCode) ||
+                        keyCode == KeyEvent.KEYCODE_MENU -> {
                             onEvent(HomeUiEvent.ToggleCurrentIptvFavorite)
                             showOsd = true
                             true
                         }
-                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                        keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> {
                             showOsd = !showOsd
                             true
                         }
@@ -491,7 +493,7 @@ fun IptvPlayerScreen(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "▲/▼ Zapping  •  OK/◄ Guía  •  [🟡/MENU] ★ Favorito",
+                            text = "▲/▼ Zapping  •  OK/◄ Guía  •  [🟡/FAV/MENU] ★ Favorito",
                             color = CyberGrey,
                             fontSize = 10.sp,
                             fontFamily = ShareTechMonoFontFamily
@@ -624,7 +626,7 @@ private fun ChannelGuideDrawer(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "${uiState.iptvChannels.size} disponibles // OK sintonizar // MENU fav",
+                        text = "${uiState.iptvChannels.size} disponibles // OK sintonizar // FAV/MENU fav",
                         color = CyberGrey,
                         fontSize = 10.sp,
                         fontFamily = ShareTechMonoFontFamily
@@ -852,7 +854,7 @@ private fun FavoritesEmptyItem() {
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Pulsa la tecla MENU o mantén presionado OK sobre cualquier canal para guardarlo aquí.",
+                text = "Pulsa FAV, MENU o mantén presionado OK sobre cualquier canal para guardarlo aquí.",
                 color = Color.White.copy(alpha = 0.7f),
                 fontSize = 10.sp,
                 fontFamily = ShareTechMonoFontFamily,
@@ -900,19 +902,20 @@ private fun ChannelDrawerItem(
             .onKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown) {
                     val keyCode = keyEvent.key.nativeKeyCode
-                    when (keyCode) {
-                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    val scanCode = keyEvent.nativeKeyEvent.scanCode
+                    when {
+                        keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> {
                             onCloseDrawer()
                             true
                         }
-                        KeyEvent.KEYCODE_PROG_YELLOW,
-                        KeyEvent.KEYCODE_MENU -> {
+                        TvRemoteKeyCodes.isFavoriteKey(keyCode, scanCode) ||
+                        keyCode == KeyEvent.KEYCODE_MENU -> {
                             onToggleFavorite()
                             true
                         }
-                        KeyEvent.KEYCODE_DPAD_CENTER,
-                        KeyEvent.KEYCODE_ENTER,
-                        KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                        keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                        keyCode == KeyEvent.KEYCODE_ENTER ||
+                        keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER -> {
                             if (keyEvent.nativeKeyEvent.isLongPress) {
                                 onToggleFavorite()
                                 true

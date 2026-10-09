@@ -1,26 +1,25 @@
 package com.launcher.samiboxtv.presentation.home
 
 import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.Dispatchers
 import androidx.lifecycle.viewModelScope
 import com.launcher.samiboxtv.core.dispatcher.DispatcherProvider
 import com.launcher.samiboxtv.data.repository.IptvRepository
 import com.launcher.samiboxtv.domain.model.AppCardStyle
 import com.launcher.samiboxtv.domain.model.AppItem
 import com.launcher.samiboxtv.domain.model.IptvChannel
+import com.launcher.samiboxtv.domain.model.MediaType
 import com.launcher.samiboxtv.domain.model.SettingsSection
+import com.launcher.samiboxtv.domain.model.StorageDrive
 import com.launcher.samiboxtv.domain.model.SystemMonitorTab
+import com.launcher.samiboxtv.domain.model.VirtualApps
 import com.launcher.samiboxtv.domain.repository.PreferencesRepository
 import com.launcher.samiboxtv.domain.usecase.CheckUpdateUseCase
 import com.launcher.samiboxtv.domain.usecase.CleanMemoryUseCase
 import com.launcher.samiboxtv.domain.usecase.ClearProcessCacheUseCase
 import com.launcher.samiboxtv.domain.usecase.GetInstalledAppsUseCase
 import com.launcher.samiboxtv.domain.usecase.GetLauncherSettingsUseCase
-import com.launcher.samiboxtv.domain.usecase.GetRunningProcessesUseCase
-import com.launcher.samiboxtv.domain.model.MediaType
-import com.launcher.samiboxtv.domain.model.StorageDrive
-import com.launcher.samiboxtv.domain.model.VirtualApps
 import com.launcher.samiboxtv.domain.usecase.GetMediaFilesUseCase
+import com.launcher.samiboxtv.domain.usecase.GetRunningProcessesUseCase
 import com.launcher.samiboxtv.domain.usecase.GetStorageDrivesUseCase
 import com.launcher.samiboxtv.domain.usecase.HideAppUseCase
 import com.launcher.samiboxtv.domain.usecase.KillProcessUseCase
@@ -31,13 +30,15 @@ import com.launcher.samiboxtv.domain.usecase.ObserveNetworkStatusUseCase
 import com.launcher.samiboxtv.domain.usecase.ObserveSystemTelemetryUseCase
 import com.launcher.samiboxtv.domain.usecase.SaveAppLayoutModeUseCase
 import com.launcher.samiboxtv.domain.usecase.SaveCardStyleUseCase
-import com.launcher.samiboxtv.presentation.theme.AppLayoutMode
 import com.launcher.samiboxtv.domain.usecase.SaveShowAppNamesUseCase
 import com.launcher.samiboxtv.domain.usecase.SetHiddenPackagesUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleAppVisibilityUseCase
 import com.launcher.samiboxtv.domain.usecase.ToggleFavoriteAppUseCase
 import com.launcher.samiboxtv.domain.usecase.UnhideAppUseCase
+import com.launcher.samiboxtv.presentation.theme.AppLayoutMode
 import com.launcher.samiboxtv.util.DevLogManager
+import com.launcher.samiboxtv.util.iptv.IptvPlaylistManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,8 +51,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * ViewModel principal siguiendo Clean Architecture y MVVM.
- * Administra el estado inmutable [HomeUiState] y procesa [HomeUiEvent].
+ * ViewModel principal siguiendo Clean Architecture y MVVM[cite: 19].
+ * Administra el estado inmutable [HomeUiState] y procesa [HomeUiEvent][cite: 19].
  */
 class HomeViewModel(
     private val getInstalledAppsUseCase: GetInstalledAppsUseCase,
@@ -94,23 +95,28 @@ class HomeViewModel(
         checkForUpdates(isManual = false)
         loadIptvFromUrl(VirtualApps.DEFAULT_IPTV_URL)
 
+        val initialUrl = IptvPlaylistManager.getActivePlaylistUrl()
+        loadIptvFromUrl(initialUrl)
+
         DevLogManager.onM3uUrlReceived = { url ->
-            loadIptvFromUrl(url)
+            val added = IptvPlaylistManager.addPlaylist("Lista QR", url)
+            loadIptvFromUrl(added.url, added.name)
         }
     }
+
     private fun getVirtualApps(): List<AppItem> {
         return listOf(
             AppItem(
                 packageName = VirtualApps.PKG_IPTV,
                 name = "CYBER IPTV",
-                category = "STREAMING", // Categoría por defecto (puedes cambiarla luego)
+                category = "STREAMING",
                 isFavorite = false,
                 isSystemApp = true
             ),
             AppItem(
                 packageName = VirtualApps.PKG_MEDIA_HUB,
                 name = "CYBER MEDIA HUB",
-                category = "APPS",      // Categoría por defecto
+                category = "APPS",
                 isFavorite = false,
                 isSystemApp = true
             )
@@ -130,7 +136,6 @@ class HomeViewModel(
     private fun startTelemetrySession() {
         telemetryJob?.cancel()
         telemetryJob = viewModelScope.launch(dispatcherProvider.main) {
-            // 1. Recolección de telemetría de hardware (RAM, CPU, Uptime) cada 3.0s
             launch {
                 observeSystemTelemetryUseCase(intervalMillis = 3000)
                     .flowOn(dispatcherProvider.io)
@@ -139,7 +144,6 @@ class HomeViewModel(
                     }
             }
 
-            // 2. Refresco periódico de procesos en RAM cada 3.5 segundos bajo Dispatchers.IO
             launch {
                 while (isActive) {
                     val processes = withContext(dispatcherProvider.io) {
@@ -256,7 +260,24 @@ class HomeViewModel(
             is HomeUiEvent.ClearLogs -> {
                 DevLogManager.log("SYSTEM", "Historial de logs reiniciado manualmente")
             }
-            // IPTV
+            is HomeUiEvent.AddIptvPlaylist -> {
+                val newPl = IptvPlaylistManager.addPlaylist(event.name, event.url)
+                loadIptvFromUrl(newPl.url, newPl.name)
+            }
+
+            is HomeUiEvent.SelectIptvPlaylist -> {
+                IptvPlaylistManager.setActivePlaylistUrl(event.playlist.url)
+                loadIptvFromUrl(event.playlist.url, event.playlist.name)
+            }
+
+            is HomeUiEvent.DeleteIptvPlaylist -> {
+                IptvPlaylistManager.deletePlaylist(event.playlistId)
+                val activeUrl = IptvPlaylistManager.getActivePlaylistUrl()
+                if (activeUrl != _uiState.value.currentIptvUrl) {
+                    loadIptvFromUrl(activeUrl)
+                }
+            }
+
             is HomeUiEvent.LoadIptvFromUrl -> loadIptvFromUrl(event.url)
 
             is HomeUiEvent.LoadIptvFromFile -> {
@@ -384,7 +405,9 @@ class HomeViewModel(
             is HomeUiEvent.ToggleIptvFavorite -> toggleIptvFavorite(event.channel)
 
             HomeUiEvent.ToggleCurrentIptvFavorite -> {
-                _uiState.value.currentIptvChannel?.let {
+                val current = _uiState.value.currentIptvChannel
+                    ?: _uiState.value.iptvChannels.getOrNull(_uiState.value.currentIptvIndex)
+                current?.let {
                     toggleIptvFavorite(it)
                     _uiState.update { s -> s.copy(isIptvOsdVisible = true) }
                 }
@@ -398,7 +421,8 @@ class HomeViewModel(
         }
     }
 
-    private fun loadIptvFromUrl(url: String) {
+    private fun loadIptvFromUrl(url: String, playlistName: String? = null) {
+        IptvPlaylistManager.setActivePlaylistUrl(url)
         viewModelScope.launch(dispatcherProvider.main) {
             _uiState.update {
                 it.copy(
@@ -624,13 +648,9 @@ class HomeViewModel(
                     getInstalledAppsUseCase()
                 }
 
-                // 1. Obtenemos las tarjetas virtuales (IPTV y Media Hub)
                 val virtualApps = getVirtualApps()
-
-                // 2. Las combinamos con las apps del sistema para que aparezcan en las filas
                 val combinedVisible = group.visibleApps + virtualApps
                 val combinedAllInstalled = group.allInstalledApps + virtualApps
-
                 val featured = combinedVisible.filter { it.isFavorite }
 
                 _uiState.update {
@@ -656,12 +676,9 @@ class HomeViewModel(
 
     private fun launchApp(app: AppItem) {
         when (app.packageName) {
-            // Si pulsan Cyber Media Hub, abre el explorador de USB/medios
             VirtualApps.PKG_MEDIA_HUB -> {
                 openMediaHub()
             }
-
-            // Si pulsan Cyber IPTV, abre el reproductor si ya hay canales, o Ajustes si está vacía
             VirtualApps.PKG_IPTV -> {
                 if (_uiState.value.iptvChannels.isNotEmpty()) {
                     onEvent(HomeUiEvent.OpenLiveTv)
@@ -674,8 +691,6 @@ class HomeViewModel(
                     }
                 }
             }
-
-            // Si es cualquier app normal instalada de Android
             else -> {
                 val result = launchAppUseCase(app.packageName)
                 if (result.isFailure) {

@@ -20,6 +20,7 @@ import com.launcher.samiboxtv.presentation.home.HomeViewModel
 import com.launcher.samiboxtv.presentation.theme.SamiBoxTVTheme
 import com.launcher.samiboxtv.util.DevLogManager
 import com.launcher.samiboxtv.util.TvRemoteKeyCodes
+import com.launcher.samiboxtv.util.iptv.IptvPlaylistManager
 
 class MainActivity : ComponentActivity() {
 
@@ -30,6 +31,7 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        IptvPlaylistManager.init(applicationContext)
         setContent {
             SamiBoxTVTheme {
                 Surface(
@@ -80,7 +82,7 @@ class MainActivity : ComponentActivity() {
                     }
                     // Si el reproductor IPTV está abierto, dejamos que KEYCODE_MENU pase a Compose
                 }
-                code == TvRemoteKeyCodes.KEY_CH_UP || scan == TvRemoteKeyCodes.KEY_CH_UP -> {
+                code == TvRemoteKeyCodes.KEY_CH_UP || scan == TvRemoteKeyCodes.KEY_CH_UP || code == KeyEvent.KEYCODE_CHANNEL_UP -> {
                     if (viewModel.uiState.value.isIptvPlayerOpen) {
                         viewModel.onEvent(HomeUiEvent.NextChannel)
                     } else if (viewModel.uiState.value.iptvChannels.isNotEmpty()) {
@@ -88,7 +90,7 @@ class MainActivity : ComponentActivity() {
                     }
                     return true
                 }
-                code == TvRemoteKeyCodes.KEY_CH_DOWN || scan == TvRemoteKeyCodes.KEY_CH_DOWN -> {
+                code == TvRemoteKeyCodes.KEY_CH_DOWN || scan == TvRemoteKeyCodes.KEY_CH_DOWN || code == KeyEvent.KEYCODE_CHANNEL_DOWN -> {
                     if (viewModel.uiState.value.isIptvPlayerOpen) {
                         viewModel.onEvent(HomeUiEvent.PreviousChannel)
                     } else if (viewModel.uiState.value.iptvChannels.isNotEmpty()) {
@@ -96,22 +98,28 @@ class MainActivity : ComponentActivity() {
                     }
                     return true
                 }
-                code == TvRemoteKeyCodes.KEY_EPG_GUIDE || scan == TvRemoteKeyCodes.KEY_EPG_GUIDE -> {
+                code == TvRemoteKeyCodes.KEY_EPG_GUIDE || scan == TvRemoteKeyCodes.KEY_EPG_GUIDE || code == KeyEvent.KEYCODE_GUIDE -> {
                     if (!viewModel.uiState.value.isIptvPlayerOpen && viewModel.uiState.value.iptvChannels.isNotEmpty()) {
                         viewModel.onEvent(HomeUiEvent.OpenLiveTv)
                     }
                     viewModel.onEvent(HomeUiEvent.ToggleChannelList)
                     return true
                 }
-                code == TvRemoteKeyCodes.KEY_INFO || scan == TvRemoteKeyCodes.KEY_INFO -> {
+                code == TvRemoteKeyCodes.KEY_INFO || scan == TvRemoteKeyCodes.KEY_INFO || code == KeyEvent.KEYCODE_INFO -> {
                     viewModel.onEvent(HomeUiEvent.ToggleIptvOsd)
                     return true
                 }
-                code == TvRemoteKeyCodes.KEY_FAV_TOGGLE || scan == TvRemoteKeyCodes.KEY_FAV_TOGGLE -> {
-                    viewModel.onEvent(HomeUiEvent.ToggleCurrentIptvFavorite)
-                    return true
+                TvRemoteKeyCodes.isFavoriteKey(code, scan) -> {
+                    if (viewModel.uiState.value.isIptvPlayerOpen) {
+                        if (!viewModel.uiState.value.isIptvChannelListOpen) {
+                            viewModel.onEvent(HomeUiEvent.ToggleCurrentIptvFavorite)
+                            return true
+                        }
+                        // Si la guía lateral de canales está abierta, dejamos pasar el evento
+                        // a Compose para que ChannelDrawerItem marque/desmarque el canal enfocado
+                    }
                 }
-                code == TvRemoteKeyCodes.KEY_LIVE_TV || scan == TvRemoteKeyCodes.KEY_LIVE_TV -> {
+                code == TvRemoteKeyCodes.KEY_LIVE_TV || scan == TvRemoteKeyCodes.KEY_LIVE_TV || code == KeyEvent.KEYCODE_TV -> {
                     if (viewModel.uiState.value.iptvChannels.isNotEmpty()) {
                         viewModel.onEvent(HomeUiEvent.OpenLiveTv)
                     }

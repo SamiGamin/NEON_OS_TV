@@ -1,16 +1,34 @@
 package com.launcher.samiboxtv.presentation.settings.dialogs
 
 import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.runtime.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +53,8 @@ import com.launcher.samiboxtv.presentation.theme.CyberMagenta
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
 import com.launcher.samiboxtv.util.DefaultLauncherHelper
 import com.launcher.samiboxtv.util.M3uFileScanner
+import com.launcher.samiboxtv.util.adb.AdbLauncherManager
+import kotlinx.coroutines.launch
 import java.io.File
 
 @Composable
@@ -269,7 +289,11 @@ fun DefaultLauncherDialog(
     context: Context,
     onDismiss: () -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val isAggressiveActive = remember { DefaultLauncherHelper.isAccessibilityServiceEnabled(context) }
+    val adbManager = remember(context) { AdbLauncherManager(context) }
+    var isStockDisabled by remember { mutableStateOf(adbManager.isStockLauncherDisabled()) }
+    var statusFeedback by remember { mutableStateOf<String?>(null) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -283,12 +307,12 @@ fun DefaultLauncherDialog(
         ) {
             Box(
                 modifier = Modifier
-                    .width(560.dp)
+                    .width(600.dp)
                     .background(Color(0xFF090E1B), RoundedCornerShape(14.dp))
                     .border(1.5.dp, CyberCyan, RoundedCornerShape(14.dp))
-                    .padding(24.dp)
+                    .padding(22.dp)
             ) {
-                Column {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -301,16 +325,29 @@ fun DefaultLauncherDialog(
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
                         )
+
+                        val badgeColor = when {
+                            isStockDisabled -> Color(0xFF00E676)
+                            isAggressiveActive -> CyberCyan
+                            else -> CyberAmber
+                        }
+
+                        val badgeText = when {
+                            isStockDisabled -> "ADB FIJADO"
+                            isAggressiveActive -> "ACCESIBILIDAD"
+                            else -> "MODO NORMAL"
+                        }
+
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(if (isAggressiveActive) CyberCyan.copy(alpha = 0.2f) else CyberAmber.copy(alpha = 0.2f))
-                                .border(1.dp, if (isAggressiveActive) CyberCyan else CyberAmber, RoundedCornerShape(4.dp))
+                                .background(badgeColor.copy(alpha = 0.2f))
+                                .border(1.dp, badgeColor, RoundedCornerShape(4.dp))
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                text = if (isAggressiveActive) "ANCLAJE ACTIVO" else "MODO NORMAL",
-                                color = if (isAggressiveActive) CyberCyan else CyberAmber,
+                                text = badgeText,
+                                color = badgeColor,
                                 fontSize = 10.sp,
                                 fontFamily = ShareTechMonoFontFamily,
                                 fontWeight = FontWeight.Bold
@@ -319,37 +356,72 @@ fun DefaultLauncherDialog(
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
+
                     Text(
-                        text = "Selecciona una estrategia según las restricciones de tu TV Box (Android 10/11):",
-                        color = Color(0xFFA6C5E2),
+                        text = statusFeedback ?: "Selecciona una estrategia según los permisos de tu dispositivo:",
+                        color = if (statusFeedback != null) CyberAmber else Color(0xFFA6C5E2),
                         fontSize = 11.sp,
                         fontFamily = ShareTechMonoFontFamily
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     LauncherOptionItem(
-                        title = "1. FORZAR SELECTOR DE ANDROID",
-                        subtitle = "Invalida la caché del sistema para que Android pregunte qué launcher abrir. Elige SamiBox TV y toca 'SIEMPRE'.",
-                        isHighlighted = false,
+                        title = if (isStockDisabled) {
+                            "1. ⚡ ADB: RESTAURAR LAUNCHER ORIGINAL"
+                        } else {
+                            "1. ⚡ ADB LOCAL: INHABILITAR LAUNCHER DE FÁBRICA"
+                        },
+                        subtitle = if (isStockDisabled) {
+                            "Vuelve a activar el launcher original del sistema con 'pm enable'. Pulsa OK para restaurar."
+                        } else {
+                            "Inhabilita el launcher de fábrica vía socket local 127.0.0.1:5555. Al pulsar Home solo abrirá NEOS OS TV."
+                        },
+                        isHighlighted = !isStockDisabled,
                         onClick = {
-                            DefaultLauncherHelper.resetAndPromptDefaultLauncher(context)
-                            onDismiss()
+                            if (!adbManager.isAdbDebuggingEnabled()) {
+                                statusFeedback = "⚠ Activa 'Depuración por USB/Red' en Opciones de Desarrollador."
+                                try {
+                                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))
+                                } catch (_: Exception) {}
+                                return@LauncherOptionItem
+                            }
+
+                            statusFeedback = "Conectando por ADB... Si aparece un diálogo en pantalla, marca 'Permitir siempre'."
+                            coroutineScope.launch {
+                                if (isStockDisabled) {
+                                    adbManager.enableStockLauncher().fold(
+                                        onSuccess = {
+                                            isStockDisabled = false
+                                            statusFeedback = "Launcher de fábrica restaurado correctamente."
+                                        },
+                                        onFailure = { statusFeedback = it.message }
+                                    )
+                                } else {
+                                    adbManager.disableStockLauncher().fold(
+                                        onSuccess = {
+                                            isStockDisabled = true
+                                            statusFeedback = "¡Éxito! Launcher original inhabilitado por ADB."
+                                        },
+                                        onFailure = { statusFeedback = it.message }
+                                    )
+                                }
+                            }
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     LauncherOptionItem(
                         title = if (isAggressiveActive) {
-                            "2. MODO AGRESIVO (ACCESIBILIDAD) [✓ ACTIVO]"
+                            "2. 🛡 MODO AGRESIVO (ACCESIBILIDAD) [✓ ACTIVO]"
                         } else {
-                            "2. MODO AGRESIVO (ACCESIBILIDAD) [ACTIVAR]"
+                            "2. 🛡 MODO AGRESIVO (ACCESIBILIDAD) [ACTIVAR]"
                         },
                         subtitle = if (isAggressiveActive) {
-                            "El servicio ya intercepta el botón HOME y bloquea el launcher de fábrica automáticamente."
+                            "El servicio intercepta el botón HOME y bloquea el launcher de fábrica automáticamente."
                         } else {
-                            "Recomendado para Android 10/11 con launcher bloqueado. Abre Ajustes de Accesibilidad para encender SamiBox TV."
+                            "Recomendado si no tienes depuración ADB. Abre Ajustes de Accesibilidad para encender NEOS OS TV."
                         },
                         isHighlighted = isAggressiveActive,
                         onClick = {
@@ -358,11 +430,23 @@ fun DefaultLauncherDialog(
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     LauncherOptionItem(
-                        title = "3. AJUSTES DE APPS DEL SISTEMA",
-                        subtitle = "Abre la pantalla de ajustes de aplicaciones para cambiar el inicio de Android manualmente.",
+                        title = "3. ⚡ FORZAR SELECTOR DE ANDROID",
+                        subtitle = "Invalida la caché del sistema para que Android pregunte qué launcher abrir. Elige NEOS OS TV y toca 'SIEMPRE'.",
+                        isHighlighted = false,
+                        onClick = {
+                            DefaultLauncherHelper.resetAndPromptDefaultLauncher(context)
+                            onDismiss()
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    LauncherOptionItem(
+                        title = "4. ⚙ AJUSTES DE APPS DEL SISTEMA",
+                        subtitle = "Abre la pantalla de ajustes de aplicaciones para cambiar el inicio manualmente.",
                         isHighlighted = false,
                         onClick = {
                             DefaultLauncherHelper.openDefaultAppsSettings(context)
@@ -370,7 +454,7 @@ fun DefaultLauncherDialog(
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(18.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -381,7 +465,11 @@ fun DefaultLauncherDialog(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (cancelFocused) Color(0xFF1F2B48) else Color(0xFF141C30))
-                                .border(1.dp, if (cancelFocused) CyberAmber else Color.Transparent, RoundedCornerShape(8.dp))
+                                .border(
+                                    1.dp,
+                                    if (cancelFocused) CyberAmber else Color.Transparent,
+                                    RoundedCornerShape(8.dp)
+                                )
                                 .onFocusChanged { cancelFocused = it.isFocused }
                                 .tvClickable { onDismiss() }
                                 .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -425,7 +513,7 @@ private fun LauncherOptionItem(
             .border(width = if (isFocused) 2.dp else 1.dp, color = borderColor, shape = shape)
             .onFocusChanged { isFocused = it.isFocused }
             .tvClickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .padding(horizontal = 14.dp, vertical = 9.dp)
     ) {
         Column {
             Text(
@@ -435,7 +523,7 @@ private fun LauncherOptionItem(
                 fontFamily = ShareTechMonoFontFamily,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(3.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,
                 color = if (isHighlighted) CyberCyan.copy(alpha = 0.9f) else Color(0xFF88A8C7),
@@ -443,6 +531,196 @@ private fun LauncherOptionItem(
                 fontFamily = ShareTechMonoFontFamily,
                 lineHeight = 13.sp
             )
+        }
+    }
+}
+/**
+ * Diálogo para agregar una nueva lista IPTV guardada (Nombre personalizado + URL)
+ */
+@Composable
+fun AddIptvPlaylistDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (name: String, url: String) -> Unit
+) {
+    var playlistName by remember { mutableStateOf("") }
+    var urlText by remember { mutableStateOf("") }
+    var isNameFocused by remember { mutableStateOf(false) }
+    var isUrlFocused by remember { mutableStateOf(false) }
+    var cancelFocused by remember { mutableStateOf(false) }
+    var confirmFocused by remember { mutableStateOf(false) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(540.dp)
+                .background(Color(0xFF090E1B), RoundedCornerShape(14.dp))
+                .border(1.5.dp, CyberCyan, RoundedCornerShape(14.dp))
+                .padding(24.dp)
+        ) {
+            Column {
+                Text(
+                    text = "GUARDAR NUEVA LISTA M3U // IPTV",
+                    color = CyberCyan,
+                    fontFamily = ShareTechMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Asigna un nombre a tu lista y escribe o pega el enlace URL:",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontFamily = ShareTechMonoFontFamily
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Campo 1: Nombre de la lista
+                Text(
+                    text = "NOMBRE DE LA LISTA:",
+                    color = CyberAmber,
+                    fontSize = 10.sp,
+                    fontFamily = ShareTechMonoFontFamily,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF0F172B))
+                        .border(
+                            width = 1.dp,
+                            color = if (isNameFocused) CyberAmber else CyberCyan.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    if (playlistName.isEmpty()) {
+                        Text(
+                            text = "Ej: Mis Canales, Deportes HD, Películas",
+                            color = Color(0xFF6B7E96),
+                            fontFamily = ShareTechMonoFontFamily,
+                            fontSize = 11.sp
+                        )
+                    }
+                    BasicTextField(
+                        value = playlistName,
+                        onValueChange = { playlistName = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { isNameFocused = it.isFocused },
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            color = Color.White,
+                            fontFamily = ShareTechMonoFontFamily,
+                            fontSize = 12.sp
+                        ),
+                        cursorBrush = SolidColor(CyberCyan)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Campo 2: Enlace URL
+                Text(
+                    text = "ENLACE URL (HTTP / HTTPS):",
+                    color = CyberAmber,
+                    fontSize = 10.sp,
+                    fontFamily = ShareTechMonoFontFamily,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF0F172B))
+                        .border(
+                            width = 1.dp,
+                            color = if (isUrlFocused) CyberAmber else CyberCyan.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    if (urlText.isEmpty()) {
+                        Text(
+                            text = "https://servidor.com/lista.m3u",
+                            color = Color(0xFF6B7E96),
+                            fontFamily = ShareTechMonoFontFamily,
+                            fontSize = 11.sp
+                        )
+                    }
+                    BasicTextField(
+                        value = urlText,
+                        onValueChange = { urlText = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { isUrlFocused = it.isFocused },
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            color = Color.White,
+                            fontFamily = ShareTechMonoFontFamily,
+                            fontSize = 12.sp
+                        ),
+                        cursorBrush = SolidColor(CyberCyan),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = {
+                            if (urlText.isNotBlank()) onConfirm(playlistName.trim(), urlText.trim())
+                        })
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (cancelFocused) Color(0xFF1B2848) else Color(0xFF0F172B))
+                            .border(1.dp, if (cancelFocused) CyberAmber else CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                            .onFocusChanged { cancelFocused = it.isFocused }
+                            .tvClickable { onDismiss() }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "CANCELAR",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontFamily = ShareTechMonoFontFamily
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (confirmFocused) CyberAmber else CyberCyan)
+                            .onFocusChanged { confirmFocused = it.isFocused }
+                            .tvClickable {
+                                if (urlText.isNotBlank()) onConfirm(playlistName.trim(), urlText.trim())
+                            }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "GUARDAR Y ACTIVAR",
+                            color = Color.Black,
+                            fontSize = 11.sp,
+                            fontFamily = ShareTechMonoFontFamily,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
         }
     }
 }

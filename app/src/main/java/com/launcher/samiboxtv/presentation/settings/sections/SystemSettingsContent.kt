@@ -31,7 +31,7 @@ fun SystemSettingsSection(
         item(key = "sys_app_visibility") {
             SettingsActionItem(
                 title = "GESTOR DE VISIBILIDAD DE APPS",
-                subtitle = "Configurar qué aplicaciones instaladas se muestran u ocultan en el Launcher",
+                subtitle = "Configurar qué aplicaciones instaladas se muestran u ocultan",
                 isHighlighted = false,
                 iconRes = R.drawable.ic_visibility,
                 onClick = {

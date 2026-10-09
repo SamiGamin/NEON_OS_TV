@@ -79,4 +79,7 @@ sealed interface HomeUiEvent : UiEvent {
     data class ToggleIptvFavorite(val channel: IptvChannel) : HomeUiEvent
     data object ToggleCurrentIptvFavorite : HomeUiEvent
     data object ToggleIptvOsd : HomeUiEvent
+    data class AddIptvPlaylist(val name: String, val url: String) : HomeUiEvent
+    data class SelectIptvPlaylist(val playlist: com.launcher.samiboxtv.domain.model.IptvPlaylist) : HomeUiEvent
+    data class DeleteIptvPlaylist(val playlistId: String) : HomeUiEvent
 }

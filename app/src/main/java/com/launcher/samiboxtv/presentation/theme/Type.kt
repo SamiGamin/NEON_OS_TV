@@ -16,7 +16,11 @@ val OutfitFontFamily = FontFamily(
 )
 
 val ShareTechMonoFontFamily = FontFamily(
-    Font(R.font.plusjakartasans_variablefont_wght, FontWeight.Normal)
+    Font(resId = R.font.plus_jakarta_sans_regular, weight = FontWeight.Normal),
+    Font(resId = R.font.plus_jakarta_sans_bold, weight = FontWeight.Bold),
+    Font(resId = R.font.plus_jakarta_sans_medium, weight = FontWeight.Medium),
+    Font(resId = R.font.plus_jakarta_sans_semi_bold, weight = FontWeight.SemiBold),
+    Font(resId = R.font.plus_jakarta_sans_extrablod, weight = FontWeight.ExtraBold),
 )
 
 @OptIn(ExperimentalTvMaterial3Api::class)
