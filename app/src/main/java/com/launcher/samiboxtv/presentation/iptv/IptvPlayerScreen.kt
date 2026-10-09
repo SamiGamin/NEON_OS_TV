@@ -1,7 +1,10 @@
 package com.launcher.samiboxtv.presentation.iptv
 
+import android.app.Activity
+import android.content.ContextWrapper
 import android.view.KeyEvent
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
@@ -22,7 +25,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -33,7 +35,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -85,14 +86,6 @@ import com.launcher.samiboxtv.presentation.theme.CyberMagenta
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
 import kotlinx.coroutines.delay
 
-/**
- * Reproductor IPTV en pantalla completa de alto rendimiento para Android TV.
- * - Instancia única y reutilizada de ExoPlayer para evitar OOM en dispositivos con 1-2 GB de RAM.
- * - Zapping instantáneo con DPAD_UP / DPAD_DOWN o CHANNEL_UP / CHANNEL_DOWN.
- * - Guía lateral (Channel Drawer) desplegable con DPAD_LEFT o tecla OK/CENTER.
- * - Gestión de Canales Favoritos (pestaña dedicada, botón amarillo / MENU y estrella dorada).
- * - OSD Cyberpunk auto-ocultable a los 4 segundos con notificación de favoritos.
- */
 @OptIn(UnstableApi::class)
 @Composable
 fun IptvPlayerScreen(
@@ -100,6 +93,17 @@ fun IptvPlayerScreen(
     onEvent: (HomeUiEvent) -> Unit
 ) {
     val context = LocalContext.current
+
+    // Obtener la Activity anfitriona para controlar el bloqueo de pantalla del sistema
+    val activity = remember(context) {
+        var ctx = context
+        while (ctx is ContextWrapper) {
+            if (ctx is Activity) return@remember ctx
+            ctx = ctx.baseContext
+        }
+        null
+    }
+
     val playerFocusRequester = remember { FocusRequester() }
     val drawerListState = rememberLazyListState()
 
@@ -132,8 +136,8 @@ fun IptvPlayerScreen(
         previousFavoriteUrls = uiState.favoriteIptvChannelUrls
     }
 
-    // Ciclo de vida estricto de ExoPlayer: se libera al salir de la pantalla
-    DisposableEffect(exoPlayer) {
+    // Ciclo de vida y gestión anti-suspensión (Screensaver Lock)
+    DisposableEffect(exoPlayer, activity) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 isBuffering = (playbackState == Player.STATE_BUFFERING)
@@ -142,14 +146,27 @@ fun IptvPlayerScreen(
                 }
             }
 
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                // Si el canal está reproduciendo video activamente, bloquear el protector de pantalla
+                if (isPlaying) {
+                    activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                } else {
+                    activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
+            }
+
             override fun onPlayerError(error: PlaybackException) {
                 isBuffering = false
                 errorMessage = "Señal no disponible (${error.errorCodeName})"
+                // Si la señal cayó, permitir suspensión
+                activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
         }
         exoPlayer.addListener(listener)
 
         onDispose {
+            // AL SALIR DEL REPRODUCTOR: Limpiar la bandera inmediatamente para que el TV suspenda normalmente en el launcher
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             exoPlayer.removeListener(listener)
             exoPlayer.stop()
             exoPlayer.release()
@@ -162,6 +179,7 @@ fun IptvPlayerScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
                 exoPlayer.pause()
+                activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -204,6 +222,7 @@ fun IptvPlayerScreen(
             onEvent(HomeUiEvent.ToggleChannelList)
         } else {
             exoPlayer.stop()
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             onEvent(HomeUiEvent.CloseLiveTv)
         }
     }
@@ -272,12 +291,13 @@ fun IptvPlayerScreen(
                 }
             }
     ) {
-        // 1. Vista de video ExoPlayer en pantalla completa (sin capturar foco del D-Pad)
+        // 1. Vista de video ExoPlayer en pantalla completa con keepScreenOn = true
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     player = exoPlayer
                     useController = false
+                    keepScreenOn = true // Mantiene encendido el panel a nivel de Vista
                     isFocusable = false
                     isFocusableInTouchMode = false
                     descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
@@ -395,7 +415,6 @@ fun IptvPlayerScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Número de Canal
                     Box(
                         modifier = Modifier
                             .background(Color(0xFF131D33), RoundedCornerShape(8.dp))
@@ -411,7 +430,6 @@ fun IptvPlayerScreen(
                         )
                     }
 
-                    // Logo o Icono de Canal
                     Box(
                         modifier = Modifier
                             .size(46.dp)
@@ -433,7 +451,6 @@ fun IptvPlayerScreen(
                         }
                     }
 
-                    // Nombre, Estrella de Favorito y Categoría
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
@@ -464,7 +481,6 @@ fun IptvPlayerScreen(
                         )
                     }
 
-                    // Estado de la Señal y Atajos D-Pad
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = if (isBuffering) "⚡ BUFFERING..." else "● SEÑAL EN VIVO",
@@ -502,10 +518,6 @@ fun IptvPlayerScreen(
     }
 }
 
-/**
- * Guía de canales lateral con sistema de Acordeón Vertical Cyberpunk.
- * Organizado por categorías expandibles/contraíbles mediante D-Pad / OK.
- */
 @Composable
 private fun ChannelGuideDrawer(
     uiState: HomeUiState,
@@ -513,22 +525,18 @@ private fun ChannelGuideDrawer(
     onEvent: (HomeUiEvent) -> Unit,
     onClose: () -> Unit
 ) {
-    // Categoría expandida inicialmente según el canal en reproducción actual
     var expandedCategory by remember {
         mutableStateOf(uiState.currentIptvChannel?.groupTitle?.trim()?.uppercase())
     }
 
-    // Agrupación optimizada de canales por categoría
     val groupedCategories = remember(uiState.iptvChannels, uiState.favoriteIptvChannelUrls) {
         val list = mutableListOf<Pair<String, List<IptvChannel>>>()
 
-        // 1. Favoritos
         val favChannels = uiState.iptvChannels.filter {
             uiState.favoriteIptvChannelUrls.contains(it.streamUrl)
         }
         list.add("★ FAVORITOS" to favChannels)
 
-        // 2. Demás categorías agrupadas por groupTitle
         val groups = uiState.iptvChannels
             .map { it.groupTitle.trim().uppercase().ifEmpty { "GENERAL" } }
             .filter { it != "★ FAVORITOS" }
@@ -547,7 +555,6 @@ private fun ChannelGuideDrawer(
     val closeButtonFocusRequester = remember { FocusRequester() }
     var isCloseFocused by remember { mutableStateOf(false) }
 
-    // Solicitar foco inicial en el botón CERRAR al abrir la guía
     LaunchedEffect(Unit) {
         delay(100)
         try {
@@ -555,7 +562,6 @@ private fun ChannelGuideDrawer(
         } catch (_: Exception) {}
     }
 
-    // Si al abrir la guía hay un canal en reproducción, asegurar que su categoría esté expandida
     LaunchedEffect(uiState.currentIptvChannel) {
         val currentCat = uiState.currentIptvChannel?.groupTitle?.trim()?.uppercase()
         if (!currentCat.isNullOrBlank() && expandedCategory == null) {
@@ -563,7 +569,6 @@ private fun ChannelGuideDrawer(
         }
     }
 
-    // Auto-scroll hacia la posición del canal activo dentro de la categoría expandida
     LaunchedEffect(expandedCategory) {
         if (expandedCategory != null) {
             var itemIdx = 0
@@ -605,7 +610,6 @@ private fun ChannelGuideDrawer(
             .padding(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // 1. Encabezado Fijo de la Guía
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -668,7 +672,6 @@ private fun ChannelGuideDrawer(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 2. Acordeón Vertical con LazyColumn
             LazyColumn(
                 state = lazyListState,
                 modifier = Modifier
@@ -680,7 +683,6 @@ private fun ChannelGuideDrawer(
                     val isExpanded = expandedCategory.equals(categoryName, ignoreCase = true)
                     val isSpecial = categoryName == "★ FAVORITOS"
 
-                    // Cabecera de Categoría
                     item(key = "cat_$categoryName") {
                         CategoryHeaderItem(
                             categoryName = categoryName,
@@ -694,7 +696,6 @@ private fun ChannelGuideDrawer(
                         )
                     }
 
-                    // Canales dentro de la categoría expandida
                     if (isExpanded) {
                         if (channels.isEmpty() && isSpecial) {
                             item(key = "empty_favorites") {
@@ -734,9 +735,6 @@ private fun ChannelGuideDrawer(
     }
 }
 
-/**
- * Cabecera de acordeón para cada categoría de canales.
- */
 @Composable
 private fun CategoryHeaderItem(
     categoryName: String,
@@ -747,7 +745,6 @@ private fun CategoryHeaderItem(
     onCloseDrawer: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
-
     val accentColor = if (isSpecial) CyberAmber else CyberCyan
 
     Box(
@@ -835,9 +832,6 @@ private fun CategoryHeaderItem(
     }
 }
 
-/**
- * Mensaje mostrado cuando la sección de Favoritos no tiene canales guardados aún.
- */
 @Composable
 private fun FavoritesEmptyItem() {
     Box(
@@ -868,9 +862,6 @@ private fun FavoritesEmptyItem() {
     }
 }
 
-/**
- * Ítem de canal dentro de la guía lateral con soporte para estrella y pulsación larga.
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChannelDrawerItem(
@@ -946,7 +937,6 @@ private fun ChannelDrawerItem(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Número
             Text(
                 text = "%03d".format(displayNumber),
                 color = if (isCurrent) CyberCyan else CyberGrey,
@@ -955,7 +945,6 @@ private fun ChannelDrawerItem(
                 fontWeight = FontWeight.Bold
             )
 
-            // Logo
             Box(
                 modifier = Modifier
                     .size(32.dp)
@@ -976,7 +965,6 @@ private fun ChannelDrawerItem(
                 }
             }
 
-            // Nombre y Categoría
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = channel.name,
@@ -996,7 +984,6 @@ private fun ChannelDrawerItem(
                 )
             }
 
-            // Indicador de Favorito
             if (isFavorite) {
                 Text(
                     text = "★",
@@ -1006,7 +993,6 @@ private fun ChannelDrawerItem(
                 )
             }
 
-            // Indicador de Canal Sintonizado
             if (isCurrent) {
                 Box(
                     modifier = Modifier

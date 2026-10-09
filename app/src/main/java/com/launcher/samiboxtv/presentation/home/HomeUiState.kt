@@ -40,7 +40,7 @@ data class HomeUiState(
     val networkStatus: NetworkStatus = NetworkStatus(),
     val systemTelemetry: SystemTelemetry = SystemTelemetry(),
     val isSettingsOpen: Boolean = false,
-    val activeSettingsSection: com.launcher.samiboxtv.domain.model.SettingsSection = com.launcher.samiboxtv.domain.model.SettingsSection.FAVORITES,
+    val activeSettingsSection: com.launcher.samiboxtv.domain.model.SettingsSection = com.launcher.samiboxtv.domain.model.SettingsSection.CATEGORIES,
     val cardStyle: com.launcher.samiboxtv.domain.model.AppCardStyle = com.launcher.samiboxtv.domain.model.AppCardStyle.BANNER_16_9,
     val appLayoutMode: com.launcher.samiboxtv.presentation.theme.AppLayoutMode = com.launcher.samiboxtv.presentation.theme.AppLayoutMode.COMPACT_HIGH_DENSITY,
     val categories: List<String> = listOf("STREAMING", "GAMING", "APPS"),
@@ -74,6 +74,7 @@ data class HomeUiState(
     val favoriteIptvChannelUrls: Set<String> = emptySet(),
     val isIptvOsdVisible: Boolean = true
 ) : UiState {
-    // Compatibilidad para reordenamiento u otros consumidores
+    val favoriteApps: List<AppItem> get() = allApps.filter { it.isFavorite }
+    val nonFavoriteApps: List<AppItem> get() = allApps.filter { !it.isFavorite }
     val visibleApps: List<AppItem> get() = allApps
 }

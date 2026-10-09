@@ -126,8 +126,8 @@ private fun CyberMilitaryClock(modifier: Modifier = Modifier) {
     var dateString by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
-        val timeFormat = SimpleDateFormat("H:mm:ss", Locale.getDefault())
-        val dateFormat = SimpleDateFormat("dd.mm.yyyy : EEE", Locale("es", "ES"))
+        val timeFormat = SimpleDateFormat("h:mm:ss a", Locale.getDefault())
+        val dateFormat = SimpleDateFormat("d.mm.yyyy : EEE", Locale("es", "ES"))
         val dateHolder = Date()
 
         while (true) {
@@ -158,7 +158,7 @@ private fun CyberMilitaryClock(modifier: Modifier = Modifier) {
 
         Text(
             text = dateString,
-            color = CyberGrey,
+            color = CyberCyan,
             fontSize = 10.sp,
             fontFamily = ShareTechMonoFontFamily,
             fontWeight = FontWeight.Medium,

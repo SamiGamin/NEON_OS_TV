@@ -365,7 +365,7 @@ fun CyberAppCard(
                 )
 
                 // Degradado inferior para legibilidad del título
-                if (showAppName && (isFocused || height <= 130.dp)) {
+                if (showAppName) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -531,7 +531,7 @@ fun CyberAppCard(
                     contentScale = ContentScale.Crop
                 )
 
-                if (showAppName && (isFocused || height <= 130.dp)) {
+                if (showAppName) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -690,7 +690,7 @@ fun CyberAppCard(
             )
 
             // Degradado inferior para legibilidad del título
-            if (showAppName && (isFocused || height <= 130.dp)) {
+            if (showAppName) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()

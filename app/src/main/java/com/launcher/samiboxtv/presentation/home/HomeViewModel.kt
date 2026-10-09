@@ -631,9 +631,7 @@ class HomeViewModel(
                 val combinedVisible = group.visibleApps + virtualApps
                 val combinedAllInstalled = group.allInstalledApps + virtualApps
 
-                val featured = combinedVisible
-                    .filter { it.isFavorite || it.bannerDrawable != null }
-                    .ifEmpty { combinedVisible.take(6) }
+                val featured = combinedVisible.filter { it.isFavorite }
 
                 _uiState.update {
                     it.copy(
@@ -758,9 +756,7 @@ class HomeViewModel(
         }
 
         val updatedList = mutable.mapIndexed { idx, item -> item.copy(orderIndex = idx) }
-        val featured = updatedList
-            .filter { it.isFavorite || it.bannerDrawable != null }
-            .ifEmpty { updatedList.take(6) }
+        val featured = updatedList.filter { it.isFavorite }
 
         _uiState.update {
             it.copy(

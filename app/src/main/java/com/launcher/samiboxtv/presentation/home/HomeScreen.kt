@@ -384,8 +384,8 @@ fun HomeScreenContent(
             // ==============================================================
             // MODO CUADRÍCULA MODERNA (3 columnas x 2 filas = 6 en pantalla)
             // ==============================================================
-            val favoriteApps = uiState.allApps.filter { it.isFavorite }
-            val nonFavoriteApps = uiState.allApps.filter { !it.isFavorite }
+            val favoriteApps = uiState.favoriteApps
+            val nonFavoriteApps = uiState.nonFavoriteApps
 
             if (favoriteApps.isNotEmpty()) {
                 item(key = "grid_section_favorites") {
@@ -469,9 +469,9 @@ fun HomeScreenContent(
             // MODOS HORIZONTALES (COMPACT_HIGH_DENSITY, PANORAMIC_16_9, COMPACT_STANDARD, DUAL_PRIORITY)
             // ==============================================================
 
-            // 2. SECCIÓN FAVORITOS
-            val favoriteApps = uiState.allApps.filter { it.isFavorite }
-            val nonFavoriteApps = uiState.allApps.filter { !it.isFavorite }
+            // 2. SECCIÓN FAVORITOS (Condición estricta: sólo si favoriteApps.isNotEmpty())
+            val favoriteApps = uiState.favoriteApps
+            val nonFavoriteApps = uiState.nonFavoriteApps
             val activeCategoriesWithApps = uiState.categories.mapNotNull { categoryName ->
                 val apps = nonFavoriteApps.filter { app ->
                     val assigned = uiState.appCategoryMap[app.packageName] ?: app.category.ifBlank { "APPS" }
