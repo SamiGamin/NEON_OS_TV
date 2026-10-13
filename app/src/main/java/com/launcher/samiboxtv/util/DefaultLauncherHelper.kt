@@ -100,6 +100,7 @@ object DefaultLauncherHelper {
      * Abre los ajustes generales del sistema probando las rutas conocidas de Android TV y TV Box.
      */
     fun openSystemSettings(context: Context) {
+        SamiBoxAccessibilityService.pauseRedirect(15000L)
         val intents = listOf(
             // 1. Ajustes específicos de Android TV estándar
             Intent(Intent.ACTION_MAIN).apply {
@@ -147,6 +148,7 @@ object DefaultLauncherHelper {
      * Abre directamente la pantalla de Accesibilidad en Ajustes de la TV.
      */
     fun openAccessibilitySettings(context: Context) {
+        SamiBoxAccessibilityService.pauseRedirect(15000L)
         try {
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -161,6 +163,7 @@ object DefaultLauncherHelper {
      * Abre los ajustes de aplicaciones predeterminadas o la lista de apps con fallback secuencial.
      */
     fun openDefaultAppsSettings(context: Context) {
+        SamiBoxAccessibilityService.pauseRedirect(15000L)
         val intents = listOf(
             Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
             Intent(Settings.ACTION_HOME_SETTINGS),

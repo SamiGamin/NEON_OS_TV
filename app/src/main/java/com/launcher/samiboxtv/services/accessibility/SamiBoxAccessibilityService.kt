@@ -22,16 +22,31 @@ class SamiBoxAccessibilityService : AccessibilityService() {
         refreshStockLaunchers()
     }
 
+    private fun isExcludedPackage(pkg: String): Boolean {
+        if (pkg == packageName || pkg == "com.launcher.samiboxtv") return true
+        val lower = pkg.lowercase()
+        return lower.contains("settings") ||
+                lower.contains("setupwizard") ||
+                lower.contains("packageinstaller") ||
+                lower.contains("systemui") ||
+                lower.contains("permissioncontroller")
+    }
+
     /**
      * Identifica los paquetes de launchers instalados en el dispositivo para vigilancia.
+     * Excluye expresamente la aplicación de Ajustes del sistema (que internamente declara FallbackHome).
      */
     private fun refreshStockLaunchers() {
         try {
             val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
             val resolves = packageManager.queryIntentActivities(homeIntent, PackageManager.MATCH_ALL)
             stockLaunchers = resolves
+                .filter { resolve ->
+                    val pkg = resolve.activityInfo.packageName
+                    val actName = resolve.activityInfo.name
+                    !isExcludedPackage(pkg) && !actName.contains("FallbackHome", ignoreCase = true)
+                }
                 .map { it.activityInfo.packageName }
-                .filter { it != packageName && it != "com.launcher.samiboxtv" }
                 .toSet()
         } catch (_: Exception) {
             stockLaunchers = emptySet()
@@ -55,6 +70,12 @@ class SamiBoxAccessibilityService : AccessibilityService() {
         if (event == null) return
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = event.packageName?.toString() ?: return
+
+            // Proteger siempre Ajustes y utilidades críticas del sistema
+            if (isExcludedPackage(pkg)) return
+
+            // Si la redirección fue pausada temporalmente (ej. abriendo ajustes)
+            if (System.currentTimeMillis() < pauseRedirectUntil) return
 
             // Si el launcher de fábrica intenta abrirse, redirigir a SamiBox TV
             if (stockLaunchers.contains(pkg)) {
@@ -91,7 +112,17 @@ class SamiBoxAccessibilityService : AccessibilityService() {
 
     companion object {
         var instance: SamiBoxAccessibilityService? = null
+        private var pauseRedirectUntil: Long = 0L
 
         fun isRunning() = instance != null
+
+        fun pauseRedirect(durationMs: Long = 10000L) {
+            pauseRedirectUntil = System.currentTimeMillis() + durationMs
+        }
+
+        fun stopService() {
+            instance?.disableSelf()
+            instance = null
+        }
     }
 }

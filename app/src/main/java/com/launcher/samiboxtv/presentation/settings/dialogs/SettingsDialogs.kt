@@ -51,6 +51,7 @@ import com.launcher.samiboxtv.presentation.theme.CyberCyan
 import com.launcher.samiboxtv.presentation.theme.CyberGrey
 import com.launcher.samiboxtv.presentation.theme.CyberMagenta
 import com.launcher.samiboxtv.presentation.theme.ShareTechMonoFontFamily
+import com.launcher.samiboxtv.services.accessibility.SamiBoxAccessibilityService
 import com.launcher.samiboxtv.util.DefaultLauncherHelper
 import com.launcher.samiboxtv.util.M3uFileScanner
 import com.launcher.samiboxtv.util.adb.AdbLauncherManager
@@ -290,7 +291,7 @@ fun DefaultLauncherDialog(
     onDismiss: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val isAggressiveActive = remember { DefaultLauncherHelper.isAccessibilityServiceEnabled(context) }
+    var isAggressiveActive by remember { mutableStateOf(DefaultLauncherHelper.isAccessibilityServiceEnabled(context)) }
     val adbManager = remember(context) { AdbLauncherManager(context) }
     var isStockDisabled by remember { mutableStateOf(adbManager.isStockLauncherDisabled()) }
     var statusFeedback by remember { mutableStateOf<String?>(null) }
@@ -414,19 +415,25 @@ fun DefaultLauncherDialog(
 
                     LauncherOptionItem(
                         title = if (isAggressiveActive) {
-                            "2. 🛡 MODO AGRESIVO (ACCESIBILIDAD) [✓ ACTIVO]"
+                            "2. 🛡 MODO AGRESIVO (ACCESIBILIDAD) [✓ ACTIVO - CLIC PARA APAGAR]"
                         } else {
                             "2. 🛡 MODO AGRESIVO (ACCESIBILIDAD) [ACTIVAR]"
                         },
                         subtitle = if (isAggressiveActive) {
-                            "El servicio intercepta el botón HOME y bloquea el launcher de fábrica automáticamente."
+                            "El servicio intercepta el botón HOME. Toca aquí para desactivarlo de inmediato."
                         } else {
                             "Recomendado si no tienes depuración ADB. Abre Ajustes de Accesibilidad para encender NEOS OS TV."
                         },
                         isHighlighted = isAggressiveActive,
                         onClick = {
-                            onDismiss()
-                            DefaultLauncherHelper.openAccessibilitySettings(context)
+                            if (isAggressiveActive && SamiBoxAccessibilityService.instance != null) {
+                                SamiBoxAccessibilityService.stopService()
+                                isAggressiveActive = false
+                                statusFeedback = "Modo Agresivo desactivado con éxito."
+                            } else {
+                                onDismiss()
+                                DefaultLauncherHelper.openAccessibilitySettings(context)
+                            }
                         }
                     )
 

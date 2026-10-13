@@ -22,7 +22,7 @@ class UpdateRepositoryImpl(
         runCatching {
             val currentVersion = getCurrentVersionName()
             val owner = BuildConfig.GITHUB_OWNER.ifBlank { "SamiGamin" }
-            val repo = BuildConfig.GITHUB_REPO.ifBlank { "SamiBoxTV" }
+            val repo = BuildConfig.GITHUB_REPO.ifBlank { "NEON_OS_TV" }
             val endpoint = "https://api.github.com/repos/$owner/$repo/releases/latest"
 
             val url = URL(endpoint)

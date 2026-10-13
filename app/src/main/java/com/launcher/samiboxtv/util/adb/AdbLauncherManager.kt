@@ -90,21 +90,38 @@ class AdbLauncherManager(private val context: Context) {
         }
     }
 
+    private fun isIgnoredPackage(pkg: String): Boolean {
+        val lower = pkg.lowercase()
+        return lower.contains("settings") ||
+                lower.contains("setupwizard") ||
+                lower.contains("packageinstaller") ||
+                lower.contains("systemui") ||
+                lower.contains("permissioncontroller") ||
+                pkg == context.packageName
+    }
+
     fun detectAndSaveStockLauncher(): String {
         val saved = prefs.getString("stock_launcher_pkg", null)
-        if (!saved.isNullOrBlank()) return saved
+        if (!saved.isNullOrBlank() && !isIgnoredPackage(saved)) return saved
 
         val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_HOME) }
         val resolveInfo = context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
         val currentPkg = resolveInfo?.activityInfo?.packageName
 
-        val targetPackage = if (currentPkg != null && currentPkg != context.packageName) {
+        val targetPackage = if (currentPkg != null && currentPkg != context.packageName && !isIgnoredPackage(currentPkg)) {
             currentPkg
         } else {
             val homeActivities = context.packageManager.queryIntentActivities(intent, 0)
             val externalHome = homeActivities
+                .filter { resolve ->
+                    val pkg = resolve.activityInfo.packageName
+                    val name = resolve.activityInfo.name
+                    !isIgnoredPackage(pkg) &&
+                            !name.contains("FakeHomeActivity", ignoreCase = true) &&
+                            !name.contains("FallbackHome", ignoreCase = true)
+                }
                 .map { it.activityInfo.packageName }
-                .firstOrNull { it != context.packageName && !it.contains("FakeHomeActivity") }
+                .firstOrNull()
             externalHome ?: "com.google.android.tvlauncher"
         }
 

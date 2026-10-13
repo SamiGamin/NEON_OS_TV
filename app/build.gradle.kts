@@ -15,8 +15,8 @@ android {
         applicationId = "com.launcher.samiboxtv"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20
-        versionName = "1.1.4"
+        versionCode = 21
+        versionName = "1.1.5"
 
         val properties = Properties()
         val localPropertiesFile = project.rootProject.file("local.properties")
@@ -26,7 +26,7 @@ android {
 
         val githubToken = properties.getProperty("GITHUB_TOKEN") ?: System.getenv("GITHUB_TOKEN") ?: ""
         val githubOwner = properties.getProperty("GITHUB_OWNER") ?: System.getenv("GITHUB_OWNER") ?: "SamiGamin"
-        val githubRepo = properties.getProperty("GITHUB_REPO") ?: System.getenv("GITHUB_REPO") ?: "SamiBoxTV"
+        val githubRepo = properties.getProperty("GITHUB_REPO") ?: System.getenv("GITHUB_REPO") ?: "NEON_OS_TV"
 
         buildConfigField("String", "GITHUB_TOKEN", "\"$githubToken\"")
         buildConfigField("String", "GITHUB_OWNER", "\"$githubOwner\"")
