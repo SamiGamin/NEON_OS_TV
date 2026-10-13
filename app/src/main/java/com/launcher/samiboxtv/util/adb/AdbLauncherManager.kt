@@ -1,7 +1,6 @@
 package com.launcher.samiboxtv.util.adb
 
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
 import com.launcher.samiboxtv.util.DevLogManager
@@ -21,26 +20,27 @@ class AdbLauncherManager(private val context: Context) {
     private val publicKeyFile = File(context.filesDir, "adb_key.pub")
     private val prefs = context.getSharedPreferences("adb_launcher_prefs", Context.MODE_PRIVATE)
 
+    // Lista de paquetes de launchers de fábrica (Google TV, Android TV y cajas genéricas)
+    private val knownStockLaunchers = listOf(
+        "com.google.android.apps.tv.launcherx", // Google TV (TCL, Sony, Chromecast, Hisense)
+        "com.google.android.tvlauncher",        // Android TV estándar
+        "com.google.android.leanbacklauncher",  // Android TV AOSP / Mi Box
+        "com.droidlogic.tvlauncher",            // TV Box Amlogic
+        "com.android.launcher3"                 // AOSP TV Launcher genérico
+    )
+
     private fun getOrCreateKeyPair(): AdbKeyPair {
         if (!privateKeyFile.exists() || !publicKeyFile.exists()) {
             DevLogManager.log("ADB", "Generando nuevo par de llaves RSA para autenticación")
-            AdbKeyPair.generate(privateKeyFile, publicKeyFile) // Guarda las llaves en disco (retorna Unit)
-        } else {
-            DevLogManager.log("ADB", "Cargando llaves RSA existentes de almacenamiento local")
+            AdbKeyPair.generate(privateKeyFile, publicKeyFile)
         }
-        // Lee y retorna el objeto AdbKeyPair cargado en memoria
         return AdbKeyPair.read(privateKeyFile, publicKeyFile)
     }
 
     fun isAdbDebuggingEnabled(): Boolean {
-        val enabled = Settings.Global.getInt(context.contentResolver, Settings.Global.ADB_ENABLED, 0) == 1
-        DevLogManager.log("ADB", "Estado de depuración global en el sistema: ${if (enabled) "ACTIVA" else "APAGADA"}")
-        return enabled
+        return Settings.Global.getInt(context.contentResolver, Settings.Global.ADB_ENABLED, 0) == 1
     }
 
-    /**
-     * Prueba si el puerto 5555 está escuchando antes de intentar el protocolo ADB
-     */
     private fun isPortOpen(host: String = "127.0.0.1", port: Int = 5555, timeoutMs: Int = 1200): Boolean {
         return try {
             Socket().use { socket ->
@@ -53,102 +53,105 @@ class AdbLauncherManager(private val context: Context) {
     }
 
     private suspend fun executeShell(command: String): Result<String> = withContext(Dispatchers.IO) {
-        DevLogManager.log("ADB", "Iniciando intento de ejecución: '$command'")
-
-        // Diagnóstico 1: Comprobar el socket
-        DevLogManager.log("ADB", "Verificando disponibilidad de 127.0.0.1:5555...")
         if (!isPortOpen("127.0.0.1", 5555)) {
-            DevLogManager.log("ADB", "FALLO: El puerto 5555 está cerrado. adbd no está escuchando por TCP.")
             return@withContext Result.failure(
-                Exception("Puerto 5555 cerrado. En Opciones de desarrollador activa 'Depuración de red'.")
+                Exception("Puerto 5555 cerrado. En Opciones de desarrollador activa 'Depuración por red/USB'.")
             )
         }
-        DevLogManager.log("ADB", "Puerto 5555 abierto. Estableciendo handshake con Dadb...")
 
         try {
             val keyPair = getOrCreateKeyPair()
             Dadb.create("127.0.0.1", 5555, keyPair).use { dadb ->
-                DevLogManager.log("ADB", "Conexión autenticada con éxito. Ejecutando comando shell...")
                 val response = dadb.shell(command)
-                DevLogManager.log("ADB", "Respuesta recibida: [exitCode=${response.exitCode}] output=${response.output.trim()}")
+                DevLogManager.log("ADB", "Cmd: '$command' -> [code=${response.exitCode}] ${response.output.trim()}")
 
                 if (response.exitCode == 0) {
-                    Result.success(response.output)
+                    Result.success(response.output.trim())
                 } else {
                     Result.failure(Exception("ADB (${response.exitCode}): ${response.output.trim()}"))
                 }
             }
         } catch (e: ConnectException) {
-            DevLogManager.log("ADB", "ConnectException: ${e.message}")
             Result.failure(Exception("Conexión rechazada en 127.0.0.1:5555."))
         } catch (e: SocketTimeoutException) {
-            DevLogManager.log("ADB", "Timeout: Esperando confirmación de usuario en pantalla...")
-            Result.failure(Exception("Acepta el cartel '¿Permitir depuración?' que apareció en la pantalla."))
+            Result.failure(Exception("Acepta el cartel '¿Permitir depuración?' en la pantalla de la TV."))
         } catch (e: Exception) {
-            DevLogManager.log("ADB", "Error no controlado: ${e.javaClass.simpleName} - ${e.message}")
             Result.failure(e)
         }
     }
 
-    private fun isIgnoredPackage(pkg: String): Boolean {
-        val lower = pkg.lowercase()
-        return lower.contains("settings") ||
-                lower.contains("setupwizard") ||
-                lower.contains("packageinstaller") ||
-                lower.contains("systemui") ||
-                lower.contains("permissioncontroller") ||
-                pkg == context.packageName
+    /**
+     * Busca cuáles de los launchers de fábrica existen realmente en este televisor
+     */
+    private fun findInstalledStockLaunchers(): List<String> {
+        val installed = mutableListOf<String>()
+        for (pkg in knownStockLaunchers) {
+            try {
+                context.packageManager.getPackageInfo(pkg, PackageManager.MATCH_DISABLED_COMPONENTS)
+                installed.add(pkg)
+            } catch (_: Exception) {}
+        }
+        return installed
     }
 
-    fun detectAndSaveStockLauncher(): String {
-        val saved = prefs.getString("stock_launcher_pkg", null)
-        if (!saved.isNullOrBlank() && !isIgnoredPackage(saved)) return saved
+    suspend fun disableStockLauncher(): Result<String> = withContext(Dispatchers.IO) {
+        val targets = findInstalledStockLaunchers().ifEmpty { knownStockLaunchers }
+        var disabledAny = false
+        var lastError = ""
 
-        val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_HOME) }
-        val resolveInfo = context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
-        val currentPkg = resolveInfo?.activityInfo?.packageName
+        // 1. Fijar NEON OS TV como actividad Home principal del sistema
+        executeShell("cmd package set-home-activity ${context.packageName}/.MainActivity")
 
-        val targetPackage = if (currentPkg != null && currentPkg != context.packageName && !isIgnoredPackage(currentPkg)) {
-            currentPkg
-        } else {
-            val homeActivities = context.packageManager.queryIntentActivities(intent, 0)
-            val externalHome = homeActivities
-                .filter { resolve ->
-                    val pkg = resolve.activityInfo.packageName
-                    val name = resolve.activityInfo.name
-                    !isIgnoredPackage(pkg) &&
-                            !name.contains("FakeHomeActivity", ignoreCase = true) &&
-                            !name.contains("FallbackHome", ignoreCase = true)
-                }
-                .map { it.activityInfo.packageName }
-                .firstOrNull()
-            externalHome ?: "com.google.android.tvlauncher"
+        // 2. Desactivar el launcher nativo instalado (ej. launcherx en Google TV)
+        for (pkg in targets) {
+            val res = executeShell("pm disable-user --user 0 $pkg")
+            if (res.isSuccess) {
+                disabledAny = true
+                prefs.edit().putString("stock_launcher_pkg", pkg).apply()
+            } else {
+                lastError = res.exceptionOrNull()?.message ?: ""
+            }
         }
 
-        prefs.edit().putString("stock_launcher_pkg", targetPackage).apply()
-        DevLogManager.log("ADB", "Launcher de fábrica detectado y guardado: $targetPackage")
-        return targetPackage
+        if (disabledAny) {
+            Result.success("Launcher de fábrica desactivado")
+        } else {
+            Result.failure(Exception(lastError.ifBlank { "No se encontró el paquete del launcher nativo" }))
+        }
     }
 
-    suspend fun disableStockLauncher(): Result<String> {
-        val stockPkg = detectAndSaveStockLauncher()
-        DevLogManager.log("ADB", "Intentando inhabilitar paquete stock: $stockPkg")
-        return executeShell("pm disable-user --user 0 $stockPkg")
-    }
+    suspend fun enableStockLauncher(): Result<String> = withContext(Dispatchers.IO) {
+        val targets = findInstalledStockLaunchers().ifEmpty { knownStockLaunchers }
+        var enabledAny = false
+        var lastError = ""
 
-    suspend fun enableStockLauncher(): Result<String> {
-        val stockPkg = prefs.getString("stock_launcher_pkg", "com.google.android.tvlauncher") ?: "com.google.android.tvlauncher"
-        DevLogManager.log("ADB", "Intentando restaurar paquete stock: $stockPkg")
-        return executeShell("pm enable $stockPkg")
+        for (pkg in targets) {
+            val res = executeShell("pm enable $pkg")
+            if (res.isSuccess) {
+                enabledAny = true
+            } else {
+                lastError = res.exceptionOrNull()?.message ?: ""
+            }
+        }
+
+        if (enabledAny) {
+            Result.success("Launcher original restaurado")
+        } else {
+            Result.failure(Exception(lastError.ifBlank { "No se pudo restaurar el launcher" }))
+        }
     }
 
     fun isStockLauncherDisabled(): Boolean {
-        val stockPkg = prefs.getString("stock_launcher_pkg", null) ?: return false
-        return try {
-            val appInfo = context.packageManager.getApplicationInfo(stockPkg, 0)
-            !appInfo.enabled
-        } catch (_: Exception) {
-            false
+        val installed = findInstalledStockLaunchers()
+        if (installed.isEmpty()) return false
+
+        return installed.any { pkg ->
+            try {
+                val appInfo = context.packageManager.getApplicationInfo(pkg, PackageManager.MATCH_DISABLED_COMPONENTS)
+                !appInfo.enabled
+            } catch (_: Exception) {
+                false
+            }
         }
     }
 }

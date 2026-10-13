@@ -101,36 +101,38 @@ object DefaultLauncherHelper {
      */
     fun openSystemSettings(context: Context) {
         SamiBoxAccessibilityService.pauseRedirect(15000L)
-        val intents = listOf(
-            // 1. Ajustes específicos de Android TV estándar
-            Intent(Intent.ACTION_MAIN).apply {
+        val candidates = listOf(
+            // 1. Lanzador directo del paquete de Ajustes de Google TV / TCL / Android TV
+            context.packageManager.getLaunchIntentForPackage("com.android.tv.settings"),
+            // 2. Actividad principal de Ajustes en Google TV / TCL
+            Intent().apply {
                 component = ComponentName("com.android.tv.settings", "com.android.tv.settings.MainSettings")
             },
-            // 2. Ajustes de Android TV alternativo
+            // 3. Ajustes de Android TV alternativo
             Intent("android.settings.SETTINGS").apply {
                 setPackage("com.android.tv.settings")
             },
-            // 3. Ajustes de TV Box Amlogic / Genéricas
+            // 4. Ajustes de TV Box Amlogic / Genéricas
             Intent(Intent.ACTION_MAIN).apply {
                 component = ComponentName("com.droidlogic.tv.settings", "com.droidlogic.tv.settings.Settings")
             },
-            // 4. Categoría Leanback Settings
+            // 5. Categoría Leanback Settings
             Intent(Intent.ACTION_MAIN).apply {
                 addCategory("android.intent.category.LEANBACK_SETTINGS")
             },
-            // 5. Ajustes de Rockchip TV
+            // 6. Ajustes de Rockchip TV
             Intent(Intent.ACTION_MAIN).apply {
                 component = ComponentName("com.rockchip.settings", "com.rockchip.settings.Settings")
             },
-            // 6. Intent general de Android
+            // 7. Intent general de Android
             Intent(Settings.ACTION_SETTINGS),
-            // 7. Ajustes estándar de AOSP / Teléfono
+            // 8. Ajustes estándar de AOSP / Teléfono
             Intent(Intent.ACTION_MAIN).apply {
                 component = ComponentName("com.android.settings", "com.android.settings.Settings")
             }
         )
 
-        for (intent in intents) {
+        for (intent in candidates.filterNotNull()) {
             try {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
@@ -145,15 +147,18 @@ object DefaultLauncherHelper {
     }
 
     /**
-     * Abre directamente la pantalla de Accesibilidad en Ajustes de la TV.
+     * Abre los ajustes de accesibilidad. En Google TV (TCL), ACTION_ACCESSIBILITY_SETTINGS es bloqueado
+     * por el fabricante y muestra "Ninguna aplicación puede procesar esta acción", por lo que abrimos
+     * directamente la pantalla de ajustes de TV para acceder a la sección del sistema.
      */
     fun openAccessibilitySettings(context: Context) {
         SamiBoxAccessibilityService.pauseRedirect(15000L)
+        val tvSettingsIntent = Intent().apply {
+            component = ComponentName("com.android.tv.settings", "com.android.tv.settings.MainSettings")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
         try {
-            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
+            context.startActivity(tvSettingsIntent)
         } catch (_: Exception) {
             openSystemSettings(context)
         }
