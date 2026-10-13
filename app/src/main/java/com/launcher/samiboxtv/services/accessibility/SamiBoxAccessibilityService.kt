@@ -8,9 +8,10 @@ import android.view.accessibility.AccessibilityEvent
 import com.launcher.samiboxtv.MainActivity
 
 /**
- * Servicio de accesibilidad para Android TV que cumple una función crítica:
- * Anclaje agresivo del botón HOME: Intercepta KEYCODE_HOME y vigila cambios de ventana
- * para redirigir a SamiBox TV si un Launcher de fábrica intenta tomar el control.
+ * Servicio de accesibilidad para Android TV / Google TV.
+ * Intercepta la tecla KEYCODE_HOME en alta prioridad de hardware antes de que
+ * el sistema operativo o Google TV la reciban, consumiendo el evento por completo (return true)
+ * para eliminar el retardo o parpadeo del launcher original.
  */
 class SamiBoxAccessibilityService : AccessibilityService() {
 
@@ -33,8 +34,7 @@ class SamiBoxAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Identifica los paquetes de launchers instalados en el dispositivo para vigilancia.
-     * Excluye expresamente la aplicación de Ajustes del sistema (que internamente declara FallbackHome).
+     * Identifica los paquetes de launchers instalados en el dispositivo para vigilancia de respaldo.
      */
     private fun refreshStockLaunchers() {
         try {
@@ -53,17 +53,17 @@ class SamiBoxAccessibilityService : AccessibilityService() {
         }
     }
 
-    override fun onKeyEvent(event: KeyEvent): Boolean {
-        if (event.action == KeyEvent.ACTION_DOWN) {
-            when (event.keyCode) {
-                KeyEvent.KEYCODE_HOME -> {
-                    // Interceptar agresivamente la pulsación del botón HOME
-                    launchSamiBoxHome()
-                    return true
-                }
+    override fun onKeyEvent(event: KeyEvent?): Boolean {
+        if (event != null && event.keyCode == KeyEvent.KEYCODE_HOME) {
+            // Si el usuario presiona la Casita (Home) en cualquier momento (Down o Up)
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                bringNeonToFront()
             }
+            // Consumimos el evento por completo (tanto DOWN como UP) para que Android
+            // y Google TV jamás se enteren de que se presionó Home, eliminando el parpadeo.
+            return true
         }
-        return false
+        return super.onKeyEvent(event)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -77,24 +77,26 @@ class SamiBoxAccessibilityService : AccessibilityService() {
             // Si la redirección fue pausada temporalmente (ej. abriendo ajustes)
             if (System.currentTimeMillis() < pauseRedirectUntil) return
 
-            // Si el launcher de fábrica intenta abrirse, redirigir a SamiBox TV
+            // Si un launcher de fábrica antiguo intenta abrirse de fondo
             if (stockLaunchers.contains(pkg)) {
                 val now = System.currentTimeMillis()
                 if (now - lastHomeRedirectTime > 350L) {
                     lastHomeRedirectTime = now
-                    launchSamiBoxHome()
+                    bringNeonToFront()
                 }
             }
         }
     }
 
-    private fun launchSamiBoxHome() {
+    private fun bringNeonToFront() {
         try {
             val intent = Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or
-                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    Intent.FLAG_ACTIVITY_CLEAR_TASK
+                )
             }
             startActivity(intent)
         } catch (e: Exception) {
