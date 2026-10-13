@@ -161,12 +161,9 @@ fun UpdateDialog(
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                     ) {
-                        Text(
-                            text = updateInfo.releaseNotes.ifBlank { "Sin notas de versión disponibles." },
-                            color = Color(0xFFD0D8E8),
-                            fontSize = 13.sp,
-                            fontFamily = techFont,
-                            lineHeight = 18.sp
+                        MarkdownContentView(
+                            markdown = updateInfo.releaseNotes.ifBlank { "Sin notas de versión disponibles." },
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

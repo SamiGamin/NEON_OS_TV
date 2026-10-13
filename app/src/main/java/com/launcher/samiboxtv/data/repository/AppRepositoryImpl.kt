@@ -15,8 +15,12 @@ class AppRepositoryImpl(
     private val dispatcherProvider: DispatcherProvider
 ) : AppRepository {
 
-    override suspend fun getInstalledApps(): List<AppItem> = withContext(dispatcherProvider.io) {
-        localDataSource.getInstalledApplications().map { AppMapper.toDomain(it) }
+    override suspend fun getInstalledApps(forceRefresh: Boolean): List<AppItem> = withContext(dispatcherProvider.io) {
+        localDataSource.getInstalledApplications(forceRefresh).map { AppMapper.toDomain(it) }
+    }
+
+    override fun invalidateCache() {
+        localDataSource.invalidateCache()
     }
 
     override fun launchApp(packageName: String): Result<Unit> {

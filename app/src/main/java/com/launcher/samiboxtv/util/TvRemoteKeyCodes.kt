@@ -38,4 +38,15 @@ object TvRemoteKeyCodes {
                keyCode == KeyEvent.KEYCODE_STAR ||
                keyCode == KeyEvent.KEYCODE_BUTTON_Y
     }
+
+    /**
+     * Determina si un evento de teclado físico o control remoto corresponde a la tecla HOME (Casita),
+     * contemplando KEYCODE_HOME, teclados multimedia (KEYCODE_EXPLORER) y tecla Windows (KEYCODE_META).
+     */
+    fun isHomeKey(keyCode: Int): Boolean {
+        return keyCode == KeyEvent.KEYCODE_HOME ||
+               keyCode == KeyEvent.KEYCODE_EXPLORER ||
+               keyCode == KeyEvent.KEYCODE_META_LEFT ||
+               keyCode == KeyEvent.KEYCODE_META_RIGHT
+    }
 }

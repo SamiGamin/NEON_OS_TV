@@ -18,8 +18,8 @@ class GetInstalledAppsUseCase(
     private val appRepository: AppRepository,
     private val preferencesRepository: PreferencesRepository
 ) {
-    suspend operator fun invoke(): AppsGroup {
-        val installedApps = appRepository.getInstalledApps()
+    suspend operator fun invoke(forceRefresh: Boolean = false): AppsGroup {
+        val installedApps = appRepository.getInstalledApps(forceRefresh)
         val hiddenSet = preferencesRepository.getHiddenPackages()
         val favoriteSet = preferencesRepository.getFavoritePackages()
         val customOrder = preferencesRepository.getCustomOrder()

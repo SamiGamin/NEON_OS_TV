@@ -71,6 +71,14 @@ class MainActivity : ComponentActivity() {
             val scan = event.scanCode
 
             when {
+                TvRemoteKeyCodes.isHomeKey(code) -> {
+                    viewModel.onEvent(HomeUiEvent.CloseLiveTv)
+                    viewModel.onEvent(HomeUiEvent.CloseMediaPlayer)
+                    viewModel.onEvent(HomeUiEvent.CloseSettings)
+                    viewModel.onEvent(HomeUiEvent.CloseContextMenu)
+                    viewModel.onEvent(HomeUiEvent.CloseSystemLog)
+                    return true
+                }
                 code == KeyEvent.KEYCODE_SETTINGS || code == TvRemoteKeyCodes.KEY_EXTRA_MENU || scan == TvRemoteKeyCodes.KEY_EXTRA_MENU -> {
                     viewModel.onEvent(HomeUiEvent.OpenSettings)
                     return true

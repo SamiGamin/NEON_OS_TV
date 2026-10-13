@@ -209,7 +209,7 @@ class HomeViewModel(
             HomeUiEvent.LoadRunningProcesses -> loadRunningProcesses()
             HomeUiEvent.CleanRam -> cleanRam()
             is HomeUiEvent.KillProcess -> killProcess(event.packageName)
-            HomeUiEvent.RefreshApps -> loadApps()
+            HomeUiEvent.RefreshApps -> loadApps(forceRefresh = true)
             HomeUiEvent.CheckUpdates -> checkForUpdates(isManual = true)
             HomeUiEvent.DismissUpdateDialog -> _uiState.update { it.copy(updateInfo = null) }
             HomeUiEvent.OpenSettings -> _uiState.update { it.copy(isSettingsOpen = true) }
@@ -638,12 +638,12 @@ class HomeViewModel(
         }
     }
 
-    private fun loadApps() {
+    private fun loadApps(forceRefresh: Boolean = false) {
         viewModelScope.launch(dispatcherProvider.main) {
             _uiState.update { it.copy(isLoading = true) }
             try {
                 val group = withContext(dispatcherProvider.io) {
-                    getInstalledAppsUseCase()
+                    getInstalledAppsUseCase(forceRefresh)
                 }
 
                 val virtualApps = getVirtualApps()

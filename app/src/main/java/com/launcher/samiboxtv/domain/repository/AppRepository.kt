@@ -6,6 +6,7 @@ import com.launcher.samiboxtv.domain.model.AppItem
  * Contrato de repositorio para interactuar con las aplicaciones instaladas en el sistema.
  */
 interface AppRepository {
-    suspend fun getInstalledApps(): List<AppItem>
+    suspend fun getInstalledApps(forceRefresh: Boolean = false): List<AppItem>
+    fun invalidateCache()
     fun launchApp(packageName: String): Result<Unit>
 }

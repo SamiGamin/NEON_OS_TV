@@ -3,6 +3,7 @@ package com.launcher.samiboxtv.util.adb
 import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.Settings
+import com.launcher.samiboxtv.MainActivity
 import com.launcher.samiboxtv.services.accessibility.SamiBoxAccessibilityService
 import com.launcher.samiboxtv.util.DevLogManager
 import dadb.AdbKeyPair
@@ -92,7 +93,7 @@ class AdbLauncherManager(private val context: Context) {
 
     suspend fun disableStockLauncher(): Result<String> = withContext(Dispatchers.IO) {
         // 1. Fijar NEON OS TV como actividad Home principal del sistema por ADB
-        executeShell("cmd package set-home-activity ${context.packageName}/.MainActivity")
+        executeShell("cmd package set-home-activity ${context.packageName}/${MainActivity::class.java.name}")
 
         // 2. Comprobar si es Google TV (TCL, Sony, Chromecast, Hisense)
         if (isGoogleTv()) {

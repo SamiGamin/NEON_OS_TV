@@ -153,15 +153,29 @@ object DefaultLauncherHelper {
      */
     fun openAccessibilitySettings(context: Context) {
         SamiBoxAccessibilityService.pauseRedirect(15000L)
-        val tvSettingsIntent = Intent().apply {
-            component = ComponentName("com.android.tv.settings", "com.android.tv.settings.MainSettings")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val candidates = listOf(
+            Intent().apply {
+                component = ComponentName("com.android.tv.settings", "com.android.tv.settings.device.accessibility.AccessibilityActivity")
+            },
+            Intent().apply {
+                component = ComponentName("com.android.tv.settings", "com.android.tv.settings.accessibility.AccessibilityActivity")
+            },
+            Intent("android.settings.ACCESSIBILITY_SETTINGS").apply {
+                setPackage("com.android.tv.settings")
+            },
+            Intent().apply {
+                component = ComponentName("com.android.tv.settings", "com.android.tv.settings.MainSettings")
+            }
+        )
+
+        for (intent in candidates) {
+            try {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                return
+            } catch (_: Exception) {}
         }
-        try {
-            context.startActivity(tvSettingsIntent)
-        } catch (_: Exception) {
-            openSystemSettings(context)
-        }
+        openSystemSettings(context)
     }
 
     /**
