@@ -96,6 +96,7 @@ class NetworkMonitor(private val context: Context) {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun extractWifiTelemetry(caps: NetworkCapabilities): Triple<String?, Int, String?> {
         var band: String? = null
         var level = 3

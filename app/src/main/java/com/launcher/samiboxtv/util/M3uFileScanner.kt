@@ -6,6 +6,7 @@ import androidx.core.content.ContextCompat
 import java.io.File
 
 object M3uFileScanner {
+    @Suppress("DEPRECATION")
     fun findM3uFiles(context: Context): List<File> {
         val directories = mutableListOf<File>()
 

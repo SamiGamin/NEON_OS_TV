@@ -25,6 +25,7 @@ class MediaStorageRepositoryImpl(
     private val videoExtensions = setOf("mp4", "mkv", "avi", "ts", "mov", "wmv", "m4v", "webm", "3gp")
     private val audioExtensions = setOf("mp3", "flac", "wav", "m4a", "aac", "ogg", "opus", "wma")
 
+    @Suppress("DEPRECATION")
     override suspend fun getStorageDrives(): List<StorageDrive> = withContext(dispatcherProvider.io) {
         val drives = mutableListOf<StorageDrive>()
         val seenPaths = mutableSetOf<String>()

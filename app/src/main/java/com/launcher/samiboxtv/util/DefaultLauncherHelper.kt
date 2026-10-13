@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
 import android.text.TextUtils
+import android.util.Log
 import com.launcher.samiboxtv.services.accessibility.SamiBoxAccessibilityService
 
 /**
@@ -13,6 +14,8 @@ import com.launcher.samiboxtv.services.accessibility.SamiBoxAccessibilityService
  * en TV Box con Android 9, 10 y 11 donde ACTION_HOME_SETTINGS está bloqueado o ausente.
  */
 object DefaultLauncherHelper {
+
+    private const val TAG = "DefaultLauncherHelper"
 
     /**
      * Comprueba si SamiBox TV ya es el launcher predeterminado del sistema.
@@ -94,24 +97,68 @@ object DefaultLauncherHelper {
     }
 
     /**
+     * Abre los ajustes generales del sistema probando las rutas conocidas de Android TV y TV Box.
+     */
+    fun openSystemSettings(context: Context) {
+        val intents = listOf(
+            // 1. Ajustes específicos de Android TV estándar
+            Intent(Intent.ACTION_MAIN).apply {
+                component = ComponentName("com.android.tv.settings", "com.android.tv.settings.MainSettings")
+            },
+            // 2. Ajustes de Android TV alternativo
+            Intent("android.settings.SETTINGS").apply {
+                setPackage("com.android.tv.settings")
+            },
+            // 3. Ajustes de TV Box Amlogic / Genéricas
+            Intent(Intent.ACTION_MAIN).apply {
+                component = ComponentName("com.droidlogic.tv.settings", "com.droidlogic.tv.settings.Settings")
+            },
+            // 4. Categoría Leanback Settings
+            Intent(Intent.ACTION_MAIN).apply {
+                addCategory("android.intent.category.LEANBACK_SETTINGS")
+            },
+            // 5. Ajustes de Rockchip TV
+            Intent(Intent.ACTION_MAIN).apply {
+                component = ComponentName("com.rockchip.settings", "com.rockchip.settings.Settings")
+            },
+            // 6. Intent general de Android
+            Intent(Settings.ACTION_SETTINGS),
+            // 7. Ajustes estándar de AOSP / Teléfono
+            Intent(Intent.ACTION_MAIN).apply {
+                component = ComponentName("com.android.settings", "com.android.settings.Settings")
+            }
+        )
+
+        for (intent in intents) {
+            try {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                Log.d(TAG, "Ajustes abiertos exitosamente con: ${intent.component ?: intent.action}")
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "No se pudo abrir con ${intent.component ?: intent.action}: ${e.message}")
+            }
+        }
+
+        Log.e(TAG, "Ninguna ruta de ajustes fue compatible con este dispositivo.")
+    }
+
+    /**
      * Abre directamente la pantalla de Accesibilidad en Ajustes de la TV.
      */
     fun openAccessibilitySettings(context: Context) {
         try {
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
         } catch (_: Exception) {
-            val fallback = Intent(Settings.ACTION_SETTINGS).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            context.startActivity(fallback)
+            openSystemSettings(context)
         }
     }
 
     /**
-     * Intenta abrir la pantalla de Aplicaciones Predeterminadas en Android.
+     * Abre los ajustes de aplicaciones predeterminadas o la lista de apps con fallback secuencial.
      */
     fun openDefaultAppsSettings(context: Context) {
         val intents = listOf(
@@ -126,10 +173,11 @@ object DefaultLauncherHelper {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
                 return
-            } catch (_: Exception) {
-                // Siguiente intento de fallback
-            }
+            } catch (_: Exception) {}
         }
+
+        // Fallback final a los ajustes generales si las pantallas específicas no existen
+        openSystemSettings(context)
     }
 
     /**

@@ -15,8 +15,8 @@ android {
         applicationId = "com.launcher.samiboxtv"
         minSdk = 26
         targetSdk = 36
-        versionCode = 19
-        versionName = "1.1.3"
+        versionCode = 20
+        versionName = "1.1.4"
 
         val properties = Properties()
         val localPropertiesFile = project.rootProject.file("local.properties")
@@ -137,6 +137,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
 
+    testImplementation("junit:junit:4.13.2")
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

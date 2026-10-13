@@ -306,70 +306,107 @@ fun HomeScreenContent(
             .fillMaxSize()
             .background(CyberDarkBg)
     ) {
-        // Capa 0: Fondo ambiental dinámico con Crossfade y debounce
-        Crossfade(
-            targetState = activeBackdropApp,
-            animationSpec = tween(durationMillis = 350),
-            label = "ambientBackdrop"
-        ) { app ->
-            val backdropModel = remember(app?.packageName) {
-                resolveAppBackdropModel(context, app)
-            }
-            if (backdropModel != null) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(backdropModel)
-                            .crossfade(false)
-                            .build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+        // Capa 0: Fondo ambiental dinámico con Crossfade y debounce (aislado)
+        AmbientBackdrop(app = activeBackdropApp)
 
-                    // Máscara degradada oscura para preservar contraste de las tarjetas
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        CyberDarkBg.copy(alpha = 0.40f),
-                                        CyberDarkBg.copy(alpha = 0.75f),
-                                        CyberDarkBg.copy(alpha = 0.95f),
-                                        CyberDarkBg
-                                    )
-                                )
-                            )
-                    )
-                }
-            }
-        }
-
-        // Capa 1: Título central holográfico
-        val holographicTitle = (activeBackdropApp?.name ?: "NEONOS TV").uppercase()
-        Text(
-            text = holographicTitle,
-            color = CyberCyan.copy(alpha = 0.50f),
-            fontSize = 18.sp,
-            fontFamily = ShareTechMonoFontFamily,
-            fontStyle = FontStyle.Italic,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 3.sp,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 24.dp)
+        // Capa 1: Título central holográfico (aislado)
+        HolographicTitle(
+            app = activeBackdropApp,
+            modifier = Modifier.align(Alignment.TopCenter)
         )
 
-        // Capa 2: UI normal del launcher
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
+        // Capa 2: UI normal del launcher (feed aislado que no recomprime en cada movimiento de foco)
+        LauncherMainFeed(
+            uiState = uiState,
+            dimensions = dimensions,
+            initialFocusRequester = initialFocusRequester,
+            onEvent = onEvent,
+            onAppFocus = { focusedApp = it },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+@Composable
+private fun AmbientBackdrop(app: AppItem?) {
+    val context = LocalContext.current
+    Crossfade(
+        targetState = app,
+        animationSpec = tween(durationMillis = 350),
+        label = "ambientBackdrop"
+    ) { currentApp ->
+        val backdropModel = remember(currentApp?.packageName) {
+            resolveAppBackdropModel(context, currentApp)
+        }
+        if (backdropModel != null) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = remember(backdropModel) {
+                        ImageRequest.Builder(context)
+                            .data(backdropModel)
+                            .crossfade(false)
+                            .build()
+                    },
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Máscara degradada oscura para preservar contraste de las tarjetas
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    CyberDarkBg.copy(alpha = 0.40f),
+                                    CyberDarkBg.copy(alpha = 0.75f),
+                                    CyberDarkBg.copy(alpha = 0.95f),
+                                    CyberDarkBg
+                                )
+                            )
+                        )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HolographicTitle(
+    app: AppItem?,
+    modifier: Modifier = Modifier
+) {
+    val holographicTitle = (app?.name ?: "NEONOS TV").uppercase()
+    Text(
+        text = holographicTitle,
+        color = CyberCyan.copy(alpha = 0.50f),
+        fontSize = 18.sp,
+        fontFamily = ShareTechMonoFontFamily,
+        fontStyle = FontStyle.Italic,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 3.sp,
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier.padding(top = 24.dp)
+    )
+}
+
+@Composable
+private fun LauncherMainFeed(
+    uiState: HomeUiState,
+    dimensions: com.launcher.samiboxtv.presentation.theme.TvViewportDimensions,
+    initialFocusRequester: FocusRequester?,
+    onEvent: (HomeUiEvent) -> Unit,
+    onAppFocus: (AppItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
         // 1. ZONA SUPERIOR HUD MILITAR (Reloj militar HH:mm:ss + Perfil de pantalla + Nodos)
         item(key = "header_hud") {
             CyberHeaderHud(
@@ -400,7 +437,7 @@ fun HomeScreenContent(
                         onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
                         onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
                         onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
-                        onAppFocus = { focusedApp = it },
+                        onAppFocus = { onAppFocus(it) },
                         trailingCard = if (nonFavoriteApps.isEmpty()) {
                             {
                                 AddAppCyberCard(
@@ -408,7 +445,7 @@ fun HomeScreenContent(
                                     height = dimensions.cardHeight,
                                     cardStyle = uiState.cardStyle,
                                     showAppName = uiState.showAppNames,
-                                    onFocus = { focusedApp = ManageAppsVirtualApp },
+                                    onFocus = { onAppFocus(ManageAppsVirtualApp) },
                                     onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
                                 )
                             }
@@ -430,14 +467,14 @@ fun HomeScreenContent(
                         onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
                         onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
                         onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
-                        onAppFocus = { focusedApp = it },
+                        onAppFocus = { onAppFocus(it) },
                         trailingCard = {
                             AddAppCyberCard(
                                 width = dimensions.cardWidth,
                                 height = dimensions.cardHeight,
                                 cardStyle = uiState.cardStyle,
                                 showAppName = uiState.showAppNames,
-                                onFocus = { focusedApp = ManageAppsVirtualApp },
+                                onFocus = { onAppFocus(ManageAppsVirtualApp) },
                                 onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
                             )
                         }
@@ -458,7 +495,7 @@ fun HomeScreenContent(
                             height = dimensions.cardHeight,
                             cardStyle = uiState.cardStyle,
                             showAppName = uiState.showAppNames,
-                            onFocus = { focusedApp = ManageAppsVirtualApp },
+                            onFocus = { onAppFocus(ManageAppsVirtualApp) },
                             onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
                         )
                     }
@@ -493,7 +530,7 @@ fun HomeScreenContent(
                         onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
                         onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
                         onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
-                        onAppFocus = { focusedApp = it },
+                        onAppFocus = { onAppFocus(it) },
                         trailingCard = if (activeCategoriesWithApps.isEmpty() && nonFavoriteApps.isEmpty()) {
                             {
                                 AddAppCyberCard(
@@ -501,7 +538,7 @@ fun HomeScreenContent(
                                     height = dimensions.cardHeight,
                                     cardStyle = uiState.cardStyle,
                                     showAppName = uiState.showAppNames,
-                                    onFocus = { focusedApp = ManageAppsVirtualApp },
+                                    onFocus = { onAppFocus(ManageAppsVirtualApp) },
                                     onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
                                 )
                             }
@@ -525,7 +562,7 @@ fun HomeScreenContent(
                         onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
                         onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
                         onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
-                        onAppFocus = { focusedApp = it },
+                        onAppFocus = { onAppFocus(it) },
                         trailingCard = if (isLastCategory) {
                             {
                                 AddAppCyberCard(
@@ -533,7 +570,7 @@ fun HomeScreenContent(
                                     height = dimensions.cardHeight,
                                     cardStyle = uiState.cardStyle,
                                     showAppName = uiState.showAppNames,
-                                    onFocus = { focusedApp = ManageAppsVirtualApp },
+                                    onFocus = { onAppFocus(ManageAppsVirtualApp) },
                                     onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
                                 )
                             }
@@ -557,14 +594,14 @@ fun HomeScreenContent(
                             onOpenContextMenu = { onEvent(HomeUiEvent.OpenContextMenu(it)) },
                             onMoveDirection = { onEvent(HomeUiEvent.MoveApp(uiState.movingAppPackageName ?: "", it)) },
                             onConfirmMove = { onEvent(HomeUiEvent.ConfirmReorder) },
-                            onAppFocus = { focusedApp = it },
+                            onAppFocus = { onAppFocus(it) },
                             trailingCard = {
                                 AddAppCyberCard(
                                     width = dimensions.cardWidth,
                                     height = dimensions.cardHeight,
                                     cardStyle = uiState.cardStyle,
                                     showAppName = uiState.showAppNames,
-                                    onFocus = { focusedApp = ManageAppsVirtualApp },
+                                    onFocus = { onAppFocus(ManageAppsVirtualApp) },
                                     onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
                                 )
                             }
@@ -583,7 +620,7 @@ fun HomeScreenContent(
                                 height = dimensions.cardHeight,
                                 cardStyle = uiState.cardStyle,
                                 showAppName = uiState.showAppNames,
-                                onFocus = { focusedApp = ManageAppsVirtualApp },
+                                onFocus = { onAppFocus(ManageAppsVirtualApp) },
                                 onClick = { onEvent(HomeUiEvent.OpenAddDialog) }
                             )
                         }
@@ -592,5 +629,4 @@ fun HomeScreenContent(
             }
         }
     }
-}
 }

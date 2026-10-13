@@ -101,7 +101,11 @@ class AdbLauncherManager(private val context: Context) {
         val targetPackage = if (currentPkg != null && currentPkg != context.packageName) {
             currentPkg
         } else {
-            "com.google.android.tvlauncher"
+            val homeActivities = context.packageManager.queryIntentActivities(intent, 0)
+            val externalHome = homeActivities
+                .map { it.activityInfo.packageName }
+                .firstOrNull { it != context.packageName && !it.contains("FakeHomeActivity") }
+            externalHome ?: "com.google.android.tvlauncher"
         }
 
         prefs.edit().putString("stock_launcher_pkg", targetPackage).apply()

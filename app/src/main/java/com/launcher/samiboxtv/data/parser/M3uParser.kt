@@ -6,7 +6,6 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
-import java.util.UUID
 
 object M3uParser {
 
@@ -78,14 +77,15 @@ object M3uParser {
                 // Es la URL del stream
                 if (currentName.isNotEmpty()) {
                     val (finalName, finalGroup) = resolveNameAndGroup(currentName, currentGroup)
+                    val channelIdx = channels.size + 1
                     channels.add(
                         IptvChannel(
-                            id = UUID.randomUUID().toString(),
+                            id = "ch_${channelIdx}_${trimmed.hashCode().toUInt().toString(16)}",
                             name = finalName,
                             streamUrl = trimmed,
                             logoUrl = currentLogo,
                             groupTitle = finalGroup,
-                            channelNumber = currentChNo ?: (channels.size + 1)
+                            channelNumber = currentChNo ?: channelIdx
                         )
                     )
                 }

@@ -52,6 +52,7 @@ object CategoryHelper {
      * mediante la API nativa de Android (API 26+) y un diccionario de firmas conocidas en Android TV.
      * Garantiza que en una instalación limpia ninguna app quede huérfana o sin categoría.
      */
+    @Suppress("DEPRECATION")
     fun detectCategory(appInfo: ApplicationInfo?, appName: String, packageName: String): String {
         // 1. Detección nativa por categoría oficial de Android (API 26+)
         if (appInfo != null) {

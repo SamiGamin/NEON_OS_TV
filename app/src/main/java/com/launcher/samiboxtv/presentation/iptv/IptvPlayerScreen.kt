@@ -109,7 +109,7 @@ fun IptvPlayerScreen(
     val playerFocusRequester = remember { FocusRequester() }
     val drawerListState = rememberLazyListState()
 
-    val exoPlayer = remember {
+    val exoPlayer = remember(context) {
         ExoPlayer.Builder(context).build().apply {
             playWhenReady = true
         }
@@ -136,7 +136,7 @@ fun IptvPlayerScreen(
         previousFavoriteUrls = uiState.favoriteIptvChannelUrls
     }
 
-    DisposableEffect(exoPlayer, activity) {
+    DisposableEffect(exoPlayer) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 isBuffering = (playbackState == Player.STATE_BUFFERING)

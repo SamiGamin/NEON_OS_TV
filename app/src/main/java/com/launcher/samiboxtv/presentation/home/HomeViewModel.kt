@@ -93,8 +93,6 @@ class HomeViewModel(
         loadFavoriteIptvChannels()
         observeNetwork()
         checkForUpdates(isManual = false)
-        loadIptvFromUrl(VirtualApps.DEFAULT_IPTV_URL)
-
         val initialUrl = IptvPlaylistManager.getActivePlaylistUrl()
         loadIptvFromUrl(initialUrl)
 

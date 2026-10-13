@@ -425,8 +425,8 @@ fun DefaultLauncherDialog(
                         },
                         isHighlighted = isAggressiveActive,
                         onClick = {
-                            DefaultLauncherHelper.openAccessibilitySettings(context)
                             onDismiss()
+                            DefaultLauncherHelper.openAccessibilitySettings(context)
                         }
                     )
 
@@ -437,8 +437,8 @@ fun DefaultLauncherDialog(
                         subtitle = "Invalida la caché del sistema para que Android pregunte qué launcher abrir. Elige NEOS OS TV y toca 'SIEMPRE'.",
                         isHighlighted = false,
                         onClick = {
-                            DefaultLauncherHelper.resetAndPromptDefaultLauncher(context)
                             onDismiss()
+                            DefaultLauncherHelper.resetAndPromptDefaultLauncher(context)
                         }
                     )
 
@@ -449,8 +449,8 @@ fun DefaultLauncherDialog(
                         subtitle = "Abre la pantalla de ajustes de aplicaciones para cambiar el inicio manualmente.",
                         isHighlighted = false,
                         onClick = {
-                            DefaultLauncherHelper.openDefaultAppsSettings(context)
                             onDismiss()
+                            DefaultLauncherHelper.openDefaultAppsSettings(context)
                         }
                     )
 

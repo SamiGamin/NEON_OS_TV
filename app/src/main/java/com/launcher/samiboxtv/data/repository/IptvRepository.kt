@@ -20,8 +20,12 @@ class IptvRepository {
     // Carga desde enlace web remoto (URL)
     suspend fun loadFromUrl(urlString: String): List<IptvChannel> = withContext(Dispatchers.IO) {
         val connection = URL(urlString).openConnection()
-        connection.connectTimeout = 10000
+        connection.connectTimeout = 12000
         connection.readTimeout = 15000
+        if (connection is java.net.HttpURLConnection) {
+            connection.instanceFollowRedirects = true
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Android TV; SamiBoxTV)")
+        }
         connection.getInputStream().use { stream ->
             M3uParser.parseStream(stream)
         }

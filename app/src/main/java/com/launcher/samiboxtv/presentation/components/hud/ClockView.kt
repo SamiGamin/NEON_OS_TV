@@ -22,7 +22,7 @@ import java.util.TimeZone
 fun ClockView(modifier: Modifier = Modifier) {
     val formatter = remember {
         SimpleDateFormat("hh:mm a", Locale.getDefault()).apply {
-            timeZone = TimeZone.getTimeZone("America/Bogota")
+            timeZone = TimeZone.getDefault()
         }
     }
     val dateHolder = remember { Date() }

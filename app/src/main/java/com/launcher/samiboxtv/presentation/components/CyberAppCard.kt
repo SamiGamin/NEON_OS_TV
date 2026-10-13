@@ -98,6 +98,12 @@ private fun getDrawableResId(context: Context, vararg names: String): Int {
  * Modificador de resplandor neón ultraligero que usa el shadow layer nativo del Canvas.
  * No genera recomposiciones pesadas ni caídas de frames en GPUs Mali/PowerVR (TV Box 1-2GB RAM).
  */
+private val sharedGlowPaint = Paint().apply {
+    isAntiAlias = true
+    style = Paint.Style.STROKE
+}
+private val sharedGlowRect = RectF()
+
 fun Modifier.cyberNeonGlow(
     isFocused: Boolean,
     glowColor: Color = CyberCyan,
@@ -109,15 +115,11 @@ fun Modifier.cyberNeonGlow(
     val androidColor = glowColor.toArgb()
 
     drawIntoCanvas { canvas ->
-        val paint = Paint().apply {
-            isAntiAlias = true
-            color = androidColor
-            style = Paint.Style.STROKE
-            strokeWidth = 2.dp.toPx()
-            setShadowLayer(glowPx, 0f, 0f, androidColor)
-        }
-        val rect = RectF(0f, 0f, size.width, size.height)
-        canvas.nativeCanvas.drawRoundRect(rect, radiusPx, radiusPx, paint)
+        sharedGlowPaint.color = androidColor
+        sharedGlowPaint.strokeWidth = 2.dp.toPx()
+        sharedGlowPaint.setShadowLayer(glowPx, 0f, 0f, androidColor)
+        sharedGlowRect.set(0f, 0f, size.width, size.height)
+        canvas.nativeCanvas.drawRoundRect(sharedGlowRect, radiusPx, radiusPx, sharedGlowPaint)
     }
 }
 
@@ -355,10 +357,12 @@ fun CyberAppCard(
             if (liveTvBannerRes != 0) {
                 // [1] BANNER DE LIVE TV CARGADO DESDE DRAWABLE
                 AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(liveTvBannerRes)
-                        .crossfade(false)
-                        .build(),
+                    model = remember(liveTvBannerRes) {
+                        ImageRequest.Builder(context)
+                            .data(liveTvBannerRes)
+                            .crossfade(false)
+                            .build()
+                    },
                     contentDescription = "Live TV",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -462,10 +466,12 @@ fun CyberAppCard(
                         val iconSize = if (!showAppName) 54.dp else 44.dp
                         if (liveTvIconRes != 0) {
                             AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(liveTvIconRes)
-                                    .crossfade(false)
-                                    .build(),
+                                model = remember(liveTvIconRes) {
+                                    ImageRequest.Builder(context)
+                                        .data(liveTvIconRes)
+                                        .crossfade(false)
+                                        .build()
+                                },
                                 contentDescription = "Live TV",
                                 modifier = Modifier.size(iconSize),
                                 contentScale = ContentScale.Fit
@@ -522,10 +528,12 @@ fun CyberAppCard(
             if (mediaHubBannerRes != 0) {
                 // [1] BANNER DE MEDIA HUB CARGADO DESDE DRAWABLE
                 AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(mediaHubBannerRes)
-                        .crossfade(false)
-                        .build(),
+                    model = remember(mediaHubBannerRes) {
+                        ImageRequest.Builder(context)
+                            .data(mediaHubBannerRes)
+                            .crossfade(false)
+                            .build()
+                    },
                     contentDescription = "Media Hub",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -627,10 +635,12 @@ fun CyberAppCard(
                         val iconSize = if (!showAppName) 54.dp else 44.dp
                         if (mediaHubIconRes != 0) {
                             AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(mediaHubIconRes)
-                                    .crossfade(false)
-                                    .build(),
+                                model = remember(mediaHubIconRes) {
+                                    ImageRequest.Builder(context)
+                                        .data(mediaHubIconRes)
+                                        .crossfade(false)
+                                        .build()
+                                },
                                 contentDescription = "Media Hub",
                                 modifier = Modifier.size(iconSize),
                                 contentScale = ContentScale.Fit
@@ -680,10 +690,12 @@ fun CyberAppCard(
             // [1] APP CON BANNER HORIZONTAL (Netflix, YouTube, XMTV, etc.)
             // Llena toda la tarjeta con el arte horizontal panorámico oficial
             AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(app.bannerDrawable)
-                    .crossfade(false)
-                    .build(),
+                model = remember(app.bannerDrawable) {
+                    ImageRequest.Builder(context)
+                        .data(app.bannerDrawable)
+                        .crossfade(false)
+                        .build()
+                },
                 contentDescription = app.name,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop

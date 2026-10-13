@@ -11,7 +11,7 @@ import com.launcher.samiboxtv.R
 enum class SettingsSection(
     val title: String,
     val subtitle: String,
-    @DrawableRes val iconRes: Int
+    @get:DrawableRes val iconRes: Int
 ) {
     FAVORITES(
         title = "FAVORITOS & DESTACADOS",

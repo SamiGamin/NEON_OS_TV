@@ -15,6 +15,7 @@ import android.provider.Settings
  */
 object AppUsagePermissionHelper {
 
+    @Suppress("DEPRECATION")
     fun hasUsageStatsPermission(context: Context): Boolean {
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager ?: return false
         val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -42,10 +43,7 @@ object AppUsagePermissionHelper {
             context.startActivity(intent)
         } catch (_: Exception) {
             // Fallback para TV Boxes que no tienen la pantalla directa de Usage Access
-            val fallback = Intent(Settings.ACTION_SETTINGS).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            context.startActivity(fallback)
+            DefaultLauncherHelper.openSystemSettings(context)
         }
     }
 
