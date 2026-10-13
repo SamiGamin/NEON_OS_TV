@@ -150,12 +150,29 @@ fun CyberAppCard(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var isFocused by remember { mutableStateOf(false) }
-    val cardFocusRequester = focusRequester ?: remember(app.packageName) { FocusRequester() }
+    val cardFocusRequester = if (isGhostMode) {
+        remember(app.packageName) { FocusRequester() }
+    } else {
+        focusRequester ?: remember(app.packageName) { FocusRequester() }
+    }
 
     var longPressJob by remember { mutableStateOf<Job?>(null) }
     var wasLongPressTriggered by remember { mutableStateOf(false) }
 
-    LaunchedEffect(isGhostMode, app.orderIndex) {
+    LaunchedEffect(isGhostMode) {
+        if (isGhostMode) {
+            delay(50)
+            try {
+                cardFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+            delay(120)
+            try {
+                cardFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
+    LaunchedEffect(app.orderIndex) {
         if (isGhostMode) {
             try {
                 cardFocusRequester.requestFocus()

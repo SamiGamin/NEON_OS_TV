@@ -114,14 +114,13 @@ fun HomeScreen(
     var appToMoveCategory by remember { mutableStateOf<AppItem?>(null) }
     val initialFocusRequester = remember { FocusRequester() }
 
-    // Solicitar foco automático en el primer elemento de la pantalla principal
+    // Solicitar foco automático en el primer elemento al cerrar paneles a pantalla completa
     LaunchedEffect(
         uiState.isSettingsOpen,
         uiState.isIptvPlayerOpen,
         uiState.currentPlayingMedia,
         uiState.isMediaHubOpen,
         uiState.isSystemLogOpen,
-        uiState.selectedAppForMenu,
         uiState.isAddDialogOpen
     ) {
         if (!uiState.isSettingsOpen &&
@@ -130,7 +129,8 @@ fun HomeScreen(
             !uiState.isMediaHubOpen &&
             !uiState.isSystemLogOpen &&
             uiState.selectedAppForMenu == null &&
-            !uiState.isAddDialogOpen
+            !uiState.isAddDialogOpen &&
+            uiState.movingAppPackageName == null
         ) {
             delay(150)
             try {

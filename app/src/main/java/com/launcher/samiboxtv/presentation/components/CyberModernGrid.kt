@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +51,25 @@ fun CyberModernGrid(
     // Agrupamos en pares verticales (columnas de 2)
     val columns = apps.chunked(2)
 
+    // Garantizar que la columna con la app que se está reorganizando permanezca visible
+    LaunchedEffect(movingAppPackageName) {
+        if (movingAppPackageName != null) {
+            val colIdx = columns.indexOfFirst { col -> col.any { it.packageName == movingAppPackageName } }
+            if (colIdx >= 0) {
+                listState.animateScrollToItem(colIdx)
+            }
+        }
+    }
+
+    LaunchedEffect(columns) {
+        if (movingAppPackageName != null) {
+            val colIdx = columns.indexOfFirst { col -> col.any { it.packageName == movingAppPackageName } }
+            if (colIdx >= 0) {
+                listState.animateScrollToItem(colIdx)
+            }
+        }
+    }
+
     Column(modifier = modifier.fillMaxWidth()) {
         if (!title.isNullOrBlank()) {
             Text(
@@ -86,7 +106,7 @@ fun CyberModernGrid(
                             app = app,
                             width = dimensions.cardWidth,
                             height = dimensions.cardHeight,
-                            focusRequester = if (colIndex == 0 && rowIndex == 0) initialFocusRequester else null,
+                            focusRequester = if (colIndex == 0 && rowIndex == 0 && movingAppPackageName == null) initialFocusRequester else null,
                             isGhostMode = isMoving,
                             isEditing = isMoving,
                             showAppName = showAppName,

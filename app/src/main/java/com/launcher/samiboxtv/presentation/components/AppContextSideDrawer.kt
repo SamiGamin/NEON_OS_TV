@@ -165,7 +165,6 @@ fun AppContextSideDrawer(
                             enabled = isInteractionEnabled,
                             modifier = Modifier.focusRequester(initialFocusRequester),
                             onClick = {
-                                onDismiss()
                                 onStartReorder(appItem)
                             }
                         )
